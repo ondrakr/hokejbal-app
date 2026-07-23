@@ -11,6 +11,7 @@ struct HokejbalApp: App {
     @StateObject private var appearanceStore = AppearanceStore()
     @StateObject private var competitionOrder = CompetitionOrderStore()
     @StateObject private var matchAlerts = MatchAlertsStore()
+    @StateObject private var tabRouter = AppTabRouter()
 
     init() {
         HBAppearance.apply()
@@ -28,6 +29,7 @@ struct HokejbalApp: App {
                 .environmentObject(appearanceStore)
                 .environmentObject(competitionOrder)
                 .environmentObject(matchAlerts)
+                .environmentObject(tabRouter)
                 .tint(HBTheme.brand)
                 .preferredColorScheme(appearanceStore.appearance.colorScheme)
                 .background(HBTheme.surface)

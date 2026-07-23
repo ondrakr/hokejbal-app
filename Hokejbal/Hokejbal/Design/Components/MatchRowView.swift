@@ -34,9 +34,14 @@ struct MatchRowView: View {
                 .frame(width: 4)
 
             VStack(alignment: .leading, spacing: 11) {
-                header
-                teamRow(team: home, score: match.homeScore, leads: homeLeads)
-                teamRow(team: away, score: match.awayScore, leads: awayLeads)
+                if hasHeaderContent { header }
+
+                if match.status == .scheduled {
+                    scheduledBody
+                } else {
+                    teamRow(team: home, score: match.homeScore, leads: homeLeads)
+                    teamRow(team: away, score: match.awayScore, leads: awayLeads)
+                }
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 13)
@@ -53,6 +58,14 @@ struct MatchRowView: View {
                 .padding(.vertical, 5)
                 .contentShape(Rectangle())
         }
+    }
+
+    private var hasHeaderContent: Bool {
+        (showCompetition && competitionName != nil)
+            || match.status == .live
+            || match.status == .finished
+            || match.status == .postponed
+            || match.isBroadcast
     }
 
     private var header: some View {
@@ -77,7 +90,54 @@ struct MatchRowView: View {
                     .foregroundStyle(HBTheme.brand)
                     .accessibilityLabel("Živé vysílání")
             }
-            HBStatusPill(match: match)
+            // Naplánovaný zápas má čas ve výrazném bloku vpravo — pill je nadbytečný.
+            if match.status != .scheduled {
+                HBStatusPill(match: match)
+            }
+        }
+    }
+
+    /// Naplánovaný zápas: týmy vlevo, výrazný čas + datum vpravo (aby karta nebyla prázdná).
+    private var scheduledBody: some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 9) {
+                teamNameRow(home)
+                teamNameRow(away)
+            }
+
+            Spacer(minLength: 6)
+
+            Rectangle()
+                .fill(HBTheme.cardStroke)
+                .frame(width: 0.75, height: 36)
+
+            VStack(spacing: 1) {
+                Text(match.scheduledAt.hbTime)
+                    .font(.hbNumber(size: 22, weight: .heavy))
+                    .foregroundStyle(HBTheme.brand)
+                Text(match.scheduledAt.hbShortDate)
+                    .font(.hbMontserrat(size: 10, weight: .semibold))
+                    .tracking(0.3)
+                    .foregroundStyle(HBTheme.textTertiary)
+            }
+            .fixedSize()
+        }
+    }
+
+    private func teamNameRow(_ team: Team?) -> some View {
+        HStack(spacing: 10) {
+            if let team {
+                TeamBadge(team: team, size: 24)
+                    .frame(width: 26, height: 26)
+                Text(team.shortName)
+                    .font(.hbMontserrat(size: 15, weight: .semibold))
+                    .foregroundStyle(HBTheme.textPrimary)
+                    .lineLimit(1)
+            } else {
+                Text("—")
+                    .font(.hbMontserrat(size: 15, weight: .medium))
+                    .foregroundStyle(HBTheme.textSecondary)
+            }
         }
     }
 

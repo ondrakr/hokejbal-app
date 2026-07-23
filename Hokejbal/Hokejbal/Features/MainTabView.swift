@@ -1,6 +1,16 @@
 import SwiftUI
 
+/// Přepínání spodních záložek z jiných obrazovek (např. „Vše" na Domů).
+@MainActor
+final class AppTabRouter: ObservableObject {
+    enum Tab: Int { case home = 0, matches, live, favorites, more }
+    @Published var selection: Int = Tab.home.rawValue
+
+    func select(_ tab: Tab) { selection = tab.rawValue }
+}
+
 struct MainTabView: View {
+    @EnvironmentObject private var tabRouter: AppTabRouter
     @EnvironmentObject private var apiClient: APIClient
     @EnvironmentObject private var catalog: CatalogStore
     @EnvironmentObject private var seasons: SeasonStore
@@ -11,22 +21,27 @@ struct MainTabView: View {
     @EnvironmentObject private var matchAlerts: MatchAlertsStore
 
     var body: some View {
-        TabView {
+        TabView(selection: $tabRouter.selection) {
             HomeView()
+                .tag(AppTabRouter.Tab.home.rawValue)
                 .tabItem { Label("Domů", systemImage: "house.fill") }
 
             MatchesByCompetitionView()
+                .tag(AppTabRouter.Tab.matches.rawValue)
                 .tabItem { Label("Zápasy", systemImage: "sportscourt") }
 
             NavigationStack {
                 LiveView()
             }
+            .tag(AppTabRouter.Tab.live.rawValue)
             .tabItem { Label("LIVE", systemImage: "dot.radiowaves.left.and.right") }
 
             FavoritesView()
+                .tag(AppTabRouter.Tab.favorites.rawValue)
                 .tabItem { Label("Oblíbené", systemImage: "star.fill") }
 
             MoreView()
+                .tag(AppTabRouter.Tab.more.rawValue)
                 .tabItem { Label("Více", systemImage: "ellipsis.circle.fill") }
         }
         .tint(HBTheme.brand)

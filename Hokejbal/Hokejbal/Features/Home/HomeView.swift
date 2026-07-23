@@ -92,12 +92,12 @@ struct HomeView: View {
     @EnvironmentObject private var apiClient: APIClient
     @EnvironmentObject private var catalog: CatalogStore
     @EnvironmentObject private var liveScores: LiveScoreService
+    @EnvironmentObject private var tabRouter: AppTabRouter
 
     @State private var articles: [NewsArticle] = []
     @State private var matches: [Match] = []
     @State private var isLoading = false
     @State private var bannerPage = 0
-    @State private var newsPage = 0
 
     private var sliderMatches: [Match] {
         let live = liveScores.liveMatches
@@ -119,14 +119,13 @@ struct HomeView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 26) {
-                    heroHeader
-                    matchSliderSection
-                    quickLinks
-                    bannersSection
                     newsSection
+                    matchSliderSection
+                    bannersSection
                     videosSection
                     partnersSection
                 }
+                .padding(.top, 8)
                 .padding(.bottom, 28)
             }
             .background(HBTheme.canvas)
@@ -146,65 +145,12 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - Hero header
-
-    private var heroHeader: some View {
-        ZStack(alignment: .bottomLeading) {
-            HBTheme.inkGradient
-
-            // Signaturní diagonální pruhy (energie / pohyb).
-            GeometryReader { geo in
-                ZStack {
-                    HBSkew(dx: 26)
-                        .fill(HBTheme.brand.opacity(0.9))
-                        .frame(width: 70)
-                        .offset(x: geo.size.width - 96)
-                    HBSkew(dx: 26)
-                        .fill(HBTheme.brand.opacity(0.35))
-                        .frame(width: 34)
-                        .offset(x: geo.size.width - 52)
-                }
-            }
-            .clipped()
-
-            VStack(alignment: .leading, spacing: 6) {
-                Text("ČESKÝ HOKEJBAL")
-                    .font(.hbMontserrat(size: 11, weight: .bold))
-                    .tracking(2)
-                    .foregroundStyle(.white.opacity(0.75))
-                Text(todayHeadline)
-                    .font(.hbDisplay(size: 26, weight: .heavy))
-                    .foregroundStyle(.white)
-                Text("Výsledky, přenosy a novinky na jednom místě.")
-                    .font(.hbMontserrat(size: 13, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.8))
-            }
-            .padding(.horizontal, HBTheme.screenPadding)
-            .padding(.vertical, 20)
-        }
-        .frame(height: 150)
-        .clipShape(RoundedRectangle(cornerRadius: HBTheme.radiusLg, style: .continuous))
-        .padding(.horizontal, HBTheme.screenPadding)
-        .padding(.top, 4)
-    }
-
-    private var todayHeadline: String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "cs_CZ")
-        f.dateFormat = "EEEE d. MMMM"
-        return f.string(from: Date()).capitalizedFirst
-    }
-
     // MARK: - Match slider
 
     private var matchSliderSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            sectionHeader("Zápasy") {
-                DayMatchesView(
-                    title: "Všechny zápasy",
-                    competitionId: nil,
-                    initialDate: Calendar.current.startOfDay(for: Date())
-                )
+            sectionHeaderButton("Zápasy") {
+                tabRouter.select(.matches)
             }
 
             if sliderMatches.isEmpty {
@@ -214,75 +160,31 @@ struct HomeView: View {
                     .padding(.horizontal, HBTheme.screenPadding)
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
+                    HStack(spacing: 12) {
                         ForEach(sliderMatches) { match in
                             NavigationLink {
                                 MatchDetailView(matchId: match.id)
                             } label: {
-                                HomeMatchCard(
+                                MatchRowView(
                                     match: match,
                                     home: catalog.team(match.homeTeamId),
                                     away: catalog.team(match.awayTeamId),
-                                    competition: catalog.competitions.first { $0.id == match.competitionId }
+                                    showCompetition: true,
+                                    competitionName: catalog.competitions.first { $0.id == match.competitionId }?.shortName,
+                                    embedded: true
                                 )
+                                .frame(width: 250)
+                                .clipShape(RoundedRectangle(cornerRadius: HBTheme.radiusMd, style: .continuous))
+                                .hbCard(cornerRadius: HBTheme.radiusMd)
                             }
                             .buttonStyle(.plain)
                         }
                     }
                     .padding(.horizontal, HBTheme.screenPadding)
+                    .padding(.vertical, 2)
                 }
             }
         }
-    }
-
-    // MARK: - Quick links
-
-    private var quickLinks: some View {
-        HStack(spacing: 0) {
-            NavigationLink {
-                if let id = catalog.competitions.first(where: { $0.slug == "extraliga" })?.id
-                    ?? catalog.competitions.first?.id {
-                    CompetitionDetailView(competitionId: id)
-                } else {
-                    CompetitionsView()
-                }
-            } label: {
-                quickLinkLabel(title: "EXTRALIGA", systemImage: "shield.fill")
-            }
-            .buttonStyle(.plain)
-
-            Rectangle()
-                .fill(HBTheme.separator)
-                .frame(width: 1, height: 36)
-
-            Link(destination: URL(string: "https://www.hokejbal.cz")!) {
-                quickLinkLabel(title: "REPREZENTACE", systemImage: "flag.fill")
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.vertical, 4)
-        .hbCard(cornerRadius: HBTheme.radiusMd)
-        .padding(.horizontal, HBTheme.screenPadding)
-    }
-
-    private func quickLinkLabel(title: String, systemImage: String) -> some View {
-        HStack(spacing: 10) {
-            ZStack {
-                Circle()
-                    .fill(HBTheme.brand.opacity(0.12))
-                    .frame(width: 34, height: 34)
-                Image(systemName: systemImage)
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(HBTheme.brand)
-            }
-            Text(title)
-                .font(.hbMontserrat(size: 13, weight: .bold))
-                .foregroundStyle(HBTheme.textPrimary)
-                .lineLimit(1)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .contentShape(Rectangle())
     }
 
     // MARK: - Banners
@@ -358,19 +260,19 @@ struct HomeView: View {
                     .foregroundStyle(HBTheme.textSecondary)
                     .padding(.horizontal, HBTheme.screenPadding)
             } else {
-                TabView(selection: $newsPage) {
-                    ForEach(Array(featuredNews.enumerated()), id: \.element.id) { index, article in
-                        featuredArticleCard(article)
-                            .padding(.horizontal, HBTheme.screenPadding)
-                            .tag(index)
-                    }
-                }
-                .tabViewStyle(.page(indexDisplayMode: .automatic))
-                .frame(height: 220)
-
-                ForEach(articles.dropFirst(min(5, articles.count)).prefix(4)) { article in
+                if let lead = featuredNews.first {
                     NavigationLink {
-                        NewsView()
+                        ArticleDetailView(article: lead)
+                    } label: {
+                        featuredArticleCard(lead)
+                            .padding(.horizontal, HBTheme.screenPadding)
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                ForEach(articles.dropFirst(1).prefix(5)) { article in
+                    NavigationLink {
+                        ArticleDetailView(article: article)
                     } label: {
                         compactArticleRow(article)
                     }
@@ -382,24 +284,35 @@ struct HomeView: View {
     }
 
     private func featuredArticleCard(_ article: NewsArticle) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            NewsThumbnail(article: article, showsCategory: true)
-                .frame(height: 128)
-
-            VStack(alignment: .leading, spacing: 6) {
-                Text(article.title)
-                    .font(.hbMontserrat(size: 15, weight: .bold))
-                    .foregroundStyle(HBTheme.textPrimary)
-                    .lineLimit(3)
-                Text(article.publishedAt.hbShortDateTime)
-                    .font(.hbMontserrat(size: 12, weight: .medium))
-                    .foregroundStyle(HBTheme.textTertiary)
+        NewsThumbnail(article: article)
+            .frame(maxWidth: .infinity)
+            .frame(height: 200)
+            .overlay(
+                LinearGradient(
+                    colors: [.clear, .black.opacity(0.15), .black.opacity(0.82)],
+                    startPoint: .center,
+                    endPoint: .bottom
+                )
+            )
+            .overlay(alignment: .topLeading) {
+                CategoryTag(title: article.category)
+                    .padding(12)
             }
-            .padding(12)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .clipShape(RoundedRectangle(cornerRadius: HBTheme.radiusMd, style: .continuous))
-        .hbCard(cornerRadius: HBTheme.radiusMd)
+            .overlay(alignment: .bottomLeading) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(article.title)
+                        .font(.hbDisplay(size: 19, weight: .heavy))
+                        .foregroundStyle(.white)
+                        .lineLimit(3)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(article.publishedAt.hbShortDateTime)
+                        .font(.hbMontserrat(size: 12, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.85))
+                }
+                .padding(14)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: HBTheme.radiusMd, style: .continuous))
+            .hbCard(cornerRadius: HBTheme.radiusMd)
     }
 
     private func compactArticleRow(_ article: NewsArticle) -> some View {
@@ -515,16 +428,27 @@ struct HomeView: View {
     ) -> some View {
         HBSectionHeader(title: title) {
             NavigationLink(destination: destination) {
-                HStack(spacing: 3) {
-                    Text("Vše")
-                        .font(.hbMontserrat(size: 13, weight: .bold))
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 10, weight: .bold))
-                }
-                .foregroundStyle(HBTheme.brand)
+                seeAllLabel
             }
             .buttonStyle(.plain)
         }
+    }
+
+    private func sectionHeaderButton(_ title: String, action: @escaping () -> Void) -> some View {
+        HBSectionHeader(title: title) {
+            Button(action: action) { seeAllLabel }
+                .buttonStyle(.plain)
+        }
+    }
+
+    private var seeAllLabel: some View {
+        HStack(spacing: 3) {
+            Text("Vše")
+                .font(.hbMontserrat(size: 13, weight: .bold))
+            Image(systemName: "chevron.right")
+                .font(.system(size: 10, weight: .bold))
+        }
+        .foregroundStyle(HBTheme.brand)
     }
 
     private func load() async {
@@ -535,77 +459,6 @@ struct HomeView: View {
         articles = (try? await news) ?? []
         matches = (try? await allMatches) ?? []
         await liveScores.pollOnce(using: apiClient.api)
-    }
-}
-
-// MARK: - Match slider card
-
-private struct HomeMatchCard: View {
-    let match: Match
-    let home: Team?
-    let away: Team?
-    let competition: Competition?
-
-    private var homeLeads: Bool { match.status != .scheduled && match.homeScore > match.awayScore }
-    private var awayLeads: Bool { match.status != .scheduled && match.awayScore > match.homeScore }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Barevná horní lišta podle stavu.
-            HStack {
-                Text(competition?.shortName.uppercased() ?? "ZÁPAS")
-                    .font(.hbMontserrat(size: 10, weight: .bold))
-                    .tracking(0.5)
-                    .foregroundStyle(.white.opacity(0.9))
-                    .lineLimit(1)
-                Spacer(minLength: 0)
-                Text(match.scheduledAt.hbShortDate)
-                    .font(.hbMontserrat(size: 10, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.8))
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 9)
-            .background(match.isLive ? HBTheme.live : HBTheme.ink)
-
-            VStack(spacing: 10) {
-                HStack {
-                    if match.isLive {
-                        LiveBadge(compact: true)
-                    } else {
-                        HBStatusPill(match: match)
-                    }
-                    Spacer(minLength: 0)
-                }
-                teamLine(home, score: match.homeScore, leads: homeLeads)
-                teamLine(away, score: match.awayScore, leads: awayLeads)
-            }
-            .padding(14)
-        }
-        .frame(width: 230, alignment: .leading)
-        .clipShape(RoundedRectangle(cornerRadius: HBTheme.radiusMd, style: .continuous))
-        .hbCard(cornerRadius: HBTheme.radiusMd)
-    }
-
-    private func teamLine(_ team: Team?, score: Int, leads: Bool) -> some View {
-        HStack(spacing: 8) {
-            if let team {
-                TeamBadge(team: team, size: 22)
-                Text(team.shortName)
-                    .font(.hbMontserrat(size: 14, weight: leads ? .bold : .medium))
-                    .foregroundStyle(HBTheme.textPrimary)
-                    .lineLimit(1)
-            } else {
-                Text("—")
-                    .font(.hbMontserrat(size: 14, weight: .medium))
-                    .foregroundStyle(HBTheme.textSecondary)
-            }
-            Spacer(minLength: 6)
-            if match.status != .scheduled {
-                Text("\(score)")
-                    .font(.hbNumber(size: 18, weight: leads ? .heavy : .semibold))
-                    .foregroundStyle(leads ? (match.isLive ? HBTheme.live : HBTheme.textPrimary) : HBTheme.textSecondary)
-            }
-        }
     }
 }
 

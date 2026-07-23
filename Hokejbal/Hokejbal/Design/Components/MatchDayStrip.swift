@@ -23,18 +23,27 @@ struct MatchDayStrip: View {
         Set(datesWithMatches.map { calendar.startOfDay(for: $0) })
     }
 
+    private var isTodaySelected: Bool {
+        calendar.isDate(selectedDate, inSameDayAs: today)
+    }
+
     var body: some View {
         ScrollViewReader { proxy in
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(days, id: \.self) { day in
-                        dayCell(day)
-                            .id(dayKey(day))
+            VStack(spacing: 6) {
+                header(proxy)
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(days, id: \.self) { day in
+                            dayCell(day)
+                                .id(dayKey(day))
+                        }
                     }
+                    .padding(.horizontal, HBTheme.screenPadding)
+                    .padding(.bottom, 10)
                 }
-                .padding(.horizontal, HBTheme.screenPadding)
-                .padding(.vertical, 10)
             }
+            .padding(.top, 10)
             .onAppear {
                 clampSelectionIntoWindowIfNeeded()
                 scrollToSelected(proxy)
@@ -42,11 +51,37 @@ struct MatchDayStrip: View {
             .onChange(of: selectedDate) { _, _ in scrollToSelected(proxy) }
             .onChange(of: datesWithMatches) { _, _ in scrollToSelected(proxy) }
         }
-        .frame(height: 78)
         .background(HBTheme.surface)
         .overlay(alignment: .bottom) {
             Rectangle().fill(HBTheme.separator).frame(height: 0.5)
         }
+    }
+
+    private func header(_ proxy: ScrollViewProxy) -> some View {
+        HStack(spacing: 8) {
+            HBAccentBar(height: 16)
+            Text(Self.monthLabel(selectedDate))
+                .font(.hbDisplay(size: 16, weight: .heavy))
+                .foregroundStyle(HBTheme.textPrimary)
+
+            Spacer(minLength: 8)
+
+            if !isTodaySelected {
+                Button {
+                    selectedDate = today
+                    scrollToSelected(proxy)
+                } label: {
+                    Text("Dnes")
+                        .font(.hbMontserrat(size: 12, weight: .bold))
+                        .foregroundStyle(HBTheme.brand)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(HBTheme.brand.opacity(0.12), in: Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, HBTheme.screenPadding)
     }
 
     private func clampSelectionIntoWindowIfNeeded() {
@@ -74,20 +109,20 @@ struct MatchDayStrip: View {
         let isToday = calendar.isDateInToday(dayStart)
         let hasMatches = normalizedMatchDates.contains(dayStart)
 
-        let dow = isToday ? "DNES" : Self.shortDow(dayStart)
+        let dow = Self.shortDow(dayStart)
         let primaryColor: Color = isSelected ? .white : (isToday ? HBTheme.brand : HBTheme.textPrimary)
 
         return Button {
             selectedDate = dayStart
         } label: {
-            VStack(spacing: 3) {
+            VStack(spacing: 4) {
                 Text(dow)
                     .font(.hbMontserrat(size: 10, weight: .bold))
-                    .tracking(0.3)
+                    .tracking(0.4)
                     .foregroundStyle(isSelected ? Color.white.opacity(0.85) : (isToday ? HBTheme.brand : HBTheme.textTertiary))
 
                 Text(Self.dayNumber(dayStart))
-                    .font(.hbNumber(size: 19, weight: .heavy))
+                    .font(.hbNumber(size: 20, weight: .heavy))
                     .foregroundStyle(primaryColor)
 
                 // Indikátor zápasů.
@@ -96,18 +131,18 @@ struct MatchDayStrip: View {
                     .frame(width: 5, height: 5)
                     .opacity(hasMatches ? 1 : 0)
             }
-            .frame(minWidth: 50, minHeight: 58)
+            .frame(minWidth: 46, minHeight: 62)
             .padding(.horizontal, 4)
             .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(isSelected ? AnyShapeStyle(HBTheme.brandGradient) : AnyShapeStyle(Color.clear))
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(isSelected ? AnyShapeStyle(HBTheme.brandGradient) : AnyShapeStyle(HBTheme.cardInset))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(HBTheme.brand.opacity(isToday && !isSelected ? 0.4 : 0), lineWidth: 1.5)
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(HBTheme.brand.opacity(isToday && !isSelected ? 0.5 : 0), lineWidth: 1.5)
             )
             .shadow(color: isSelected ? HBTheme.brand.opacity(0.35) : .clear, radius: 6, y: 3)
-            .opacity(hasMatches || isSelected || isToday ? 1 : 0.5)
+            .opacity(hasMatches || isSelected || isToday ? 1 : 0.55)
         }
         .buttonStyle(.plain)
     }
@@ -127,7 +162,14 @@ struct MatchDayStrip: View {
     private static let dayNumberFormatter: DateFormatter = {
         let f = DateFormatter()
         f.locale = Locale(identifier: "cs_CZ")
-        f.dateFormat = "d.M."
+        f.dateFormat = "d"
+        return f
+    }()
+
+    private static let monthFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "cs_CZ")
+        f.dateFormat = "LLLL yyyy"
         return f
     }()
 
@@ -137,5 +179,9 @@ struct MatchDayStrip: View {
 
     private static func dayNumber(_ date: Date) -> String {
         dayNumberFormatter.string(from: date)
+    }
+
+    private static func monthLabel(_ date: Date) -> String {
+        monthFormatter.string(from: date).capitalizedFirst
     }
 }
