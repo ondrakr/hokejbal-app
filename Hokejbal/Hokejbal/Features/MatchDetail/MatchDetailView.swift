@@ -191,9 +191,7 @@ struct MatchDetailView: View {
             if let team {
                 NavigationLink { TeamDetailView(teamId: team.id) } label: {
                     VStack(spacing: 10) {
-                        TeamBadge(team: team, size: 58)
-                            .padding(12)
-                            .background(HBTheme.cardInset, in: Circle())
+                        TeamBadge(team: team, size: 64)
                         Text(team.shortName)
                             .font(.hbMontserrat(size: 14, weight: .bold))
                             .foregroundStyle(HBTheme.textPrimary)

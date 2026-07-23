@@ -132,11 +132,6 @@ struct CompetitionDetailView: View {
                 initialsBadge
             }
         }
-        .padding(8)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(HBTheme.secondarySurface)
-        )
     }
 
     private var initialsBadge: some View {
