@@ -210,6 +210,7 @@ struct CompetitionDetailView: View {
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
+                .background(HBTheme.canvas)
             }
         }
     }
@@ -229,7 +230,7 @@ struct CompetitionDetailView: View {
         .buttonStyle(.plain)
         .hbHideDisclosure()
         .listRowInsets(EdgeInsets())
-        .listRowBackground(HBTheme.surface)
+        .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
     }
 

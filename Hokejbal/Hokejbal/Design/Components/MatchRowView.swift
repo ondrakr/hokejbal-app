@@ -29,7 +29,7 @@ struct MatchRowView: View {
     }
 
     var body: some View {
-        HStack(spacing: 0) {
+        let inner = HStack(spacing: 0) {
             accentColor
                 .frame(width: 4)
 
@@ -41,11 +41,18 @@ struct MatchRowView: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 13)
         }
-        .clipShape(RoundedRectangle(cornerRadius: HBTheme.radiusMd, style: .continuous))
-        .hbCard(cornerRadius: HBTheme.radiusMd)
-        .padding(.horizontal, embedded ? 0 : HBTheme.screenPadding)
-        .padding(.vertical, embedded ? 0 : 5)
-        .contentShape(Rectangle())
+
+        if embedded {
+            // Bez vlastní karty — vykresluje se uvnitř nadřazené karty.
+            inner.contentShape(Rectangle())
+        } else {
+            inner
+                .clipShape(RoundedRectangle(cornerRadius: HBTheme.radiusMd, style: .continuous))
+                .hbCard(cornerRadius: HBTheme.radiusMd)
+                .padding(.horizontal, HBTheme.screenPadding)
+                .padding(.vertical, 5)
+                .contentShape(Rectangle())
+        }
     }
 
     private var header: some View {

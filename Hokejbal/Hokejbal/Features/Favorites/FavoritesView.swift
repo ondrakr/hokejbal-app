@@ -186,7 +186,7 @@ struct FavoritesView: View {
                                         }
                                         .buttonStyle(.plain)
                                         .listRowInsets(HBTheme.matchRowInsets)
-                                        .listRowBackground(HBTheme.surface)
+                                        .listRowBackground(Color.clear)
                                         .listRowSeparator(.hidden)
                                     }
                                 }
@@ -200,7 +200,7 @@ struct FavoritesView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(HBTheme.surface)
+        .background(HBTheme.canvas)
     }
 
     private var emptyFavorites: some View {

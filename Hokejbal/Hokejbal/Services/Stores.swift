@@ -268,7 +268,8 @@ final class CatalogStore: ObservableObject {
         let task = Task { @MainActor in
             do {
                 let p = try await api.players(teamId: nil, seasonId: seasonId, competitionId: nil)
-                playersById = Dictionary(uniqueKeysWithValues: p.map { ($0.id, $0) })
+                // Odolné vůči duplicitním id (data mohou vracet kolize slugů) — nepadáme.
+                playersById = Dictionary(p.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
                 arePlayersLoaded = true
             } catch {
                 // Necháme arePlayersLoaded = false → další pokus.

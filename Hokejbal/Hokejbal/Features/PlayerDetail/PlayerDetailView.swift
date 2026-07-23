@@ -205,8 +205,14 @@ struct PlayerDetailView: View {
                 match: match,
                 home: catalog.team(match.homeTeamId),
                 away: catalog.team(match.awayTeamId),
-                showCompetition: false
+                showCompetition: false,
+                embedded: true
             )
+
+            Rectangle()
+                .fill(HBTheme.cardStroke)
+                .frame(height: 0.75)
+                .padding(.horizontal, 14)
 
             HStack(spacing: 12) {
                 appearanceStat("G", "\(item.goals)")
@@ -229,14 +235,12 @@ struct PlayerDetailView: View {
                         )
                 }
             }
-            .padding(.horizontal, HBTheme.screenPadding)
-            .padding(.bottom, 10)
-
-            Rectangle()
-                .fill(HBTheme.separator)
-                .frame(height: 0.5)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
         }
-        .background(HBTheme.surface)
+        .hbCard(cornerRadius: HBTheme.radiusMd)
+        .padding(.horizontal, HBTheme.screenPadding)
+        .padding(.vertical, 5)
         .contentShape(Rectangle())
     }
 
