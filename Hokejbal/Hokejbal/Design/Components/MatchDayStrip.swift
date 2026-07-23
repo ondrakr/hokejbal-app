@@ -26,14 +26,14 @@ struct MatchDayStrip: View {
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
+                HStack(spacing: 8) {
                     ForEach(days, id: \.self) { day in
                         dayCell(day)
                             .id(dayKey(day))
                     }
                 }
                 .padding(.horizontal, HBTheme.screenPadding)
-                .padding(.vertical, 6)
+                .padding(.vertical, 10)
             }
             .onAppear {
                 clampSelectionIntoWindowIfNeeded()
@@ -42,7 +42,7 @@ struct MatchDayStrip: View {
             .onChange(of: selectedDate) { _, _ in scrollToSelected(proxy) }
             .onChange(of: datesWithMatches) { _, _ in scrollToSelected(proxy) }
         }
-        .frame(height: 60)
+        .frame(height: 78)
         .background(HBTheme.surface)
         .overlay(alignment: .bottom) {
             Rectangle().fill(HBTheme.separator).frame(height: 0.5)
@@ -71,25 +71,43 @@ struct MatchDayStrip: View {
     private func dayCell(_ day: Date) -> some View {
         let dayStart = calendar.startOfDay(for: day)
         let isSelected = calendar.isDate(dayStart, inSameDayAs: selectedDate)
+        let isToday = calendar.isDateInToday(dayStart)
         let hasMatches = normalizedMatchDates.contains(dayStart)
+
+        let dow = isToday ? "DNES" : Self.shortDow(dayStart)
+        let primaryColor: Color = isSelected ? .white : (isToday ? HBTheme.brand : HBTheme.textPrimary)
 
         return Button {
             selectedDate = dayStart
         } label: {
-            VStack(spacing: 4) {
-                Text(Self.shortDow(dayStart))
-                    .font(.system(size: 10, weight: .semibold))
-                Text(Self.shortDate(dayStart))
-                    .font(.system(size: 13, weight: .bold))
+            VStack(spacing: 3) {
+                Text(dow)
+                    .font(.hbMontserrat(size: 10, weight: .bold))
+                    .tracking(0.3)
+                    .foregroundStyle(isSelected ? Color.white.opacity(0.85) : (isToday ? HBTheme.brand : HBTheme.textTertiary))
+
+                Text(Self.dayNumber(dayStart))
+                    .font(.hbNumber(size: 19, weight: .heavy))
+                    .foregroundStyle(primaryColor)
+
+                // Indikátor zápasů.
+                Circle()
+                    .fill(isSelected ? Color.white : HBTheme.brand)
+                    .frame(width: 5, height: 5)
+                    .opacity(hasMatches ? 1 : 0)
             }
-            .foregroundStyle(isSelected ? Color.white : HBTheme.textPrimary)
-            .frame(minWidth: 52, minHeight: 48)
+            .frame(minWidth: 50, minHeight: 58)
             .padding(.horizontal, 4)
             .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(isSelected ? HBTheme.brand : Color.clear)
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(isSelected ? AnyShapeStyle(HBTheme.brandGradient) : AnyShapeStyle(Color.clear))
             )
-            .opacity(hasMatches || isSelected ? 1 : 0.4)
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(HBTheme.brand.opacity(isToday && !isSelected ? 0.4 : 0), lineWidth: 1.5)
+            )
+            .shadow(color: isSelected ? HBTheme.brand.opacity(0.35) : .clear, radius: 6, y: 3)
+            .opacity(hasMatches || isSelected || isToday ? 1 : 0.5)
         }
         .buttonStyle(.plain)
     }
@@ -106,10 +124,10 @@ struct MatchDayStrip: View {
         return f
     }()
 
-    private static let dayMonthFormatter: DateFormatter = {
+    private static let dayNumberFormatter: DateFormatter = {
         let f = DateFormatter()
         f.locale = Locale(identifier: "cs_CZ")
-        f.dateFormat = "d.MM."
+        f.dateFormat = "d.M."
         return f
     }()
 
@@ -117,7 +135,7 @@ struct MatchDayStrip: View {
         String(dowFormatter.string(from: date).prefix(2)).uppercased()
     }
 
-    private static func shortDate(_ date: Date) -> String {
-        dayMonthFormatter.string(from: date)
+    private static func dayNumber(_ date: Date) -> String {
+        dayNumberFormatter.string(from: date)
     }
 }

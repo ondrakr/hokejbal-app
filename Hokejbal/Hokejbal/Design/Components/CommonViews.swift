@@ -339,4 +339,63 @@ extension Date {
         f.dateFormat = "d. M. yyyy"
         return f.string(from: self)
     }
+
+    /// Datum + čas (pro články / novinky).
+    var hbShortDateTime: String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "cs_CZ")
+        f.dateFormat = "d. M. yyyy · HH:mm"
+        return f.string(from: self)
+    }
+}
+
+// MARK: - Reálné fotky článků
+
+extension NewsArticle {
+    /// Stabilní seed z id (Swift hashValue je mezi spuštěními náhodný).
+    private var photoSeed: Int {
+        var h = 5381
+        for b in id.utf8 { h = ((h << 5) &+ h) &+ Int(b) }
+        return abs(h) % 100000
+    }
+
+    /// Reálná tématická fotka z internetu (LoremFlickr, stabilní přes `lock`).
+    /// Gradient placeholder se použije při načítání i při chybě.
+    var photoURL: URL? {
+        URL(string: "https://loremflickr.com/800/500/hockey,icehockey,sport/all?lock=\(photoSeed)")
+    }
+}
+
+/// Náhledový obrázek článku: reálná fotka přes AsyncImage, s gradient fallbackem.
+struct NewsThumbnail: View {
+    let article: NewsArticle
+    var showsCategory: Bool = false
+
+    private var gradient: LinearGradient {
+        LinearGradient(
+            colors: HomeContent.gradients[article.imageGradientIndex % HomeContent.gradients.count],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    var body: some View {
+        ZStack {
+            gradient
+            AsyncImage(url: article.photoURL, transaction: .init(animation: .easeOut(duration: 0.25))) { phase in
+                if case .success(let image) = phase {
+                    image.resizable().scaledToFill().transition(.opacity)
+                } else {
+                    Color.clear
+                }
+            }
+        }
+        .overlay(alignment: .bottomLeading) {
+            if showsCategory {
+                CategoryTag(title: article.category)
+                    .padding(12)
+            }
+        }
+        .clipped()
+    }
 }

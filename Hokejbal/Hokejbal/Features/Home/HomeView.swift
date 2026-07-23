@@ -382,22 +382,16 @@ struct HomeView: View {
     }
 
     private func featuredArticleCard(_ article: NewsArticle) -> some View {
-        let colors = HomeContent.gradients[article.imageGradientIndex % HomeContent.gradients.count]
-        return VStack(alignment: .leading, spacing: 0) {
-            Rectangle()
-                .fill(LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing))
-                .frame(height: 124)
-                .overlay(alignment: .bottomLeading) {
-                    CategoryTag(title: article.category)
-                        .padding(12)
-                }
+        VStack(alignment: .leading, spacing: 0) {
+            NewsThumbnail(article: article, showsCategory: true)
+                .frame(height: 128)
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(article.title)
                     .font(.hbMontserrat(size: 15, weight: .bold))
                     .foregroundStyle(HBTheme.textPrimary)
                     .lineLimit(3)
-                Text(article.publishedAt.hbShortDate)
+                Text(article.publishedAt.hbShortDateTime)
                     .font(.hbMontserrat(size: 12, weight: .medium))
                     .foregroundStyle(HBTheme.textTertiary)
             }
@@ -410,15 +404,9 @@ struct HomeView: View {
 
     private func compactArticleRow(_ article: NewsArticle) -> some View {
         HStack(alignment: .center, spacing: 12) {
-            RoundedRectangle(cornerRadius: HBTheme.radiusSm, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: HomeContent.gradients[article.imageGradientIndex % HomeContent.gradients.count],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+            NewsThumbnail(article: article)
                 .frame(width: 66, height: 66)
+                .clipShape(RoundedRectangle(cornerRadius: HBTheme.radiusSm, style: .continuous))
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(article.category.uppercased())
@@ -429,7 +417,7 @@ struct HomeView: View {
                     .font(.hbMontserrat(size: 14, weight: .semibold))
                     .foregroundStyle(HBTheme.textPrimary)
                     .lineLimit(2)
-                Text(article.publishedAt.hbShortDate)
+                Text(article.publishedAt.hbShortDateTime)
                     .font(.hbMontserrat(size: 11, weight: .medium))
                     .foregroundStyle(HBTheme.textTertiary)
             }

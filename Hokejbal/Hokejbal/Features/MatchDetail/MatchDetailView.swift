@@ -94,12 +94,12 @@ struct MatchDetailView: View {
         let away = catalog.team(match.awayTeamId)
         let competition = catalog.competitions.first { $0.id == match.competitionId }
 
-        return VStack(spacing: 0) {
-            competitionStrip(competition, match: match)
+        return ScrollView {
+            VStack(spacing: 0) {
+                heroScoreboard(match: match, home: home, away: away, competition: competition)
 
-            ScrollView {
+                // Obsahový „list" s kulatými horními rohy překrývá hero.
                 VStack(spacing: 0) {
-                    scoreboard(match: match, home: home, away: away)
                     HBUnderlineTabs(selection: $section)
 
                     Group {
@@ -116,76 +116,136 @@ struct MatchDetailView: View {
                         }
                     }
                 }
+                .frame(maxWidth: .infinity, minHeight: 500, alignment: .top)
+                .background(
+                    UnevenRoundedRectangle(topLeadingRadius: HBTheme.radiusLg, topTrailingRadius: HBTheme.radiusLg, style: .continuous)
+                        .fill(HBTheme.surface)
+                )
+                .padding(.top, -HBTheme.radiusLg)
             }
-            .background(HBTheme.surface)
-            .refreshable { await load() }
         }
         .background(HBTheme.surface)
+        .refreshable { await load() }
     }
 
-    private func competitionStrip(_ competition: Competition?, match: Match) -> some View {
-        let phase = match.phaseOrDefault.label
+    // MARK: - Hero scoreboard (tmavý „broadcast" header)
 
-        return Group {
-            if let competition {
-                NavigationLink {
-                    CompetitionDetailView(competitionId: competition.id)
-                } label: {
-                    CompetitionNavStrip(competition: competition, phase: phase, round: match.round)
+    private func heroScoreboard(match: Match, home: Team?, away: Team?, competition: Competition?) -> some View {
+        ZStack(alignment: .top) {
+            HBTheme.inkGradient
+
+            // Signaturní diagonální akcent.
+            GeometryReader { geo in
+                HBSkew(dx: 22)
+                    .fill(HBTheme.brand.opacity(0.85))
+                    .frame(width: 64)
+                    .offset(x: geo.size.width - 86, y: -10)
+            }
+            .clipped()
+            .allowsHitTesting(false)
+
+            VStack(spacing: 16) {
+                heroCompetition(competition, match: match)
+
+                HStack(alignment: .top, spacing: 6) {
+                    heroTeam(home)
+                    heroCenter(match)
+                        .frame(minWidth: 116)
+                    heroTeam(away)
+                }
+
+                if match.isBroadcast {
+                    broadcastLink(match)
+                }
+            }
+            .padding(.horizontal, HBTheme.screenPadding)
+            .padding(.top, 12)
+            .padding(.bottom, HBTheme.radiusLg + 14)
+        }
+    }
+
+    @ViewBuilder
+    private func heroCompetition(_ competition: Competition?, match: Match) -> some View {
+        let phase = match.phaseOrDefault.label
+        let title: String = {
+            var parts = [(competition?.name ?? match.competitionId).uppercased()]
+            if !phase.isEmpty { parts.append(phase.uppercased()) }
+            if match.round > 0 { parts.append("\(match.round). KOLO") }
+            return parts.joined(separator: " · ")
+        }()
+
+        let label = HStack(spacing: 7) {
+            if let competition { CompetitionBadge(competition: competition, size: 18) }
+            Text(title)
+                .font(.hbMontserrat(size: 11, weight: .bold))
+                .tracking(0.5)
+                .foregroundStyle(.white.opacity(0.85))
+                .lineLimit(1)
+            if competition != nil {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.6))
+            }
+        }
+
+        if let competition {
+            NavigationLink { CompetitionDetailView(competitionId: competition.id) } label: { label }
+                .buttonStyle(.plain)
+        } else {
+            label
+        }
+    }
+
+    private func heroTeam(_ team: Team?) -> some View {
+        VStack(spacing: 10) {
+            if let team {
+                NavigationLink { TeamDetailView(teamId: team.id) } label: {
+                    VStack(spacing: 10) {
+                        TeamBadge(team: team, size: 58)
+                            .padding(10)
+                            .background(Color.white.opacity(0.08), in: Circle())
+                        Text(team.shortName)
+                            .font(.hbMontserrat(size: 14, weight: .bold))
+                            .foregroundStyle(.white)
+                            .multilineTextAlignment(.center)
+                            .lineLimit(2)
+                    }
                 }
                 .buttonStyle(.plain)
-            } else {
-                CompetitionNavStrip(
-                    competition: nil,
-                    phase: phase,
-                    round: match.round,
-                    fallbackTitle: match.competitionId,
-                    showsChevron: false
-                )
             }
         }
+        .frame(maxWidth: .infinity)
     }
 
-    private func scoreboard(match: Match, home: Team?, away: Team?) -> some View {
-        VStack(spacing: 14) {
-            HStack(alignment: .top, spacing: 8) {
-                scoreboardTeam(home)
-                    .frame(maxWidth: .infinity)
-
-                VStack(spacing: 6) {
-                    Text("\(match.scheduledAt.hbShortDate) \(match.scheduledAt.hbTime)")
-                        .font(.hbMontserrat(size: 11, weight: .medium))
-                        .foregroundStyle(HBTheme.textTertiary)
-
-                    if match.status == .scheduled {
-                        Text(match.scheduledAt.hbTime)
-                            .font(.hbMontserrat(size: 34, weight: .bold))
-                            .foregroundStyle(HBTheme.textPrimary)
-                            .monospacedDigit()
-                    } else {
-                        Text("\(match.homeScore)-\(match.awayScore)")
-                            .font(.hbMontserrat(size: 34, weight: .bold))
-                            .foregroundStyle(match.isLive ? HBTheme.live : HBTheme.textPrimary)
-                            .monospacedDigit()
-                    }
-
-                    Text(statusLabel(match))
-                        .font(.hbMontserrat(size: 12, weight: .medium))
-                        .foregroundStyle(match.isLive ? HBTheme.live : HBTheme.textSecondary)
-                }
-                .frame(minWidth: 110)
-
-                scoreboardTeam(away)
-                    .frame(maxWidth: .infinity)
+    private func heroCenter(_ match: Match) -> some View {
+        VStack(spacing: 8) {
+            if match.isLive {
+                LiveBadge(compact: false)
+            } else {
+                Text(statusLabel(match).uppercased())
+                    .font(.hbMontserrat(size: 10, weight: .bold))
+                    .tracking(1)
+                    .foregroundStyle(.white.opacity(0.7))
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(Color.white.opacity(0.1), in: Capsule())
             }
 
-            if match.isBroadcast {
-                broadcastLink(match)
+            if match.status == .scheduled {
+                Text(match.scheduledAt.hbTime)
+                    .font(.hbNumber(size: 40, weight: .heavy))
+                    .foregroundStyle(.white)
+            } else {
+                Text("\(match.homeScore) : \(match.awayScore)")
+                    .font(.hbNumber(size: 40, weight: .heavy))
+                    .foregroundStyle(match.isLive ? Color(red: 1, green: 0.5, blue: 0.5) : .white)
             }
+
+            Text("\(match.scheduledAt.hbShortDate) · \(match.scheduledAt.hbTime)")
+                .font(.hbMontserrat(size: 11, weight: .medium))
+                .foregroundStyle(.white.opacity(0.7))
+                .multilineTextAlignment(.center)
         }
-        .padding(.horizontal, HBTheme.screenPadding)
-        .padding(.vertical, 18)
-        .background(HBTheme.surface)
     }
 
     @ViewBuilder
@@ -207,19 +267,20 @@ struct MatchDetailView: View {
             Image(systemName: "tv")
                 .font(.system(size: 14, weight: .semibold))
             Text(label)
-                .font(.hbMontserrat(size: 13, weight: .semibold))
+                .font(.hbMontserrat(size: 13, weight: .bold))
             Spacer(minLength: 0)
             if interactive {
                 Image(systemName: "arrow.up.right")
                     .font(.system(size: 11, weight: .bold))
             }
         }
-        .foregroundStyle(interactive ? HBTheme.brand : HBTheme.textSecondary)
+        .foregroundStyle(interactive ? Color.white : Color.white.opacity(0.7))
         .padding(.horizontal, 14)
-        .padding(.vertical, 10)
+        .padding(.vertical, 11)
+        .frame(maxWidth: .infinity)
         .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(interactive ? HBTheme.brand.opacity(0.08) : HBTheme.secondarySurface)
+            RoundedRectangle(cornerRadius: HBTheme.radiusSm, style: .continuous)
+                .fill(interactive ? HBTheme.brand : Color.white.opacity(0.12))
         )
     }
 

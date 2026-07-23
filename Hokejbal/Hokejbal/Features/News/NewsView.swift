@@ -5,8 +5,6 @@ struct NewsView: View {
     @State private var articles: [NewsArticle] = []
     @State private var isLoading = false
 
-    private let gradients: [[Color]] = HomeContent.gradients
-
     var body: some View {
         Group {
             if isLoading && articles.isEmpty {
@@ -22,11 +20,11 @@ struct NewsView: View {
                     .padding(HBTheme.screenPadding)
                 }
                 .scrollContentBackground(.hidden)
-                .background(HBTheme.surface)
+                .background(HBTheme.canvas)
                 .refreshable { await load() }
             }
         }
-        .background(HBTheme.surface)
+        .background(HBTheme.canvas)
         .navigationTitle("Novinky")
         .navigationBarTitleDisplayMode(.inline)
         .hbNavigationStyle()
@@ -35,19 +33,8 @@ struct NewsView: View {
 
     private func articleCard(_ article: NewsArticle) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: gradients[article.imageGradientIndex % gradients.count],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .frame(height: 140)
-                .overlay(alignment: .bottomLeading) {
-                    CategoryTag(title: article.category)
-                        .padding(12)
-                }
+            NewsThumbnail(article: article, showsCategory: true)
+                .frame(height: 168)
 
             VStack(alignment: .leading, spacing: 8) {
                 Text(article.title)
@@ -58,12 +45,14 @@ struct NewsView: View {
                     .font(.hbMontserrat(size: 13, weight: .medium))
                     .foregroundStyle(HBTheme.textSecondary)
                     .lineLimit(3)
-                Text(article.publishedAt.hbShortDate)
+                Text(article.publishedAt.hbShortDateTime)
                     .font(.hbMontserrat(size: 12, weight: .medium))
                     .foregroundStyle(HBTheme.textTertiary)
             }
-            .padding(.top, 12)
+            .padding(14)
         }
+        .clipShape(RoundedRectangle(cornerRadius: HBTheme.radiusMd, style: .continuous))
+        .hbCard(cornerRadius: HBTheme.radiusMd)
     }
 
     private func load() async {
