@@ -11,7 +11,7 @@ actor MockHokejbalAPI: HokejbalAPI {
     private let competitionsData: [Competition]
     private let teamsData: [Team]
     private var playersData: [Player]
-    private let standingsData: [StandingRow]
+    private let standingsByCompetition: [String: [StandingRow]]
     private let newsData: [NewsArticle]
     private var matchesStore: [Match]
 
@@ -435,7 +435,12 @@ actor MockHokejbalAPI: HokejbalAPI {
 
     private func ensurePlayersLoaded() {
         guard playersData.isEmpty else { return }
-        playersData = Self.makePlayers()
+        var players = Self.makePlayers()
+        let covered = Set(players.map(\.teamId))
+        for team in teamsData where !covered.contains(team.id) {
+            players.append(contentsOf: Self.syntheticRoster(for: team.id))
+        }
+        playersData = players
     }
 
     init() {
@@ -473,12 +478,36 @@ actor MockHokejbalAPI: HokejbalAPI {
             .init(id: "hradec", name: "HBC Hradec Králové 1988", shortName: "Hradec", city: "Hradec Králové", primaryColorHex: "C62828", logoInitials: "HK", logoURL: "https://uqnptbznnbeldtuvywtt.supabase.co/storage/v1/object/public/club-logos/hradec.png", competitionId: "extraliga-2025-26"),
             .init(id: "vlci", name: "Vlčí smečka Ústí nad Labem", shortName: "Vlčí smečka", city: "Ústí n. L.", primaryColorHex: "37474F", logoInitials: "VS", logoURL: "https://uqnptbznnbeldtuvywtt.supabase.co/storage/v1/object/public/club-logos/vlci.png", competitionId: "1liga-2025-26"),
             .init(id: "trinec", name: "HBC Enviform Třinec", shortName: "Třinec", city: "Třinec", primaryColorHex: "B71C1C", logoInitials: "TR", logoURL: "https://uqnptbznnbeldtuvywtt.supabase.co/storage/v1/object/public/club-logos/trinec.png", competitionId: "1liga-2025-26"),
-            .init(id: "palmovka", name: "HBC KOVO Palmovka", shortName: "Palmovka", city: "Praha", primaryColorHex: "00695C", logoInitials: "KP", logoURL: "https://uqnptbznnbeldtuvywtt.supabase.co/storage/v1/object/public/club-logos/palmovka.png", competitionId: "zeny-2025-26")
+            .init(id: "most", name: "HBC Most", shortName: "Most", city: "Most", primaryColorHex: "455A64", logoInitials: "MO", logoURL: nil, competitionId: "1liga-2025-26"),
+            .init(id: "teplice", name: "SK Teplice", shortName: "Teplice", city: "Teplice", primaryColorHex: "F9A825", logoInitials: "TE", logoURL: nil, competitionId: "1liga-2025-26"),
+            .init(id: "chomutov", name: "HBC Chomutov", shortName: "Chomutov", city: "Chomutov", primaryColorHex: "1565C0", logoInitials: "CH", logoURL: nil, competitionId: "2liga-2025-26"),
+            .init(id: "decin", name: "HC Děčín", shortName: "Děčín", city: "Děčín", primaryColorHex: "6A1B9A", logoInitials: "DE", logoURL: nil, competitionId: "2liga-2025-26"),
+            .init(id: "kolin", name: "HBC Kolín", shortName: "Kolín", city: "Kolín", primaryColorHex: "0277BD", logoInitials: "KO", logoURL: nil, competitionId: "regionalni-2025-26"),
+            .init(id: "benesov", name: "TJ Benešov", shortName: "Benešov", city: "Benešov", primaryColorHex: "2E7D32", logoInitials: "BE", logoURL: nil, competitionId: "regionalni-2025-26"),
+            .init(id: "rakovnik", name: "HK Rakovník", shortName: "Rakovník", city: "Rakovník", primaryColorHex: "C62828", logoInitials: "RA", logoURL: nil, competitionId: "oblastni-2025-26"),
+            .init(id: "slany", name: "HC Slaný", shortName: "Slaný", city: "Slaný", primaryColorHex: "EF6C00", logoInitials: "SL", logoURL: nil, competitionId: "oblastni-2025-26"),
+            .init(id: "pardubice-j", name: "HBC Pardubice junioři", shortName: "Pardubice J", city: "Pardubice", primaryColorHex: "B71C1C", logoInitials: "PJ", logoURL: nil, competitionId: "juniori-2025-26"),
+            .init(id: "kladno-j", name: "HBC Kladno junioři", shortName: "Kladno J", city: "Kladno", primaryColorHex: "283593", logoInitials: "KJ", logoURL: nil, competitionId: "juniori-2025-26"),
+            .init(id: "hostivar-d", name: "HBC Hostivař dorost", shortName: "Hostivař D", city: "Praha", primaryColorHex: "C92A2A", logoInitials: "HD", logoURL: nil, competitionId: "dorost-2025-26"),
+            .init(id: "plzen-d", name: "HBC Plzeň dorost", shortName: "Plzeň D", city: "Plzeň", primaryColorHex: "0B3D91", logoInitials: "PD", logoURL: nil, competitionId: "dorost-2025-26"),
+            .init(id: "palmovka", name: "HBC KOVO Palmovka", shortName: "Palmovka", city: "Praha", primaryColorHex: "00695C", logoInitials: "KP", logoURL: "https://uqnptbznnbeldtuvywtt.supabase.co/storage/v1/object/public/club-logos/palmovka.png", competitionId: "zeny-2025-26"),
+            .init(id: "plzen-z", name: "HBC Plzeň ženy", shortName: "Plzeň Ž", city: "Plzeň", primaryColorHex: "0B3D91", logoInitials: "PŽ", logoURL: nil, competitionId: "zeny-2025-26"),
+            .init(id: "svitkov-z", name: "HBC Svítkov Stars ženy", shortName: "Svítkov Ž", city: "Pardubice", primaryColorHex: "D4A017", logoInitials: "SŽ", logoURL: nil, competitionId: "zeny-2025-26"),
+            .init(id: "praha-pz", name: "HC Praha přebor žen", shortName: "Praha PŽ", city: "Praha", primaryColorHex: "AD1457", logoInitials: "PP", logoURL: nil, competitionId: "prebor-zen-2025-26"),
+            .init(id: "brno-pz", name: "SK Brno přebor žen", shortName: "Brno PŽ", city: "Brno", primaryColorHex: "6A1B9A", logoInitials: "BP", logoURL: nil, competitionId: "prebor-zen-2025-26"),
+            .init(id: "hostivar-sz", name: "HBC Hostivař SŽ", shortName: "Hostivař SŽ", city: "Praha", primaryColorHex: "C92A2A", logoInitials: "HS", logoURL: nil, competitionId: "starsi-zaci-2025-26"),
+            .init(id: "kert-sz", name: "Kert Park SŽ", shortName: "Kert SŽ", city: "Praha", primaryColorHex: "111111", logoInitials: "KS", logoURL: nil, competitionId: "starsi-zaci-2025-26"),
+            .init(id: "letohrad-mz", name: "Letohrad MŽ", shortName: "Letohrad MŽ", city: "Letohrad", primaryColorHex: "1B4F9C", logoInitials: "LM", logoURL: nil, competitionId: "mladsi-zaci-2025-26"),
+            .init(id: "usti-mz", name: "Ústí MŽ", shortName: "Ústí MŽ", city: "Ústí n. L.", primaryColorHex: "E65100", logoInitials: "UM", logoURL: nil, competitionId: "mladsi-zaci-2025-26"),
+            .init(id: "kladno-pr", name: "Kladno přípravky", shortName: "Kladno PŘ", city: "Kladno", primaryColorHex: "283593", logoInitials: "KP", logoURL: nil, competitionId: "pripravky-2025-26"),
+            .init(id: "pardubice-pr", name: "Pardubice přípravky", shortName: "Pardubice PŘ", city: "Pardubice", primaryColorHex: "B71C1C", logoInitials: "PP", logoURL: nil, competitionId: "pripravky-2025-26"),
+            .init(id: "plzen-mp", name: "Plzeň minipřípravky", shortName: "Plzeň MP", city: "Plzeň", primaryColorHex: "0B3D91", logoInitials: "PM", logoURL: nil, competitionId: "minipripravky-2025-26"),
+            .init(id: "hostivar-mp", name: "Hostivař minipřípravky", shortName: "Hostivař MP", city: "Praha", primaryColorHex: "C92A2A", logoInitials: "HM", logoURL: nil, competitionId: "minipripravky-2025-26")
         ]
 
         playersData = []
 
-        standingsData = [
+        let extraligaStandings: [StandingRow] = [
             .init(id: "s1", rank: 1, teamId: "hostivar", played: 22, wins: 16, overtimeWins: 2, overtimeLosses: 0, losses: 4, goalsFor: 137, goalsAgainst: 82, points: 52),
             .init(id: "s2", rank: 2, teamId: "letohrad", played: 22, wins: 14, overtimeWins: 2, overtimeLosses: 1, losses: 5, goalsFor: 106, goalsAgainst: 71, points: 47),
             .init(id: "s3", rank: 3, teamId: "kert", played: 22, wins: 13, overtimeWins: 3, overtimeLosses: 0, losses: 6, goalsFor: 121, goalsAgainst: 71, points: 45),
@@ -492,6 +521,51 @@ actor MockHokejbalAPI: HokejbalAPI {
             .init(id: "s11", rank: 11, teamId: "blatna", played: 22, wins: 3, overtimeWins: 0, overtimeLosses: 2, losses: 17, goalsFor: 70, goalsAgainst: 141, points: 11),
             .init(id: "s12", rank: 12, teamId: "hradec", played: 22, wins: 1, overtimeWins: 1, overtimeLosses: 1, losses: 19, goalsFor: 49, goalsAgainst: 123, points: 6)
         ]
+
+        var standingsMap: [String: [StandingRow]] = [
+            "extraliga-2025-26": extraligaStandings,
+            "extraliga-2024-25": extraligaStandings.map { row in
+                StandingRow(
+                    id: "\(row.id)-24",
+                    rank: row.rank,
+                    teamId: row.teamId,
+                    played: row.played,
+                    wins: max(row.wins - 1, 0),
+                    overtimeWins: row.overtimeWins,
+                    overtimeLosses: row.overtimeLosses,
+                    losses: row.losses + 1,
+                    goalsFor: max(row.goalsFor - 8, 0),
+                    goalsAgainst: row.goalsAgainst + 5,
+                    points: max(row.points - 3, 0)
+                )
+            }
+        ]
+
+        // Automatické tabulky pro ostatní soutěže podle týmů.
+        let teamsByComp = Dictionary(grouping: teamsData, by: \.competitionId)
+        for (compId, teams) in teamsByComp where standingsMap[compId] == nil {
+            standingsMap[compId] = teams.enumerated().map { idx, team in
+                let played = 10 + (idx % 4)
+                let wins = max(played - idx - 1, 1)
+                let losses = max(played - wins, 0)
+                let gf = 40 - idx * 4
+                let ga = 20 + idx * 5
+                return StandingRow(
+                    id: "\(compId)-\(team.id)",
+                    rank: idx + 1,
+                    teamId: team.id,
+                    played: played,
+                    wins: wins,
+                    overtimeWins: idx % 2,
+                    overtimeLosses: (idx + 1) % 2,
+                    losses: losses,
+                    goalsFor: max(gf, 8),
+                    goalsAgainst: max(ga, 8),
+                    points: wins * 3 + (idx % 2)
+                )
+            }
+        }
+        standingsByCompetition = standingsMap
 
         let cal = Calendar.current
         func daysAgo(_ days: Int) -> Date {
@@ -576,8 +650,7 @@ actor MockHokejbalAPI: HokejbalAPI {
     }
 
     func standings(competitionId: String) async throws -> [StandingRow] {
-        _ = competitionId
-        return standingsData
+        standingsByCompetition[competitionId] ?? []
     }
 
     func news(limit: Int) async throws -> [NewsArticle] {
@@ -601,15 +674,24 @@ actor MockHokejbalAPI: HokejbalAPI {
     func playerHistory(playerId: String) async throws -> [PlayerSeasonStat] {
         ensurePlayersLoaded()
         guard let player = playersData.first(where: { $0.id == playerId }) else { return [] }
+        let team = teamsData.first { $0.id == player.teamId }
+        let competitionId = team?.competitionId ?? "extraliga-2025-26"
+        let competitionName = competitionsData.first { $0.id == competitionId }?.name ?? "Soutěž"
+        let seasonId = competitionsData.first { $0.id == competitionId }?.seasonId ?? "2025-26"
+        let priorCompetitionId = competitionsData.first {
+            $0.slug == (competitionsData.first { $0.id == competitionId }?.slug ?? "")
+                && $0.seasonId == "2024-25"
+        }?.id ?? competitionId
+
         return [
             PlayerSeasonStat(
-                id: "\(playerId)-2025-26",
+                id: "\(playerId)-\(seasonId)",
                 playerId: playerId,
                 clubId: player.teamId,
-                competitionId: "extraliga-2025-26",
-                seasonId: "2025-26",
-                seasonLabel: "2025/26",
-                competitionName: "Extraliga hokejbalu",
+                competitionId: competitionId,
+                seasonId: seasonId,
+                seasonLabel: seasonId.replacingOccurrences(of: "-", with: "/"),
+                competitionName: competitionName,
                 number: player.number,
                 position: player.position,
                 games: player.games,
@@ -624,10 +706,10 @@ actor MockHokejbalAPI: HokejbalAPI {
                 id: "\(playerId)-2024-25",
                 playerId: playerId,
                 clubId: player.teamId,
-                competitionId: "extraliga-2024-25",
+                competitionId: priorCompetitionId,
                 seasonId: "2024-25",
                 seasonLabel: "2024/25",
-                competitionName: "Extraliga hokejbalu",
+                competitionName: competitionName,
                 number: player.number,
                 position: player.position,
                 games: max(player.games - 2, 1),
@@ -642,35 +724,41 @@ actor MockHokejbalAPI: HokejbalAPI {
     }
 
     func clubSeasonHistory(clubId: String) async throws -> [ClubSeasonRecord] {
-        let current = standingsData.first { $0.teamId == clubId }
+        let team = teamsData.first { $0.id == clubId }
+        let competitionId = team?.competitionId ?? "extraliga-2025-26"
+        let competitionName = competitionsData.first { $0.id == competitionId }?.name ?? "Soutěž"
+        let current = standingsByCompetition[competitionId]?.first { $0.teamId == clubId }
+        let prior = standingsByCompetition["extraliga-2024-25"]?.first { $0.teamId == clubId }
+            ?? current.map {
+                StandingRow(
+                    id: "\($0.id)-24",
+                    rank: min($0.rank + 1, 12),
+                    teamId: clubId,
+                    played: $0.played,
+                    wins: max($0.wins - 1, 0),
+                    overtimeWins: $0.overtimeWins,
+                    overtimeLosses: $0.overtimeLosses,
+                    losses: $0.losses + 1,
+                    goalsFor: max($0.goalsFor - 5, 0),
+                    goalsAgainst: $0.goalsAgainst + 4,
+                    points: max($0.points - 3, 0)
+                )
+            }
+
         return [
             ClubSeasonRecord(
                 seasonId: "2025-26",
                 seasonLabel: "2025/26",
-                competitionId: "extraliga-2025-26",
-                competitionName: "Extraliga hokejbalu",
+                competitionId: competitionId,
+                competitionName: competitionName,
                 standing: current
             ),
             ClubSeasonRecord(
                 seasonId: "2024-25",
                 seasonLabel: "2024/25",
-                competitionId: "extraliga-2024-25",
-                competitionName: "Extraliga hokejbalu",
-                standing: current.map {
-                    StandingRow(
-                        id: "\($0.id)-24",
-                        rank: min($0.rank + 1, 12),
-                        teamId: clubId,
-                        played: $0.played,
-                        wins: max($0.wins - 1, 0),
-                        overtimeWins: $0.overtimeWins,
-                        overtimeLosses: $0.overtimeLosses,
-                        losses: $0.losses + 1,
-                        goalsFor: max($0.goalsFor - 5, 0),
-                        goalsAgainst: $0.goalsAgainst + 3,
-                        points: max($0.points - 3, 0)
-                    )
-                }
+                competitionId: prior.map { _ in "extraliga-2024-25" } ?? competitionId,
+                competitionName: competitionName,
+                standing: prior
             )
         ]
     }
@@ -762,7 +850,95 @@ actor MockHokejbalAPI: HokejbalAPI {
             return cal.date(from: comps) ?? today
         }
 
-        return [
+        func finished(
+            id: String,
+            competitionId: String,
+            home: String,
+            away: String,
+            day: Int,
+            hour: Int,
+            minute: Int = 0,
+            homeScore: Int,
+            awayScore: Int,
+            periods: ([Int], [Int]),
+            venue: String,
+            round: Int,
+            homeScorer: String,
+            awayScorer: String,
+            phase: CompetitionPhase = .regular
+        ) -> Match {
+            let events = syntheticEvents(
+                matchId: id,
+                homeTeamId: home,
+                awayTeamId: away,
+                homeScore: homeScore,
+                awayScore: awayScore,
+                homePeriodScores: periods.0,
+                awayPeriodScores: periods.1,
+                homeScorerId: homeScorer,
+                awayScorerId: awayScorer
+            )
+            return Match(
+                id: id,
+                competitionId: competitionId,
+                homeTeamId: home,
+                awayTeamId: away,
+                scheduledAt: at(day, hour: hour, minute: minute),
+                status: .finished,
+                period: .finished,
+                clock: nil,
+                phase: phase,
+                homeScore: homeScore,
+                awayScore: awayScore,
+                homePeriodScores: periods.0,
+                awayPeriodScores: periods.1,
+                venue: venue,
+                round: round,
+                events: events,
+                attendance: Int.random(in: 120...520),
+                homeShots: homeScore * 7 + Int.random(in: 8...18),
+                awayShots: awayScore * 7 + Int.random(in: 8...18),
+                homePowerplayGoals: homeScore > 0 ? 1 : 0,
+                awayPowerplayGoals: awayScore > 1 ? 1 : 0,
+                homeShorthandedGoals: 0,
+                awayShorthandedGoals: 0,
+                referees: "Vilém Jonák, Martin Černý"
+            )
+        }
+
+        func scheduled(
+            id: String,
+            competitionId: String,
+            home: String,
+            away: String,
+            day: Int,
+            hour: Int,
+            minute: Int = 0,
+            venue: String,
+            round: Int
+        ) -> Match {
+            Match(
+                id: id,
+                competitionId: competitionId,
+                homeTeamId: home,
+                awayTeamId: away,
+                scheduledAt: at(day, hour: hour, minute: minute),
+                status: .scheduled,
+                period: .notStarted,
+                clock: nil,
+                phase: .regular,
+                homeScore: 0,
+                awayScore: 0,
+                homePeriodScores: [],
+                awayPeriodScores: [],
+                venue: venue,
+                round: round,
+                events: [],
+                attendance: nil
+            )
+        }
+
+        var matches: [Match] = [
             Match(id: "m-live-1", competitionId: "extraliga-2025-26", homeTeamId: "hostivar", awayTeamId: "svitkov", scheduledAt: at(0, hour: 18), status: .live, period: .second, clock: "08:42", phase: .regular, homeScore: 3, awayScore: 2, homePeriodScores: [1, 2], awayPeriodScores: [1, 1], venue: "HBC Hostivař Arena", round: 23, events: [
                 .init(id: "e1", kind: .goal, minute: 7, second: 12, teamId: "hostivar", playerId: "cejka", assistIds: [], description: "Gól Jan Čejka", period: 1),
                 .init(id: "e2", kind: .goal, minute: 14, second: 3, teamId: "svitkov", playerId: "benes", assistIds: [], description: "Gól Martin Beneš", period: 1),
@@ -778,23 +954,187 @@ actor MockHokejbalAPI: HokejbalAPI {
             Match(id: "m-live-3", competitionId: "1liga-2025-26", homeTeamId: "vlci", awayTeamId: "trinec", scheduledAt: at(0, hour: 16), status: .live, period: .first, clock: "04:18", phase: .regular, homeScore: 1, awayScore: 0, homePeriodScores: [1], awayPeriodScores: [0], venue: "Ústí nad Labem", round: 12, events: [
                 .init(id: "e6", kind: .goal, minute: 4, second: 18, teamId: "vlci", playerId: "navarra", assistIds: ["faigl"], description: "Gól Roman Navarra (Faigl)", period: 1)
             ], attendance: 210, streamURL: "https://www.hokejbal.cz", streamLabel: "Hokejbal.cz", homeShots: 12, awayShots: 8, homePowerplayGoals: 0, awayPowerplayGoals: 0, homeShorthandedGoals: 0, awayShorthandedGoals: 0, referees: "Tomáš Horák"),
-            Match(id: "m-fin-1", competitionId: "extraliga-2025-26", homeTeamId: "plzen", awayTeamId: "dobrany", scheduledAt: at(-1, hour: 18), status: .finished, period: .finished, clock: nil, phase: .playoffs, homeScore: 5, awayScore: 3, homePeriodScores: [2, 1, 2], awayPeriodScores: [1, 1, 1], venue: "Plzeň", round: 22, events: [
-                .init(id: "f1", kind: .goal, minute: 2, second: 39, teamId: "plzen", playerId: "kral", assistIds: [], description: "Gól Dan Král", period: 1),
-                .init(id: "f2", kind: .goal, minute: 8, second: 11, teamId: "dobrany", playerId: "dob-brtnik", assistIds: [], description: "Gól Jan Brtník", period: 1),
-                .init(id: "f3", kind: .goal, minute: 12, second: 4, teamId: "plzen", playerId: "kral", assistIds: [], description: "Gól Dan Král", period: 1),
-                .init(id: "f4", kind: .penalty, minute: 14, second: 20, teamId: "dobrany", playerId: "dob-duchek", assistIds: [], description: "Vyloučení 2 min – Duchek (Hrubost)", period: 1),
-                .init(id: "f5", kind: .goal, minute: 5, second: 1, teamId: "dobrany", playerId: "dob-humlicek", assistIds: [], description: "Gól Tomáš Humlíček", period: 2),
-                .init(id: "f6", kind: .goal, minute: 9, second: 44, teamId: "plzen", playerId: "kral", assistIds: [], description: "Gól Dan Král", period: 2),
-                .init(id: "f7", kind: .goal, minute: 3, second: 10, teamId: "plzen", playerId: "kral", assistIds: [], description: "Gól Dan Král", period: 3),
-                .init(id: "f8", kind: .goal, minute: 11, second: 55, teamId: "dobrany", playerId: "dob-kolarik", assistIds: [], description: "Gól Jakub Kolařík", period: 3),
-                .init(id: "f9", kind: .goal, minute: 14, second: 2, teamId: "plzen", playerId: "kral", assistIds: [], description: "Gól Dan Král", period: 3)
-            ], attendance: 510, homeShots: 24, awayShots: 29, homePowerplayGoals: 0, awayPowerplayGoals: 0, homeShorthandedGoals: 0, awayShorthandedGoals: 0, referees: "Vilém Jonák, Martin Černý"),
-            Match(id: "m-fin-2", competitionId: "extraliga-2025-26", homeTeamId: "pardubice", awayTeamId: "usti", scheduledAt: at(-1, hour: 17), status: .finished, period: .finished, clock: nil, phase: .playoffs, homeScore: 2, awayScore: 2, homePeriodScores: [1, 0, 1], awayPeriodScores: [0, 1, 1], venue: "Pardubice", round: 22, events: [], attendance: 290),
-            Match(id: "m-fin-3", competitionId: "extraliga-2025-26", homeTeamId: "kladno", awayTeamId: "mlada", scheduledAt: at(-2, hour: 18), status: .finished, period: .finished, clock: nil, phase: .playoffs, homeScore: 1, awayScore: 4, homePeriodScores: [0, 1, 0], awayPeriodScores: [2, 1, 1], venue: "Kladno", round: 21, events: [], attendance: 180),
-            Match(id: "m-sch-1", competitionId: "extraliga-2025-26", homeTeamId: "blatna", awayTeamId: "hradec", scheduledAt: at(1, hour: 15), status: .scheduled, period: .notStarted, clock: nil, phase: .regular, homeScore: 0, awayScore: 0, homePeriodScores: [], awayPeriodScores: [], venue: "Blatná", round: 24, events: [], attendance: nil),
-            Match(id: "m-sch-2", competitionId: "extraliga-2025-26", homeTeamId: "svitkov", awayTeamId: "letohrad", scheduledAt: at(1, hour: 17, minute: 30), status: .scheduled, period: .notStarted, clock: nil, phase: .regular, homeScore: 0, awayScore: 0, homePeriodScores: [], awayPeriodScores: [], venue: "Pardubice – Svítkov", round: 24, events: [], attendance: nil),
-            Match(id: "m-sch-3", competitionId: "extraliga-2025-26", homeTeamId: "kert", awayTeamId: "hostivar", scheduledAt: at(2, hour: 18), status: .scheduled, period: .notStarted, clock: nil, phase: .regular, homeScore: 0, awayScore: 0, homePeriodScores: [], awayPeriodScores: [], venue: "Praha – Kert Park", round: 24, events: [], attendance: nil),
-            Match(id: "m-sch-4", competitionId: "extraliga-2025-26", homeTeamId: "dobrany", awayTeamId: "plzen", scheduledAt: at(3, hour: 14), status: .scheduled, period: .notStarted, clock: nil, phase: .regular, homeScore: 0, awayScore: 0, homePeriodScores: [], awayPeriodScores: [], venue: "Dobřany", round: 25, events: [], attendance: nil)
+            Match(id: "m-live-4", competitionId: "regionalni-2025-26", homeTeamId: "kolin", awayTeamId: "benesov", scheduledAt: at(0, hour: 19), status: .live, period: .second, clock: "06:20", phase: .regular, homeScore: 1, awayScore: 0, homePeriodScores: [0, 1], awayPeriodScores: [0, 0], venue: "Kolín", round: 8, events: [
+                .init(id: "e7", kind: .goal, minute: 5, second: 11, teamId: "kolin", playerId: "kolin-f1", assistIds: [], description: "Gól Kolín", period: 2)
+            ], attendance: 95, homeShots: 14, awayShots: 9, referees: "Jan Novák"),
+            Match(id: "m-live-5", competitionId: "zeny-2025-26", homeTeamId: "palmovka", awayTeamId: "plzen-z", scheduledAt: at(0, hour: 15), status: .live, period: .third, clock: "09:01", phase: .regular, homeScore: 2, awayScore: 1, homePeriodScores: [1, 0, 1], awayPeriodScores: [0, 1, 0], venue: "Praha – Palmovka", round: 6, events: [
+                .init(id: "e8", kind: .goal, minute: 4, second: 0, teamId: "palmovka", playerId: "kantorova", assistIds: [], description: "Gól Andrea Kantorová", period: 1),
+                .init(id: "e9", kind: .goal, minute: 10, second: 22, teamId: "plzen-z", playerId: "plzen-z-f1", assistIds: [], description: "Gól Plzeň Ž", period: 2),
+                .init(id: "e10", kind: .goal, minute: 7, second: 40, teamId: "palmovka", playerId: "kantorova", assistIds: [], description: "Gól Andrea Kantorová", period: 3)
+            ], attendance: 140, homeShots: 18, awayShots: 15, referees: "Eva Horáková"),
         ]
+
+        matches += [
+            finished(id: "m-fin-1", competitionId: "extraliga-2025-26", home: "plzen", away: "dobrany", day: -1, hour: 18, homeScore: 5, awayScore: 3, periods: ([2, 1, 2], [1, 1, 1]), venue: "Plzeň", round: 22, homeScorer: "kral", awayScorer: "dob-brtnik", phase: .playoffs),
+            finished(id: "m-fin-2", competitionId: "extraliga-2025-26", home: "pardubice", away: "usti", day: -1, hour: 17, homeScore: 3, awayScore: 2, periods: ([1, 1, 1], [0, 1, 1]), venue: "Pardubice", round: 22, homeScorer: "kupka", awayScorer: "ust-placeholder", phase: .playoffs),
+            finished(id: "m-fin-3", competitionId: "extraliga-2025-26", home: "kladno", away: "mlada", day: -2, hour: 18, homeScore: 1, awayScore: 4, periods: ([0, 1, 0], [2, 1, 1]), venue: "Kladno", round: 21, homeScorer: "jelinek", awayScorer: "mla-placeholder", phase: .playoffs),
+            finished(id: "m-fin-4", competitionId: "extraliga-2025-26", home: "hostivar", away: "kert", day: -3, hour: 18, homeScore: 4, awayScore: 1, periods: ([2, 1, 1], [0, 1, 0]), venue: "Hostivař", round: 21, homeScorer: "cejka", awayScorer: "ker-fejfar"),
+            finished(id: "m-fin-5", competitionId: "extraliga-2025-26", home: "svitkov", away: "letohrad", day: -4, hour: 17, homeScore: 2, awayScore: 3, periods: ([1, 0, 1], [1, 1, 1]), venue: "Svítkov", round: 20, homeScorer: "benes", awayScorer: "novak"),
+            finished(id: "m-fin-6", competitionId: "1liga-2025-26", home: "most", away: "teplice", day: -1, hour: 16, homeScore: 3, awayScore: 3, periods: ([1, 1, 1], [2, 0, 1]), venue: "Most", round: 11, homeScorer: "most-f1", awayScorer: "teplice-f1"),
+            finished(id: "m-fin-7", competitionId: "1liga-2025-26", home: "vlci", away: "most", day: -2, hour: 15, homeScore: 5, awayScore: 2, periods: ([2, 2, 1], [1, 0, 1]), venue: "Ústí", round: 10, homeScorer: "navarra", awayScorer: "most-f1"),
+            finished(id: "m-fin-8", competitionId: "2liga-2025-26", home: "chomutov", away: "decin", day: -1, hour: 14, homeScore: 4, awayScore: 0, periods: ([2, 1, 1], [0, 0, 0]), venue: "Chomutov", round: 9, homeScorer: "chomutov-f1", awayScorer: "decin-f1"),
+            finished(id: "m-fin-9", competitionId: "zeny-2025-26", home: "svitkov-z", away: "palmovka", day: -2, hour: 13, homeScore: 1, awayScore: 2, periods: ([0, 1, 0], [1, 0, 1]), venue: "Pardubice", round: 5, homeScorer: "svitkov-z-f1", awayScorer: "kantorova"),
+            finished(id: "m-fin-10", competitionId: "juniori-2025-26", home: "pardubice-j", away: "kladno-j", day: -1, hour: 11, homeScore: 6, awayScore: 4, periods: ([2, 2, 2], [1, 2, 1]), venue: "Pardubice", round: 14, homeScorer: "pardubice-j-f1", awayScorer: "kladno-j-f1"),
+            finished(id: "m-fin-11", competitionId: "dorost-2025-26", home: "hostivar-d", away: "plzen-d", day: -3, hour: 12, homeScore: 3, awayScore: 1, periods: ([1, 1, 1], [0, 1, 0]), venue: "Hostivař", round: 12, homeScorer: "hostivar-d-f1", awayScorer: "plzen-d-f1"),
+            finished(id: "m-fin-12", competitionId: "regionalni-2025-26", home: "benesov", away: "kolin", day: -2, hour: 18, homeScore: 2, awayScore: 5, periods: ([1, 0, 1], [2, 2, 1]), venue: "Benešov", round: 7, homeScorer: "benesov-f1", awayScorer: "kolin-f1"),
+            finished(id: "m-fin-13", competitionId: "oblastni-2025-26", home: "rakovnik", away: "slany", day: -1, hour: 17, homeScore: 1, awayScore: 1, periods: ([0, 1, 0], [1, 0, 0]), venue: "Rakovník", round: 6, homeScorer: "rakovnik-f1", awayScorer: "slany-f1"),
+            finished(id: "m-fin-14", competitionId: "starsi-zaci-2025-26", home: "hostivar-sz", away: "kert-sz", day: -1, hour: 10, homeScore: 4, awayScore: 3, periods: ([1, 2, 1], [1, 1, 1]), venue: "Hostivař", round: 5, homeScorer: "hostivar-sz-f1", awayScorer: "kert-sz-f1"),
+            finished(id: "m-fin-15", competitionId: "mladsi-zaci-2025-26", home: "letohrad-mz", away: "usti-mz", day: -2, hour: 9, homeScore: 2, awayScore: 2, periods: ([1, 0, 1], [0, 2, 0]), venue: "Letohrad", round: 4, homeScorer: "letohrad-mz-f1", awayScorer: "usti-mz-f1"),
+            finished(id: "m-fin-16", competitionId: "pripravky-2025-26", home: "kladno-pr", away: "pardubice-pr", day: -3, hour: 9, homeScore: 5, awayScore: 4, periods: ([2, 1, 2], [1, 2, 1]), venue: "Kladno", round: 3, homeScorer: "kladno-pr-f1", awayScorer: "pardubice-pr-f1"),
+            finished(id: "m-fin-17", competitionId: "minipripravky-2025-26", home: "plzen-mp", away: "hostivar-mp", day: -1, hour: 8, homeScore: 3, awayScore: 3, periods: ([1, 1, 1], [1, 1, 1]), venue: "Plzeň", round: 2, homeScorer: "plzen-mp-f1", awayScorer: "hostivar-mp-f1"),
+            finished(id: "m-fin-18", competitionId: "prebor-zen-2025-26", home: "praha-pz", away: "brno-pz", day: -2, hour: 14, homeScore: 2, awayScore: 0, periods: ([1, 0, 1], [0, 0, 0]), venue: "Praha", round: 4, homeScorer: "praha-pz-f1", awayScorer: "brno-pz-f1"),
+            finished(id: "m-fin-19", competitionId: "extraliga-2024-25", home: "hostivar", away: "plzen", day: -120, hour: 18, homeScore: 3, awayScore: 2, periods: ([1, 1, 1], [1, 0, 1]), venue: "Hostivař", round: 30, homeScorer: "cejka", awayScorer: "kral"),
+            finished(id: "m-fin-20", competitionId: "extraliga-2024-25", home: "letohrad", away: "svitkov", day: -121, hour: 17, homeScore: 1, awayScore: 4, periods: ([0, 1, 0], [2, 1, 1]), venue: "Letohrad", round: 30, homeScorer: "novak", awayScorer: "benes"),
+        ]
+
+        matches += [
+            scheduled(id: "m-sch-1", competitionId: "extraliga-2025-26", home: "blatna", away: "hradec", day: 1, hour: 15, venue: "Blatná", round: 24),
+            scheduled(id: "m-sch-2", competitionId: "extraliga-2025-26", home: "svitkov", away: "letohrad", day: 1, hour: 17, minute: 30, venue: "Pardubice – Svítkov", round: 24),
+            scheduled(id: "m-sch-3", competitionId: "extraliga-2025-26", home: "kert", away: "hostivar", day: 2, hour: 18, venue: "Praha – Kert Park", round: 24),
+            scheduled(id: "m-sch-4", competitionId: "extraliga-2025-26", home: "dobrany", away: "plzen", day: 3, hour: 14, venue: "Dobřany", round: 25),
+            scheduled(id: "m-sch-5", competitionId: "1liga-2025-26", home: "trinec", away: "teplice", day: 1, hour: 16, venue: "Třinec", round: 13),
+            scheduled(id: "m-sch-6", competitionId: "zeny-2025-26", home: "plzen-z", away: "svitkov-z", day: 2, hour: 13, venue: "Plzeň", round: 7),
+            scheduled(id: "m-sch-7", competitionId: "juniori-2025-26", home: "kladno-j", away: "pardubice-j", day: 1, hour: 11, venue: "Kladno", round: 15),
+            scheduled(id: "m-sch-8", competitionId: "dorost-2025-26", home: "plzen-d", away: "hostivar-d", day: 2, hour: 12, venue: "Plzeň", round: 13),
+            scheduled(id: "m-sch-9", competitionId: "regionalni-2025-26", home: "kolin", away: "benesov", day: 1, hour: 19, venue: "Kolín", round: 9),
+            scheduled(id: "m-sch-10", competitionId: "2liga-2025-26", home: "decin", away: "chomutov", day: 3, hour: 15, venue: "Děčín", round: 10),
+        ]
+
+        return matches
+    }
+
+    /// Vygeneruje góly + pár trestů podle skóre / třetin.
+    private static func syntheticEvents(
+        matchId: String,
+        homeTeamId: String,
+        awayTeamId: String,
+        homeScore: Int,
+        awayScore: Int,
+        homePeriodScores: [Int],
+        awayPeriodScores: [Int],
+        homeScorerId: String,
+        awayScorerId: String
+    ) -> [MatchEvent] {
+        var events: [MatchEvent] = []
+        var idx = 0
+        let periods = max(homePeriodScores.count, awayPeriodScores.count, 1)
+        for p in 1...periods {
+            let h = p <= homePeriodScores.count ? homePeriodScores[p - 1] : 0
+            let a = p <= awayPeriodScores.count ? awayPeriodScores[p - 1] : 0
+            for g in 0..<h {
+                idx += 1
+                events.append(.init(
+                    id: "\(matchId)-hg-\(idx)",
+                    kind: .goal,
+                    minute: min(2 + g * 4, 14),
+                    second: (g * 17) % 60,
+                    teamId: homeTeamId,
+                    playerId: homeScorerId,
+                    assistIds: [],
+                    description: "Gól",
+                    period: p
+                ))
+            }
+            for g in 0..<a {
+                idx += 1
+                events.append(.init(
+                    id: "\(matchId)-ag-\(idx)",
+                    kind: .goal,
+                    minute: min(3 + g * 4, 14),
+                    second: (g * 23) % 60,
+                    teamId: awayTeamId,
+                    playerId: awayScorerId,
+                    assistIds: [],
+                    description: "Gól",
+                    period: p
+                ))
+            }
+            if p == 1 {
+                idx += 1
+                events.append(.init(
+                    id: "\(matchId)-pen-\(idx)",
+                    kind: .penalty,
+                    minute: 11,
+                    second: 20,
+                    teamId: awayTeamId,
+                    playerId: awayScorerId,
+                    assistIds: [],
+                    description: "Vyloučení 2 min – (Hrubost)",
+                    period: p
+                ))
+            }
+        }
+        _ = homeScore
+        _ = awayScore
+        return events.sorted {
+            if $0.period != $1.period { return $0.period < $1.period }
+            if $0.minute != $1.minute { return $0.minute < $1.minute }
+            return $0.second < $1.second
+        }
+    }
+
+    /// Základní soupiska pro týmy bez ručně zadaných hráčů.
+    private static func syntheticRoster(for teamId: String) -> [Player] {
+        let lastNames = ["Novák", "Svoboda", "Dvořák", "Černý", "Procházka", "Kučera", "Veselý", "Horák", "Němec", "Pokorný", "Marek", "Král"]
+        var players: [Player] = []
+        // 2 gólmani
+        for i in 0..<2 {
+            players.append(.init(
+                id: "\(teamId)-g\(i + 1)",
+                firstName: "Jan",
+                lastName: lastNames[i],
+                number: 30 + i,
+                position: .goalie,
+                teamId: teamId,
+                games: 10,
+                goals: 0,
+                assists: 1,
+                points: 1,
+                penaltyMinutes: 0,
+                savePercentage: 90.5 - Double(i),
+                goalsAgainstAverage: 2.4 + Double(i) * 0.3
+            ))
+        }
+        // 4 obránci
+        for i in 0..<4 {
+            let g = 1 + i
+            let a = 2 + i
+            players.append(.init(
+                id: "\(teamId)-d\(i + 1)",
+                firstName: "Petr",
+                lastName: lastNames[i + 2],
+                number: 4 + i,
+                position: .defenseman,
+                teamId: teamId,
+                games: 12,
+                goals: g,
+                assists: a,
+                points: g + a,
+                penaltyMinutes: 4 + i * 2,
+                savePercentage: nil,
+                goalsAgainstAverage: nil
+            ))
+        }
+        // 6 útočníků
+        for i in 0..<6 {
+            let g = 3 + i
+            let a = 2 + i / 2
+            players.append(.init(
+                id: "\(teamId)-f\(i + 1)",
+                firstName: "Tomáš",
+                lastName: lastNames[i + 6],
+                number: 10 + i,
+                position: .forward,
+                teamId: teamId,
+                games: 12,
+                goals: g,
+                assists: a,
+                points: g + a,
+                penaltyMinutes: 2 + i,
+                savePercentage: nil,
+                goalsAgainstAverage: nil
+            ))
+        }
+        return players
     }
 }

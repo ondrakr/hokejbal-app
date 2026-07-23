@@ -95,10 +95,9 @@ struct MatchDetailView: View {
         let competition = catalog.competitions.first { $0.id == match.competitionId }
 
         return ScrollView {
-            VStack(spacing: 16) {
+            VStack(spacing: 14) {
                 scoreCard(match: match, home: home, away: away, competition: competition)
 
-                // Obsah v jednotném světlém panelu (v designu aplikace).
                 VStack(spacing: 0) {
                     HBUnderlineTabs(selection: $section)
 
@@ -106,7 +105,8 @@ struct MatchDetailView: View {
                         switch section {
                         case .overview:
                             MatchTimelineView(match: match)
-                                .padding(.vertical, 14)
+                                .padding(.vertical, 12)
+                                .padding(.horizontal, 4)
                         case .stats:
                             matchStats(match)
                         case .lineups:
@@ -116,12 +116,11 @@ struct MatchDetailView: View {
                         }
                     }
                 }
-                .frame(maxWidth: .infinity, minHeight: 640, alignment: .top)
-                .padding(.top, 6)
-                .background(
-                    UnevenRoundedRectangle(topLeadingRadius: HBTheme.radiusLg, topTrailingRadius: HBTheme.radiusLg, style: .continuous)
-                        .fill(HBTheme.surface)
-                )
+                .frame(maxWidth: .infinity, minHeight: 420, alignment: .top)
+                .clipShape(RoundedRectangle(cornerRadius: HBTheme.radiusLg, style: .continuous))
+                .hbCard(cornerRadius: HBTheme.radiusLg)
+                .padding(.horizontal, HBTheme.screenPadding)
+                .padding(.bottom, 20)
             }
             .padding(.top, 10)
         }
@@ -136,10 +135,10 @@ struct MatchDetailView: View {
             heroCompetition(competition, match: match)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            HStack(alignment: .top, spacing: 6) {
+            HStack(alignment: .center, spacing: 8) {
                 heroTeam(home)
                 heroCenter(match)
-                    .frame(minWidth: 116)
+                    .frame(width: 118)
                 heroTeam(away)
             }
 
@@ -187,16 +186,17 @@ struct MatchDetailView: View {
     }
 
     private func heroTeam(_ team: Team?) -> some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 8) {
             if let team {
                 NavigationLink { TeamDetailView(teamId: team.id) } label: {
-                    VStack(spacing: 10) {
-                        TeamBadge(team: team, size: 64)
+                    VStack(spacing: 8) {
+                        TeamBadge(team: team, size: 48)
                         Text(team.shortName)
-                            .font(.hbMontserrat(size: 14, weight: .bold))
+                            .font(.hbMontserrat(size: 13, weight: .bold))
                             .foregroundStyle(HBTheme.textPrimary)
                             .multilineTextAlignment(.center)
                             .lineLimit(2)
+                            .minimumScaleFactor(0.85)
                     }
                 }
                 .buttonStyle(.plain)
@@ -221,19 +221,30 @@ struct MatchDetailView: View {
 
             if match.status == .scheduled {
                 Text(match.scheduledAt.hbTime)
-                    .font(.hbNumber(size: 40, weight: .heavy))
+                    .font(.hbNumber(size: 34, weight: .heavy))
                     .foregroundStyle(HBTheme.brand)
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .fixedSize(horizontal: true, vertical: false)
             } else {
                 Text("\(match.homeScore) : \(match.awayScore)")
-                    .font(.hbNumber(size: 40, weight: .heavy))
+                    .font(.hbNumber(size: 34, weight: .heavy))
                     .foregroundStyle(match.isLive ? HBTheme.live : HBTheme.textPrimary)
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .fixedSize(horizontal: true, vertical: false)
             }
 
             Text("\(match.scheduledAt.hbShortDate) · \(match.scheduledAt.hbTime)")
                 .font(.hbMontserrat(size: 11, weight: .medium))
                 .foregroundStyle(HBTheme.textTertiary)
                 .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
         }
+        .frame(width: 118)
     }
 
     @ViewBuilder
@@ -724,7 +735,11 @@ struct MatchTimelineView: View {
 
     var body: some View {
         if timelineEvents.isEmpty && match.homePeriodScores.isEmpty {
-            EmptyStateView(icon: "list.bullet.rectangle", title: "Bez událostí", message: "Až padnou góly, uvidíte je tady chronologicky.")
+            if match.status == .scheduled {
+                scheduledPreview
+            } else {
+                EmptyStateView(icon: "list.bullet.rectangle", title: "Bez událostí", message: "Až padnou góly, uvidíte je tady chronologicky.")
+            }
         } else {
             VStack(spacing: 0) {
                 ForEach(periods, id: \.self) { period in
@@ -735,6 +750,43 @@ struct MatchTimelineView: View {
                 }
             }
         }
+    }
+
+    private var scheduledPreview: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            previewRow(title: "Začátek", value: "\(match.scheduledAt.hbShortDate) · \(match.scheduledAt.hbTime)")
+            if !match.venue.isEmpty {
+                previewRow(title: "Místo", value: match.venue)
+            }
+            if match.round > 0 {
+                previewRow(title: "Kolo", value: "\(match.round). kolo")
+            }
+            if let phase = match.phase {
+                previewRow(title: "Fáze", value: phase.label)
+            }
+            Text("Události se objeví po zahájení zápasu.")
+                .font(.hbMontserrat(size: 13, weight: .medium))
+                .foregroundStyle(HBTheme.textTertiary)
+                .padding(.top, 4)
+        }
+        .padding(.horizontal, HBTheme.screenPadding)
+        .padding(.vertical, 8)
+    }
+
+    private func previewRow(title: String, value: String) -> some View {
+        HStack {
+            Text(title)
+                .font(.hbMontserrat(size: 13, weight: .semibold))
+                .foregroundStyle(HBTheme.textSecondary)
+            Spacer(minLength: 8)
+            Text(value)
+                .font(.hbMontserrat(size: 14, weight: .bold))
+                .foregroundStyle(HBTheme.textPrimary)
+                .multilineTextAlignment(.trailing)
+        }
+        .padding(.vertical, 10)
+        .padding(.horizontal, 12)
+        .background(HBTheme.cardInset, in: RoundedRectangle(cornerRadius: HBTheme.radiusSm, style: .continuous))
     }
 
     private func events(in period: Int) -> [MatchEvent] {
