@@ -21,6 +21,7 @@
 		4A24B11E197C7FEDB9D4C11D /* MatchDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14AAF6DD1957BE7B5E429D39 /* MatchDetailView.swift */; };
 		4D77C1BDD7203119A25FA57E /* MatchDayStrip.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD8A3F0C2D3921FE29053AF9 /* MatchDayStrip.swift */; };
 		50DE51C4DC56563175DFF68B /* LiveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B9DC695B7A39891DE66797B /* LiveView.swift */; };
+		52612C3D1D7C670099C712A9 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29633B54FF3D95C83F802636 /* HomeView.swift */; };
 		52A3247ACD6E7898EAED15AE /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10C9CFA630E2A385BAAF2B44 /* SettingsView.swift */; };
 		57CE612FED8AC574F864E430 /* CompetitionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 509E029E43A9C3E0C9E497C6 /* CompetitionsView.swift */; };
 		6E2B44DBFCAB0361489BB3DB /* TeamDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047D6545E51F3D7FCA10D558 /* TeamDetailView.swift */; };
@@ -32,10 +33,10 @@
 		9A71565898E115DFDA465BE0 /* PlayerSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C64552FF8A6C65907E74788B /* PlayerSearchView.swift */; };
 		9C8F108F90321778D5C51B9B /* StandingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7E9B8229689CFD07295693D /* StandingsView.swift */; };
 		A2C7B8EE2E704B01F4675191 /* NewsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4639EC7270DEA48F7F47CCE1 /* NewsView.swift */; };
-		B7E4A1C29F0D4E8A9B1C2D3E /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1D2E3F405162738495A6B7C /* HomeView.swift */; };
 		A7CF7584E6B99B506912F23D /* HBAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC1B45B8A1C31BF05E0CAD17 /* HBAppearance.swift */; };
 		AA062481542C53BDC6982687 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3F8D5289259278645387A09 /* Models.swift */; };
 		AE72D5757B7E5EA8E71411A8 /* MatchesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF86F353A69F3CF84BA51526 /* MatchesView.swift */; };
+		C2696AC5B9796090E7F82B3B /* HokejbalCzNewsClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF99E74F6D04BAD5D2327462 /* HokejbalCzNewsClient.swift */; };
 		CC2C5CFF9AB7B91A812837F3 /* CompetitionDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D64E143C242EE672A7A7B60 /* CompetitionDetailView.swift */; };
 		D358D21DF7718B77254B3A00 /* PlayerDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 336D7DDB566A7FD28FF05B17 /* PlayerDetailView.swift */; };
 		DC09B73C233CF902129FA499 /* SeasonPickerMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2826E2196F9677EFF52D8574 /* SeasonPickerMenu.swift */; };
@@ -54,11 +55,11 @@
 		159681556D036A4CF06A2CA1 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		1FA9CE7B1D2CA10667C1356F /* LiveScoreService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveScoreService.swift; sourceTree = "<group>"; };
 		2826E2196F9677EFF52D8574 /* SeasonPickerMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeasonPickerMenu.swift; sourceTree = "<group>"; };
+		29633B54FF3D95C83F802636 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		336D7DDB566A7FD28FF05B17 /* PlayerDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerDetailView.swift; sourceTree = "<group>"; };
 		428938D1D415D7B7915B7D5B /* FavoritesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoritesView.swift; sourceTree = "<group>"; };
 		45712E6A226C62DA6CBE10ED /* MatchesByCompetitionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchesByCompetitionView.swift; sourceTree = "<group>"; };
 		4639EC7270DEA48F7F47CCE1 /* NewsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewsView.swift; sourceTree = "<group>"; };
-		C1D2E3F405162738495A6B7C /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		49169EC701DF70DB6241909C /* RemoteHokejbalAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteHokejbalAPI.swift; sourceTree = "<group>"; };
 		4B9DC695B7A39891DE66797B /* LiveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveView.swift; sourceTree = "<group>"; };
 		4F6F74D6DAD9EE0B64B74EDF /* MoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoreView.swift; sourceTree = "<group>"; };
@@ -70,13 +71,14 @@
 		7D64E143C242EE672A7A7B60 /* CompetitionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompetitionDetailView.swift; sourceTree = "<group>"; };
 		7EAC51D17ADCA4F1C71511B9 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		7EE2A3429EF6821F9F46635A /* HBUnderlineTabs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HBUnderlineTabs.swift; sourceTree = "<group>"; };
-		9BD05CEAA268B53113CDDEE5 /* Hokejbal.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Hokejbal.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9BD05CEAA268B53113CDDEE5 /* Hokejbal.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Hokejbal.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A23BA156A61409343B2A454C /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		A7E9B8229689CFD07295693D /* StandingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandingsView.swift; sourceTree = "<group>"; };
 		A82A1C479EFF729A8556E676 /* FavoriteStarButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoriteStarButton.swift; sourceTree = "<group>"; };
 		A91839024E594CD731931377 /* SupabaseConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseConfig.swift; sourceTree = "<group>"; };
 		B3F8D5289259278645387A09 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		BA48939022459AC2A7BD6D8B /* HBSolidMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HBSolidMenu.swift; sourceTree = "<group>"; };
+		BF99E74F6D04BAD5D2327462 /* HokejbalCzNewsClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HokejbalCzNewsClient.swift; sourceTree = "<group>"; };
 		C64552FF8A6C65907E74788B /* PlayerSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerSearchView.swift; sourceTree = "<group>"; };
 		C87049AC07F0735B880DC9BD /* BrandLogo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrandLogo.swift; sourceTree = "<group>"; };
 		CC1B45B8A1C31BF05E0CAD17 /* HBAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HBAppearance.swift; sourceTree = "<group>"; };
@@ -89,6 +91,14 @@
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
+		13ED17350A97D5E89B542925 /* Home */ = {
+			isa = PBXGroup;
+			children = (
+				29633B54FF3D95C83F802636 /* HomeView.swift */,
+			);
+			path = Home;
+			sourceTree = "<group>";
+		};
 		189A6D12B969CADAEB266D51 /* PlayerDetail */ = {
 			isa = PBXGroup;
 			children = (
@@ -167,6 +177,7 @@
 			isa = PBXGroup;
 			children = (
 				FCFE5DEADEB1EBDE0D30BA71 /* HokejbalAPI.swift */,
+				BF99E74F6D04BAD5D2327462 /* HokejbalCzNewsClient.swift */,
 				1FA9CE7B1D2CA10667C1356F /* LiveScoreService.swift */,
 				71C13FB9044679F64715A51C /* MockHokejbalAPI.swift */,
 				49169EC701DF70DB6241909C /* RemoteHokejbalAPI.swift */,
@@ -226,7 +237,7 @@
 			children = (
 				159681556D036A4CF06A2CA1 /* MainTabView.swift */,
 				801BA209E5D6CFD91BD753BB /* Favorites */,
-				D4E5F60718293A4B5C6D7E8F /* Home */,
+				13ED17350A97D5E89B542925 /* Home */,
 				A5F777A037AA07C8C3A0448A /* Live */,
 				9CB03824338EC93C627C9B31 /* MatchDetail */,
 				9F67AC8DFC58AC9C2FF33BEF /* Matches */,
@@ -270,14 +281,6 @@
 			path = News;
 			sourceTree = "<group>";
 		};
-		D4E5F60718293A4B5C6D7E8F /* Home */ = {
-			isa = PBXGroup;
-			children = (
-				C1D2E3F405162738495A6B7C /* HomeView.swift */,
-			);
-			path = Home;
-			sourceTree = "<group>";
-		};
 		FB51F9F113B765B6293771AE /* Standings */ = {
 			isa = PBXGroup;
 			children = (
@@ -315,6 +318,8 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 2660;
+				TargetAttributes = {
+				};
 			};
 			buildConfigurationList = CDA8A6D8FF35E3F3B8936D14 /* Build configuration list for PBXProject "Hokejbal" */;
 			developmentRegion = cs;
@@ -363,7 +368,8 @@
 				E238DDFBC80B72783414F931 /* HBUnderlineTabs.swift in Sources */,
 				29C7CF8D21DE71600F1D98DD /* HokejbalAPI.swift in Sources */,
 				8E872CB48D965C8594CA8431 /* HokejbalApp.swift in Sources */,
-				B7E4A1C29F0D4E8A9B1C2D3E /* HomeView.swift in Sources */,
+				C2696AC5B9796090E7F82B3B /* HokejbalCzNewsClient.swift in Sources */,
+				52612C3D1D7C670099C712A9 /* HomeView.swift in Sources */,
 				F1569EBF3E5A43272F54BA79 /* LiveScoreService.swift in Sources */,
 				50DE51C4DC56563175DFF68B /* LiveView.swift in Sources */,
 				23C76023A1A8354C2214C1EF /* MainTabView.swift in Sources */,
@@ -399,7 +405,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = 38U2DZ2F9S;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Hokejbal/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Hokejbal;
@@ -559,7 +564,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = 38U2DZ2F9S;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Hokejbal/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Hokejbal;

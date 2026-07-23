@@ -352,17 +352,21 @@ extension Date {
 // MARK: - Reálné fotky článků
 
 extension NewsArticle {
-    /// Stabilní seed z id (Swift hashValue je mezi spuštěními náhodný).
+    /// Preferuje fotku z hokejbal.cz; fallback LoremFlickr.
     private var photoSeed: Int {
         var h = 5381
         for b in id.utf8 { h = ((h << 5) &+ h) &+ Int(b) }
         return abs(h) % 100000
     }
 
-    /// Reálná tématická fotka z internetu (LoremFlickr, stabilní přes `lock`).
-    /// Gradient placeholder se použije při načítání i při chybě.
     var photoURL: URL? {
-        URL(string: "https://loremflickr.com/800/500/hockey,icehockey,sport/all?lock=\(photoSeed)")
+        if let imageURL, let url = URL(string: imageURL) { return url }
+        return URL(string: "https://loremflickr.com/800/500/hockey,icehockey,sport/all?lock=\(photoSeed)")
+    }
+
+    var webURL: URL? {
+        if let articleURL, let url = URL(string: articleURL) { return url }
+        return URL(string: "https://www.hokejbal.cz")
     }
 }
 

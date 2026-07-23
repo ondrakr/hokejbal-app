@@ -98,6 +98,7 @@ struct HomeView: View {
     @State private var matches: [Match] = []
     @State private var isLoading = false
     @State private var bannerPage = 0
+    @State private var newsPage = 0
 
     private var sliderMatches: [Match] {
         let live = liveScores.liveMatches
@@ -260,33 +261,38 @@ struct HomeView: View {
                     .foregroundStyle(HBTheme.textSecondary)
                     .padding(.horizontal, HBTheme.screenPadding)
             } else {
-                if let lead = featuredNews.first {
-                    NavigationLink {
-                        ArticleDetailView(article: lead)
-                    } label: {
-                        featuredArticleCard(lead)
-                            .padding(.horizontal, HBTheme.screenPadding)
+                TabView(selection: $newsPage) {
+                    ForEach(Array(featuredNews.enumerated()), id: \.element.id) { index, article in
+                        NavigationLink {
+                            ArticleDetailView(article: article)
+                        } label: {
+                            featuredArticleCard(article)
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.horizontal, HBTheme.screenPadding)
+                        .tag(index)
                     }
-                    .buttonStyle(.plain)
                 }
-
-                ForEach(articles.dropFirst(1).prefix(5)) { article in
-                    NavigationLink {
-                        ArticleDetailView(article: article)
-                    } label: {
-                        compactArticleRow(article)
+                .tabViewStyle(.page(indexDisplayMode: .automatic))
+                .frame(height: 230)
+                .task(id: featuredNews.map(\.id)) {
+                    guard featuredNews.count > 1 else { return }
+                    while !Task.isCancelled {
+                        try? await Task.sleep(nanoseconds: 5_000_000_000)
+                        guard !Task.isCancelled, featuredNews.count > 1 else { break }
+                        withAnimation(.easeInOut(duration: 0.45)) {
+                            newsPage = (newsPage + 1) % featuredNews.count
+                        }
                     }
-                    .buttonStyle(.plain)
-                    .padding(.horizontal, HBTheme.screenPadding)
                 }
             }
         }
     }
 
     private func featuredArticleCard(_ article: NewsArticle) -> some View {
-        NewsThumbnail(article: article)
+            NewsThumbnail(article: article)
             .frame(maxWidth: .infinity)
-            .frame(height: 200)
+            .frame(height: 210)
             .overlay(
                 LinearGradient(
                     colors: [.clear, .black.opacity(0.15), .black.opacity(0.82)],
@@ -313,31 +319,6 @@ struct HomeView: View {
             }
             .clipShape(RoundedRectangle(cornerRadius: HBTheme.radiusMd, style: .continuous))
             .hbCard(cornerRadius: HBTheme.radiusMd)
-    }
-
-    private func compactArticleRow(_ article: NewsArticle) -> some View {
-        HStack(alignment: .center, spacing: 12) {
-            NewsThumbnail(article: article)
-                .frame(width: 66, height: 66)
-                .clipShape(RoundedRectangle(cornerRadius: HBTheme.radiusSm, style: .continuous))
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(article.category.uppercased())
-                    .font(.hbMontserrat(size: 10, weight: .bold))
-                    .tracking(0.4)
-                    .foregroundStyle(HBTheme.brand)
-                Text(article.title)
-                    .font(.hbMontserrat(size: 14, weight: .semibold))
-                    .foregroundStyle(HBTheme.textPrimary)
-                    .lineLimit(2)
-                Text(article.publishedAt.hbShortDateTime)
-                    .font(.hbMontserrat(size: 11, weight: .medium))
-                    .foregroundStyle(HBTheme.textTertiary)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(10)
-        .hbCard(cornerRadius: HBTheme.radiusMd)
     }
 
     // MARK: - Videos

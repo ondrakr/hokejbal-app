@@ -71,8 +71,6 @@ struct NewsView: View {
 struct ArticleDetailView: View {
     let article: NewsArticle
 
-    private let webURL = URL(string: "https://www.hokejbal.cz")!
-
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
@@ -110,19 +108,21 @@ struct ArticleDetailView: View {
                         .lineSpacing(4)
                         .fixedSize(horizontal: false, vertical: true)
 
-                    Link(destination: webURL) {
-                        HStack(spacing: 8) {
-                            Text("Číst celý článek na hokejbal.cz")
-                                .font(.hbMontserrat(size: 14, weight: .bold))
-                            Image(systemName: "arrow.up.right")
-                                .font(.system(size: 12, weight: .bold))
+                    if let url = article.webURL {
+                        Link(destination: url) {
+                            HStack(spacing: 8) {
+                                Text("Číst celý článek na hokejbal.cz")
+                                    .font(.hbMontserrat(size: 14, weight: .bold))
+                                Image(systemName: "arrow.up.right")
+                                    .font(.system(size: 12, weight: .bold))
+                            }
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 13)
+                            .background(HBTheme.brand, in: RoundedRectangle(cornerRadius: HBTheme.radiusMd, style: .continuous))
                         }
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 13)
-                        .background(HBTheme.brand, in: RoundedRectangle(cornerRadius: HBTheme.radiusMd, style: .continuous))
+                        .padding(.top, 4)
                     }
-                    .padding(.top, 4)
                 }
                 .padding(HBTheme.screenPadding)
             }

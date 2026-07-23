@@ -239,6 +239,10 @@ struct NewsArticle: Identifiable, Codable, Hashable, Sendable {
     let publishedAt: Date
     let summary: String
     let imageGradientIndex: Int
+    /// Absolutní URL fotky článku (např. z hokejbal.cz).
+    var imageURL: String? = nil
+    /// Absolutní URL detailu na webu.
+    var articleURL: String? = nil
 }
 
 // MARK: - API DTOs

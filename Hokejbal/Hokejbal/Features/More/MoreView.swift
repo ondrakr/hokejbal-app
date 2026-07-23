@@ -14,7 +14,7 @@ struct MoreView: View {
                 .padding(.top, 12)
                 .padding(.bottom, 24)
             }
-            .background(HBTheme.surface)
+            .background(HBTheme.canvas)
             .hbNavTitle("Více", systemImage: "ellipsis.circle.fill")
             .hbNavigationStyle()
         }
@@ -78,12 +78,9 @@ private struct MoreMenuRowLabel: View {
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(HBTheme.textTertiary)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 16)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(HBTheme.secondarySurface)
-        )
+        .padding(.horizontal, 14)
+        .padding(.vertical, 14)
+        .hbCard()
         .contentShape(Rectangle())
     }
 }

@@ -334,10 +334,7 @@ struct CompetitionDetailView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(14)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(HBTheme.secondarySurface)
-                    )
+                    .hbCard()
                 }
             }
         }

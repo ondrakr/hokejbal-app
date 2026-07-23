@@ -101,14 +101,7 @@ private struct CompetitionCellView: View {
         }
         .padding(.vertical, 12)
         .padding(.horizontal, 14)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(HBTheme.secondarySurface)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(HBTheme.separator, lineWidth: 0.5)
-        )
-        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .hbCard()
+        .contentShape(Rectangle())
     }
 }

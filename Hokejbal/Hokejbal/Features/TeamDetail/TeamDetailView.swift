@@ -281,7 +281,7 @@ struct TeamDetailView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(14)
-                    .background(HBTheme.secondarySurface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .hbCard()
                     .padding(.horizontal, HBTheme.screenPadding)
                 }
             }

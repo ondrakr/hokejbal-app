@@ -167,6 +167,9 @@ actor SupabaseHokejbalAPI: HokejbalAPI {
     }
 
     func news(limit: Int) async throws -> [NewsArticle] {
+        if let live = try? await HokejbalCzNewsClient.fetch(limit: limit), !live.isEmpty {
+            return live
+        }
         let rows: [NewsRow] = try await get("news", query: [
             URLQueryItem(name: "select", value: "*"),
             URLQueryItem(name: "order", value: "published_at.desc"),

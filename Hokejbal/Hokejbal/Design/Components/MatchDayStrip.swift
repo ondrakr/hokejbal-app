@@ -29,21 +29,35 @@ struct MatchDayStrip: View {
 
     var body: some View {
         ScrollViewReader { proxy in
-            VStack(spacing: 6) {
-                header(proxy)
+            VStack(spacing: 4) {
+                if !isTodaySelected {
+                    HStack {
+                        Spacer(minLength: 0)
+                        Button {
+                            selectedDate = today
+                            scrollToSelected(proxy)
+                        } label: {
+                            Text("Dnes")
+                                .font(.hbMontserrat(size: 12, weight: .bold))
+                                .foregroundStyle(HBTheme.brand)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, HBTheme.screenPadding)
+                }
 
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
+                    HStack(spacing: 6) {
                         ForEach(days, id: \.self) { day in
                             dayCell(day)
                                 .id(dayKey(day))
                         }
                     }
                     .padding(.horizontal, HBTheme.screenPadding)
-                    .padding(.bottom, 10)
+                    .padding(.vertical, 8)
                 }
             }
-            .padding(.top, 10)
+            .padding(.top, 4)
             .onAppear {
                 clampSelectionIntoWindowIfNeeded()
                 scrollToSelected(proxy)
@@ -55,33 +69,6 @@ struct MatchDayStrip: View {
         .overlay(alignment: .bottom) {
             Rectangle().fill(HBTheme.separator).frame(height: 0.5)
         }
-    }
-
-    private func header(_ proxy: ScrollViewProxy) -> some View {
-        HStack(spacing: 8) {
-            HBAccentBar(height: 16)
-            Text(Self.monthLabel(selectedDate))
-                .font(.hbDisplay(size: 16, weight: .heavy))
-                .foregroundStyle(HBTheme.textPrimary)
-
-            Spacer(minLength: 8)
-
-            if !isTodaySelected {
-                Button {
-                    selectedDate = today
-                    scrollToSelected(proxy)
-                } label: {
-                    Text("Dnes")
-                        .font(.hbMontserrat(size: 12, weight: .bold))
-                        .foregroundStyle(HBTheme.brand)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(HBTheme.brand.opacity(0.12), in: Capsule())
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(.horizontal, HBTheme.screenPadding)
     }
 
     private func clampSelectionIntoWindowIfNeeded() {
@@ -110,41 +97,40 @@ struct MatchDayStrip: View {
         let hasMatches = normalizedMatchDates.contains(dayStart)
 
         let dow = Self.shortDow(dayStart)
-        let primaryColor: Color = isSelected ? .white : (isToday ? HBTheme.brand : HBTheme.textPrimary)
+        // Dny bez zápasu působí „disabled" — ztlumené a neaktivní.
+        let isEnabled = hasMatches || isSelected
+        let dayColor: Color = {
+            if isSelected { return .white }
+            if !isEnabled { return HBTheme.textTertiary.opacity(0.5) }
+            return isToday ? HBTheme.brand : HBTheme.textPrimary
+        }()
+        let dowColor: Color = {
+            if isSelected { return .white.opacity(0.9) }
+            if !isEnabled { return HBTheme.textTertiary.opacity(0.5) }
+            return isToday ? HBTheme.brand : HBTheme.textTertiary
+        }()
 
         return Button {
             selectedDate = dayStart
         } label: {
-            VStack(spacing: 4) {
+            VStack(spacing: 3) {
                 Text(dow)
-                    .font(.hbMontserrat(size: 10, weight: .bold))
-                    .tracking(0.4)
-                    .foregroundStyle(isSelected ? Color.white.opacity(0.85) : (isToday ? HBTheme.brand : HBTheme.textTertiary))
+                    .font(.hbMontserrat(size: 10, weight: .semibold))
+                    .tracking(0.3)
+                    .foregroundStyle(dowColor)
 
                 Text(Self.dayNumber(dayStart))
-                    .font(.hbNumber(size: 20, weight: .heavy))
-                    .foregroundStyle(primaryColor)
-
-                // Indikátor zápasů.
-                Circle()
-                    .fill(isSelected ? Color.white : HBTheme.brand)
-                    .frame(width: 5, height: 5)
-                    .opacity(hasMatches ? 1 : 0)
+                    .font(.hbNumber(size: 17, weight: isSelected || isToday ? .bold : .medium))
+                    .foregroundStyle(dayColor)
             }
-            .frame(minWidth: 46, minHeight: 62)
-            .padding(.horizontal, 4)
+            .frame(minWidth: 42, minHeight: 48)
             .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(isSelected ? AnyShapeStyle(HBTheme.brandGradient) : AnyShapeStyle(HBTheme.cardInset))
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(isSelected ? HBTheme.brand : Color.clear)
             )
-            .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .strokeBorder(HBTheme.brand.opacity(isToday && !isSelected ? 0.5 : 0), lineWidth: 1.5)
-            )
-            .shadow(color: isSelected ? HBTheme.brand.opacity(0.35) : .clear, radius: 6, y: 3)
-            .opacity(hasMatches || isSelected || isToday ? 1 : 0.55)
         }
         .buttonStyle(.plain)
+        .allowsHitTesting(isEnabled)
     }
 
     private func dayKey(_ date: Date) -> String {
@@ -166,22 +152,11 @@ struct MatchDayStrip: View {
         return f
     }()
 
-    private static let monthFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "cs_CZ")
-        f.dateFormat = "LLLL yyyy"
-        return f
-    }()
-
     private static func shortDow(_ date: Date) -> String {
         String(dowFormatter.string(from: date).prefix(2)).uppercased()
     }
 
     private static func dayNumber(_ date: Date) -> String {
         dayNumberFormatter.string(from: date)
-    }
-
-    private static func monthLabel(_ date: Date) -> String {
-        monthFormatter.string(from: date).capitalizedFirst
     }
 }

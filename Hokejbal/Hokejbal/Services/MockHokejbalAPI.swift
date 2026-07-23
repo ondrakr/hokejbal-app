@@ -581,7 +581,10 @@ actor MockHokejbalAPI: HokejbalAPI {
     }
 
     func news(limit: Int) async throws -> [NewsArticle] {
-        Array(newsData.prefix(limit))
+        if let live = try? await HokejbalCzNewsClient.fetch(limit: limit), !live.isEmpty {
+            return live
+        }
+        return Array(newsData.prefix(limit))
     }
 
     func player(id: String) async throws -> Player {
