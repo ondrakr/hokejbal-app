@@ -95,10 +95,10 @@ struct MatchDetailView: View {
         let competition = catalog.competitions.first { $0.id == match.competitionId }
 
         return ScrollView {
-            VStack(spacing: 0) {
-                heroScoreboard(match: match, home: home, away: away, competition: competition)
+            VStack(spacing: 16) {
+                scoreCard(match: match, home: home, away: away, competition: competition)
 
-                // Obsahový „list" s kulatými horními rohy překrývá hero.
+                // Obsah v jednotném světlém panelu (v designu aplikace).
                 VStack(spacing: 0) {
                     HBUnderlineTabs(selection: $section)
 
@@ -116,52 +116,41 @@ struct MatchDetailView: View {
                         }
                     }
                 }
-                .frame(maxWidth: .infinity, minHeight: 500, alignment: .top)
+                .frame(maxWidth: .infinity, minHeight: 640, alignment: .top)
+                .padding(.top, 6)
                 .background(
                     UnevenRoundedRectangle(topLeadingRadius: HBTheme.radiusLg, topTrailingRadius: HBTheme.radiusLg, style: .continuous)
                         .fill(HBTheme.surface)
                 )
-                .padding(.top, -HBTheme.radiusLg)
             }
+            .padding(.top, 10)
         }
-        .background(HBTheme.surface)
+        .background(HBTheme.canvas)
         .refreshable { await load() }
     }
 
-    // MARK: - Hero scoreboard (tmavý „broadcast" header)
+    // MARK: - Score card (světlá karta v designu aplikace)
 
-    private func heroScoreboard(match: Match, home: Team?, away: Team?, competition: Competition?) -> some View {
-        ZStack(alignment: .top) {
-            HBTheme.inkGradient
+    private func scoreCard(match: Match, home: Team?, away: Team?, competition: Competition?) -> some View {
+        VStack(spacing: 16) {
+            heroCompetition(competition, match: match)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-            // Signaturní diagonální akcent.
-            GeometryReader { geo in
-                HBSkew(dx: 22)
-                    .fill(HBTheme.brand.opacity(0.85))
-                    .frame(width: 64)
-                    .offset(x: geo.size.width - 86, y: -10)
+            HStack(alignment: .top, spacing: 6) {
+                heroTeam(home)
+                heroCenter(match)
+                    .frame(minWidth: 116)
+                heroTeam(away)
             }
-            .clipped()
-            .allowsHitTesting(false)
 
-            VStack(spacing: 16) {
-                heroCompetition(competition, match: match)
-
-                HStack(alignment: .top, spacing: 6) {
-                    heroTeam(home)
-                    heroCenter(match)
-                        .frame(minWidth: 116)
-                    heroTeam(away)
-                }
-
-                if match.isBroadcast {
-                    broadcastLink(match)
-                }
+            if match.isBroadcast {
+                broadcastLink(match)
             }
-            .padding(.horizontal, HBTheme.screenPadding)
-            .padding(.top, 12)
-            .padding(.bottom, HBTheme.radiusLg + 14)
         }
+        .padding(16)
+        .frame(maxWidth: .infinity)
+        .hbCard(cornerRadius: HBTheme.radiusLg)
+        .padding(.horizontal, HBTheme.screenPadding)
     }
 
     @ViewBuilder
@@ -174,17 +163,18 @@ struct MatchDetailView: View {
             return parts.joined(separator: " · ")
         }()
 
-        let label = HStack(spacing: 7) {
+        let label = HStack(spacing: 8) {
+            HBAccentBar(height: 16)
             if let competition { CompetitionBadge(competition: competition, size: 18) }
             Text(title)
                 .font(.hbMontserrat(size: 11, weight: .bold))
                 .tracking(0.5)
-                .foregroundStyle(.white.opacity(0.85))
+                .foregroundStyle(HBTheme.textSecondary)
                 .lineLimit(1)
             if competition != nil {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(HBTheme.textTertiary)
             }
         }
 
@@ -202,11 +192,11 @@ struct MatchDetailView: View {
                 NavigationLink { TeamDetailView(teamId: team.id) } label: {
                     VStack(spacing: 10) {
                         TeamBadge(team: team, size: 58)
-                            .padding(10)
-                            .background(Color.white.opacity(0.08), in: Circle())
+                            .padding(12)
+                            .background(HBTheme.cardInset, in: Circle())
                         Text(team.shortName)
                             .font(.hbMontserrat(size: 14, weight: .bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(HBTheme.textPrimary)
                             .multilineTextAlignment(.center)
                             .lineLimit(2)
                     }
@@ -225,25 +215,25 @@ struct MatchDetailView: View {
                 Text(statusLabel(match).uppercased())
                     .font(.hbMontserrat(size: 10, weight: .bold))
                     .tracking(1)
-                    .foregroundStyle(.white.opacity(0.7))
-                    .padding(.horizontal, 9)
+                    .foregroundStyle(HBTheme.textSecondary)
+                    .padding(.horizontal, 10)
                     .padding(.vertical, 4)
-                    .background(Color.white.opacity(0.1), in: Capsule())
+                    .background(HBTheme.cardInset, in: Capsule())
             }
 
             if match.status == .scheduled {
                 Text(match.scheduledAt.hbTime)
                     .font(.hbNumber(size: 40, weight: .heavy))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(HBTheme.brand)
             } else {
                 Text("\(match.homeScore) : \(match.awayScore)")
                     .font(.hbNumber(size: 40, weight: .heavy))
-                    .foregroundStyle(match.isLive ? Color(red: 1, green: 0.5, blue: 0.5) : .white)
+                    .foregroundStyle(match.isLive ? HBTheme.live : HBTheme.textPrimary)
             }
 
             Text("\(match.scheduledAt.hbShortDate) · \(match.scheduledAt.hbTime)")
                 .font(.hbMontserrat(size: 11, weight: .medium))
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(HBTheme.textTertiary)
                 .multilineTextAlignment(.center)
         }
     }
@@ -274,34 +264,14 @@ struct MatchDetailView: View {
                     .font(.system(size: 11, weight: .bold))
             }
         }
-        .foregroundStyle(interactive ? Color.white : Color.white.opacity(0.7))
+        .foregroundStyle(interactive ? Color.white : HBTheme.textSecondary)
         .padding(.horizontal, 14)
         .padding(.vertical, 11)
         .frame(maxWidth: .infinity)
         .background(
             RoundedRectangle(cornerRadius: HBTheme.radiusSm, style: .continuous)
-                .fill(interactive ? HBTheme.brand : Color.white.opacity(0.12))
+                .fill(interactive ? AnyShapeStyle(HBTheme.brand) : AnyShapeStyle(HBTheme.cardInset))
         )
-    }
-
-    private func scoreboardTeam(_ team: Team?) -> some View {
-        VStack(spacing: 10) {
-            if let team {
-                NavigationLink {
-                    TeamDetailView(teamId: team.id)
-                } label: {
-                    VStack(spacing: 10) {
-                        TeamBadge(team: team, size: 56)
-                        Text(team.shortName)
-                            .font(.hbMontserrat(size: 15, weight: .bold))
-                            .foregroundStyle(HBTheme.textPrimary)
-                            .multilineTextAlignment(.center)
-                            .lineLimit(2)
-                    }
-                }
-                .buttonStyle(.plain)
-            }
-        }
     }
 
     private func statusLabel(_ match: Match) -> String {
