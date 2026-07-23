@@ -342,6 +342,11 @@ extension Date {
 
     /// Datum + čas (pro články / novinky).
     var hbShortDateTime: String {
+        let comps = Calendar.current.dateComponents([.hour, .minute], from: self)
+        // U článků z webu často máme jen den — nezobrazuj 00:00.
+        if (comps.hour ?? 0) == 0 && (comps.minute ?? 0) == 0 {
+            return hbShortDate
+        }
         let f = DateFormatter()
         f.locale = Locale(identifier: "cs_CZ")
         f.dateFormat = "d. M. yyyy · HH:mm"
