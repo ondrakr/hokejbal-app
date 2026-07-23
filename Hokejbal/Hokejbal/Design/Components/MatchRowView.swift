@@ -1,13 +1,15 @@
 import SwiftUI
 
-/// Livesport-style řádek zápasu:
-/// malé logo + název týmu | vpravo čas NEBO skóre (bez kurzů).
+/// Redesign „HB Arena“ — zápas jako elevated karta s barevným akcentem podle stavu.
+/// Karta má vlastní vnější okraje, takže funguje edge-to-edge i uvnitř Listu.
 struct MatchRowView: View {
     let match: Match
     let home: Team?
     let away: Team?
     var showCompetition: Bool = false
     var competitionName: String? = nil
+    /// Vypne vnější okraje (pro použití ve vlastním layoutu detailu).
+    var embedded: Bool = false
 
     private var homeLeads: Bool {
         match.status != .scheduled && match.homeScore > match.awayScore
@@ -17,129 +19,104 @@ struct MatchRowView: View {
         match.status != .scheduled && match.awayScore > match.homeScore
     }
 
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 7) {
-                    if showCompetition, let competitionName {
-                        Text(competitionName)
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(HBTheme.textTertiary)
-                            .lineLimit(1)
-                    }
-                    teamRow(team: home, emphasize: homeLeads)
-                    teamRow(team: away, emphasize: awayLeads)
-                }
-
-                Spacer(minLength: 8)
-
-                if match.isBroadcast {
-                    Image(systemName: "tv")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(HBTheme.brand)
-                        .accessibilityLabel("Živé vysílání")
-                }
-
-                trailingColumn
-            }
-            .padding(.vertical, 10)
-            .padding(.horizontal, HBTheme.screenPadding)
-
-            Rectangle()
-                .fill(HBTheme.separator)
-                .frame(height: 0.5)
+    private var accentColor: Color {
+        switch match.status {
+        case .live: return HBTheme.live
+        case .scheduled: return HBTheme.brand
+        case .finished: return HBTheme.textTertiary.opacity(0.5)
+        case .postponed: return .orange
         }
-        .background(HBTheme.surface)
+    }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            accentColor
+                .frame(width: 4)
+
+            VStack(alignment: .leading, spacing: 11) {
+                header
+                teamRow(team: home, score: match.homeScore, leads: homeLeads)
+                teamRow(team: away, score: match.awayScore, leads: awayLeads)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 13)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: HBTheme.radiusMd, style: .continuous))
+        .hbCard(cornerRadius: HBTheme.radiusMd)
+        .padding(.horizontal, embedded ? 0 : HBTheme.screenPadding)
+        .padding(.vertical, embedded ? 0 : 5)
         .contentShape(Rectangle())
     }
 
-    private func teamRow(team: Team?, emphasize: Bool) -> some View {
-        HStack(spacing: 8) {
+    private var header: some View {
+        HStack(spacing: 6) {
+            if showCompetition, let competitionName {
+                Text(competitionName.uppercased())
+                    .font(.hbMontserrat(size: 10, weight: .bold))
+                    .tracking(0.4)
+                    .foregroundStyle(HBTheme.textTertiary)
+                    .lineLimit(1)
+            } else if match.status == .live {
+                Text(shortPeriod)
+                    .font(.hbMontserrat(size: 10, weight: .bold))
+                    .tracking(0.4)
+                    .foregroundStyle(HBTheme.live)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 8)
+            if match.isBroadcast {
+                Image(systemName: "tv")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(HBTheme.brand)
+                    .accessibilityLabel("Živé vysílání")
+            }
+            HBStatusPill(match: match)
+        }
+    }
+
+    private func teamRow(team: Team?, score: Int, leads: Bool) -> some View {
+        HStack(spacing: 10) {
             if let team {
-                TeamBadge(team: team, size: 18)
+                TeamBadge(team: team, size: 24)
+                    .frame(width: 26, height: 26)
                 Text(team.shortName)
-                    .font(.system(size: 14, weight: emphasize ? .bold : .regular))
-                    .foregroundStyle(emphasize ? HBTheme.textPrimary : HBTheme.textPrimary.opacity(0.85))
+                    .font(.hbMontserrat(size: 15, weight: leads ? .bold : .medium))
+                    .foregroundStyle(leads ? HBTheme.textPrimary : HBTheme.textPrimary.opacity(0.82))
                     .lineLimit(1)
             } else {
                 Text("—")
-                    .font(.system(size: 14))
+                    .font(.hbMontserrat(size: 15, weight: .medium))
                     .foregroundStyle(HBTheme.textSecondary)
             }
+
+            Spacer(minLength: 8)
+
+            if match.status != .scheduled {
+                Text("\(score)")
+                    .font(.hbNumber(size: 20, weight: leads ? .heavy : .semibold))
+                    .foregroundStyle(scoreColor(leads: leads))
+                    .frame(minWidth: 24, alignment: .trailing)
+            }
         }
     }
 
-    @ViewBuilder
-    private var trailingColumn: some View {
-        switch match.status {
-        case .scheduled:
-            Text(match.scheduledAt.hbTime)
-                .font(.system(size: 14, weight: .semibold).monospacedDigit())
-                .foregroundStyle(HBTheme.textPrimary)
-                .frame(minWidth: 44, alignment: .trailing)
-
-        case .live:
-            HStack(alignment: .center, spacing: 10) {
-                VStack(spacing: 2) {
-                    Text("LIVE")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(HBTheme.live)
-                    Text(shortPeriod)
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(HBTheme.live)
-                        .lineLimit(1)
-                }
-                .frame(minWidth: 36, alignment: .trailing)
-
-                VStack(alignment: .trailing, spacing: 7) {
-                    scoreText(match.homeScore, emphasize: homeLeads, live: true)
-                    scoreText(match.awayScore, emphasize: awayLeads, live: true)
-                }
-                .frame(minWidth: 22, alignment: .trailing)
-            }
-
-        case .finished:
-            HStack(alignment: .center, spacing: 10) {
-                Text("Konec")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(HBTheme.textTertiary)
-                    .frame(minWidth: 36, alignment: .trailing)
-
-                VStack(alignment: .trailing, spacing: 7) {
-                    scoreText(match.homeScore, emphasize: homeLeads, live: false)
-                    scoreText(match.awayScore, emphasize: awayLeads, live: false)
-                }
-                .frame(minWidth: 22, alignment: .trailing)
-            }
-
-        case .postponed:
-            Text("Odlož.")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.orange)
-                .frame(minWidth: 44, alignment: .trailing)
+    private func scoreColor(leads: Bool) -> Color {
+        if match.status == .live {
+            return leads ? HBTheme.live : HBTheme.textSecondary
         }
+        return leads ? HBTheme.textPrimary : HBTheme.textSecondary
     }
 
-    private func scoreText(_ score: Int, emphasize: Bool, live: Bool) -> some View {
-        Text("\(score)")
-            .font(.system(size: 14, weight: emphasize ? .bold : .semibold).monospacedDigit())
-            .foregroundStyle(
-                live
-                    ? (emphasize ? HBTheme.live : HBTheme.textSecondary)
-                    : (emphasize ? HBTheme.textPrimary : HBTheme.textSecondary)
-            )
-    }
-
-    /// Kompaktní popisek třetiny pro úzký sloupec vpravo.
+    /// Kompaktní popisek třetiny.
     private var shortPeriod: String {
         switch match.period {
-        case .first: return "1. tř."
-        case .second: return "2. tř."
-        case .third: return "3. tř."
-        case .overtime: return "Prodl."
-        case .shootout: return "Náj."
-        case .intermission: return "Přest."
-        case .finished: return "Konec"
+        case .first: return "1. TŘETINA"
+        case .second: return "2. TŘETINA"
+        case .third: return "3. TŘETINA"
+        case .overtime: return "PRODLOUŽENÍ"
+        case .shootout: return "NÁJEZDY"
+        case .intermission: return "PŘESTÁVKA"
+        case .finished: return "KONEC"
         case .notStarted: return ""
         }
     }

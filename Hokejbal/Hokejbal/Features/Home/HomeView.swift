@@ -118,7 +118,8 @@ struct HomeView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 22) {
+                VStack(alignment: .leading, spacing: 26) {
+                    heroHeader
                     matchSliderSection
                     quickLinks
                     bannersSection
@@ -128,7 +129,7 @@ struct HomeView: View {
                 }
                 .padding(.bottom, 28)
             }
-            .background(HBTheme.surface)
+            .background(HBTheme.canvas)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
@@ -143,6 +144,55 @@ struct HomeView: View {
             .task { await load() }
             .refreshable { await load() }
         }
+    }
+
+    // MARK: - Hero header
+
+    private var heroHeader: some View {
+        ZStack(alignment: .bottomLeading) {
+            HBTheme.inkGradient
+
+            // Signaturní diagonální pruhy (energie / pohyb).
+            GeometryReader { geo in
+                ZStack {
+                    HBSkew(dx: 26)
+                        .fill(HBTheme.brand.opacity(0.9))
+                        .frame(width: 70)
+                        .offset(x: geo.size.width - 96)
+                    HBSkew(dx: 26)
+                        .fill(HBTheme.brand.opacity(0.35))
+                        .frame(width: 34)
+                        .offset(x: geo.size.width - 52)
+                }
+            }
+            .clipped()
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("ČESKÝ HOKEJBAL")
+                    .font(.hbMontserrat(size: 11, weight: .bold))
+                    .tracking(2)
+                    .foregroundStyle(.white.opacity(0.75))
+                Text(todayHeadline)
+                    .font(.hbDisplay(size: 26, weight: .heavy))
+                    .foregroundStyle(.white)
+                Text("Výsledky, přenosy a novinky na jednom místě.")
+                    .font(.hbMontserrat(size: 13, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.8))
+            }
+            .padding(.horizontal, HBTheme.screenPadding)
+            .padding(.vertical, 20)
+        }
+        .frame(height: 150)
+        .clipShape(RoundedRectangle(cornerRadius: HBTheme.radiusLg, style: .continuous))
+        .padding(.horizontal, HBTheme.screenPadding)
+        .padding(.top, 4)
+    }
+
+    private var todayHeadline: String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "cs_CZ")
+        f.dateFormat = "EEEE d. MMMM"
+        return f.string(from: Date()).capitalizedFirst
     }
 
     // MARK: - Match slider
@@ -211,23 +261,27 @@ struct HomeView: View {
             .buttonStyle(.plain)
         }
         .padding(.vertical, 4)
-        .background(HBTheme.secondarySurface)
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .hbCard(cornerRadius: HBTheme.radiusMd)
         .padding(.horizontal, HBTheme.screenPadding)
     }
 
     private func quickLinkLabel(title: String, systemImage: String) -> some View {
         HStack(spacing: 10) {
-            Image(systemName: systemImage)
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(HBTheme.brand)
+            ZStack {
+                Circle()
+                    .fill(HBTheme.brand.opacity(0.12))
+                    .frame(width: 34, height: 34)
+                Image(systemName: systemImage)
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(HBTheme.brand)
+            }
             Text(title)
                 .font(.hbMontserrat(size: 13, weight: .bold))
                 .foregroundStyle(HBTheme.textPrimary)
                 .lineLimit(1)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 14)
+        .padding(.vertical, 12)
         .contentShape(Rectangle())
     }
 
@@ -270,8 +324,16 @@ struct HomeView: View {
         .padding(18)
         .background(
             LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing),
-            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+            in: RoundedRectangle(cornerRadius: HBTheme.radiusLg, style: .continuous)
         )
+        .overlay(alignment: .topTrailing) {
+            HBSkew(dx: 18)
+                .fill(Color.white.opacity(0.12))
+                .frame(width: 46)
+                .padding(.trailing, 24)
+                .allowsHitTesting(false)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: HBTheme.radiusLg, style: .continuous))
 
         return Group {
             if let url = banner.url {
@@ -322,9 +384,9 @@ struct HomeView: View {
     private func featuredArticleCard(_ article: NewsArticle) -> some View {
         let colors = HomeContent.gradients[article.imageGradientIndex % HomeContent.gradients.count]
         return VStack(alignment: .leading, spacing: 0) {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            Rectangle()
                 .fill(LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing))
-                .frame(height: 120)
+                .frame(height: 124)
                 .overlay(alignment: .bottomLeading) {
                     CategoryTag(title: article.category)
                         .padding(12)
@@ -339,14 +401,16 @@ struct HomeView: View {
                     .font(.hbMontserrat(size: 12, weight: .medium))
                     .foregroundStyle(HBTheme.textTertiary)
             }
-            .padding(.top, 10)
+            .padding(12)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .clipShape(RoundedRectangle(cornerRadius: HBTheme.radiusMd, style: .continuous))
+        .hbCard(cornerRadius: HBTheme.radiusMd)
     }
 
     private func compactArticleRow(_ article: NewsArticle) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
+        HStack(alignment: .center, spacing: 12) {
+            RoundedRectangle(cornerRadius: HBTheme.radiusSm, style: .continuous)
                 .fill(
                     LinearGradient(
                         colors: HomeContent.gradients[article.imageGradientIndex % HomeContent.gradients.count],
@@ -354,11 +418,12 @@ struct HomeView: View {
                         endPoint: .bottomTrailing
                     )
                 )
-                .frame(width: 64, height: 64)
+                .frame(width: 66, height: 66)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(article.category.uppercased())
                     .font(.hbMontserrat(size: 10, weight: .bold))
+                    .tracking(0.4)
                     .foregroundStyle(HBTheme.brand)
                 Text(article.title)
                     .font(.hbMontserrat(size: 14, weight: .semibold))
@@ -370,7 +435,8 @@ struct HomeView: View {
             }
             Spacer(minLength: 0)
         }
-        .padding(.vertical, 6)
+        .padding(10)
+        .hbCard(cornerRadius: HBTheme.radiusMd)
     }
 
     // MARK: - Videos
@@ -399,7 +465,7 @@ struct HomeView: View {
         let colors = HomeContent.gradients[video.gradientIndex % HomeContent.gradients.count]
         return VStack(alignment: .leading, spacing: 8) {
             ZStack(alignment: .bottomLeading) {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                RoundedRectangle(cornerRadius: HBTheme.radiusMd, style: .continuous)
                     .fill(LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing))
                     .frame(width: 260, height: 146)
 
@@ -432,10 +498,7 @@ struct HomeView: View {
 
     private var partnersSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Partneři")
-                .font(.hbMontserrat(size: 18, weight: .bold))
-                .foregroundStyle(HBTheme.textPrimary)
-                .padding(.horizontal, HBTheme.screenPadding)
+            HBSectionHeader("Partneři", accent: HBTheme.textTertiary)
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
@@ -444,9 +507,9 @@ struct HomeView: View {
                             Text(partner.name)
                                 .font(.hbMontserrat(size: 13, weight: .semibold))
                                 .foregroundStyle(HBTheme.textPrimary)
-                                .padding(.horizontal, 16)
+                                .padding(.horizontal, 18)
                                 .padding(.vertical, 14)
-                                .background(HBTheme.secondarySurface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                .hbCard(cornerRadius: HBTheme.radiusSm)
                         }
                         .buttonStyle(.plain)
                     }
@@ -460,21 +523,20 @@ struct HomeView: View {
 
     private func sectionHeader<Destination: View>(
         _ title: String,
-        @ViewBuilder destination: () -> Destination
+        @ViewBuilder destination: @escaping () -> Destination
     ) -> some View {
-        HStack {
-            Text(title)
-                .font(.hbMontserrat(size: 18, weight: .bold))
-                .foregroundStyle(HBTheme.textPrimary)
-            Spacer()
+        HBSectionHeader(title: title) {
             NavigationLink(destination: destination) {
-                Text("Vše")
-                    .font(.hbMontserrat(size: 13, weight: .semibold))
-                    .foregroundStyle(HBTheme.brand)
+                HStack(spacing: 3) {
+                    Text("Vše")
+                        .font(.hbMontserrat(size: 13, weight: .bold))
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .bold))
+                }
+                .foregroundStyle(HBTheme.brand)
             }
             .buttonStyle(.plain)
         }
-        .padding(.horizontal, HBTheme.screenPadding)
     }
 
     private func load() async {
@@ -496,58 +558,65 @@ private struct HomeMatchCard: View {
     let away: Team?
     let competition: Competition?
 
+    private var homeLeads: Bool { match.status != .scheduled && match.homeScore > match.awayScore }
+    private var awayLeads: Bool { match.status != .scheduled && match.awayScore > match.homeScore }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 0) {
+            // Barevná horní lišta podle stavu.
             HStack {
                 Text(competition?.shortName.uppercased() ?? "ZÁPAS")
                     .font(.hbMontserrat(size: 10, weight: .bold))
-                    .foregroundStyle(HBTheme.textTertiary)
+                    .tracking(0.5)
+                    .foregroundStyle(.white.opacity(0.9))
                     .lineLimit(1)
                 Spacer(minLength: 0)
-                if match.isLive {
-                    LiveBadge(compact: true)
-                } else {
-                    Text(match.status == .finished ? "Konec" : match.scheduledAt.hbTime)
-                        .font(.hbMontserrat(size: 11, weight: .semibold))
-                        .foregroundStyle(HBTheme.textSecondary)
-                }
-            }
-
-            teamLine(home)
-            teamLine(away)
-
-            HStack {
                 Text(match.scheduledAt.hbShortDate)
-                    .font(.hbMontserrat(size: 11, weight: .medium))
-                    .foregroundStyle(HBTheme.textTertiary)
-                Spacer()
-                if match.status != .scheduled {
-                    Text("\(match.homeScore):\(match.awayScore)")
-                        .font(.hbMontserrat(size: 16, weight: .bold))
-                        .foregroundStyle(match.isLive ? HBTheme.live : HBTheme.textPrimary)
-                        .monospacedDigit()
-                }
+                    .font(.hbMontserrat(size: 10, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.8))
             }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 9)
+            .background(match.isLive ? HBTheme.live : HBTheme.ink)
+
+            VStack(spacing: 10) {
+                HStack {
+                    if match.isLive {
+                        LiveBadge(compact: true)
+                    } else {
+                        HBStatusPill(match: match)
+                    }
+                    Spacer(minLength: 0)
+                }
+                teamLine(home, score: match.homeScore, leads: homeLeads)
+                teamLine(away, score: match.awayScore, leads: awayLeads)
+            }
+            .padding(14)
         }
-        .padding(14)
-        .frame(width: 220, alignment: .leading)
-        .background(HBTheme.secondarySurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .frame(width: 230, alignment: .leading)
+        .clipShape(RoundedRectangle(cornerRadius: HBTheme.radiusMd, style: .continuous))
+        .hbCard(cornerRadius: HBTheme.radiusMd)
     }
 
-    private func teamLine(_ team: Team?) -> some View {
+    private func teamLine(_ team: Team?, score: Int, leads: Bool) -> some View {
         HStack(spacing: 8) {
             if let team {
                 TeamBadge(team: team, size: 22)
                 Text(team.shortName)
-                    .font(.hbMontserrat(size: 13, weight: .semibold))
+                    .font(.hbMontserrat(size: 14, weight: leads ? .bold : .medium))
                     .foregroundStyle(HBTheme.textPrimary)
                     .lineLimit(1)
             } else {
                 Text("—")
-                    .font(.hbMontserrat(size: 13, weight: .medium))
+                    .font(.hbMontserrat(size: 14, weight: .medium))
                     .foregroundStyle(HBTheme.textSecondary)
             }
-            Spacer(minLength: 0)
+            Spacer(minLength: 6)
+            if match.status != .scheduled {
+                Text("\(score)")
+                    .font(.hbNumber(size: 18, weight: leads ? .heavy : .semibold))
+                    .foregroundStyle(leads ? (match.isLive ? HBTheme.live : HBTheme.textPrimary) : HBTheme.textSecondary)
+            }
         }
     }
 }

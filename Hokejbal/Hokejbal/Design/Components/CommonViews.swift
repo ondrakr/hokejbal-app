@@ -203,6 +203,101 @@ struct SectionHeaderLabel: View {
     }
 }
 
+// MARK: - Redesign: signaturní diagonální akcent
+
+/// Šikmý „energetický“ pruh — opakující se brandový motiv (odkaz na pohyb / rychlost).
+struct HBAccentBar: View {
+    var color: Color = HBTheme.brand
+    var width: CGFloat = 5
+    var height: CGFloat = 20
+
+    var body: some View {
+        color
+            .frame(width: width, height: height)
+            .clipShape(HBSkew(dx: 4))
+    }
+}
+
+/// Rovnoběžník (posunuté horní hrany) — používá se pro akcenty a odznaky.
+struct HBSkew: Shape {
+    var dx: CGFloat = 6
+
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: rect.minX + dx, y: rect.minY))
+        p.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        p.addLine(to: CGPoint(x: rect.maxX - dx, y: rect.maxY))
+        p.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+        p.closeSubpath()
+        return p
+    }
+}
+
+/// Sekční hlavička s diagonálním akcentem + volitelný „Vše“ trailing.
+struct HBSectionHeader<Trailing: View>: View {
+    let title: String
+    var accent: Color = HBTheme.brand
+    @ViewBuilder var trailing: () -> Trailing
+
+    var body: some View {
+        HStack(spacing: 10) {
+            HBAccentBar(color: accent, height: 18)
+            Text(title.uppercased())
+                .font(.hbDisplay(size: 17, weight: .heavy))
+                .tracking(0.5)
+                .foregroundStyle(HBTheme.textPrimary)
+            Spacer(minLength: 8)
+            trailing()
+        }
+        .padding(.horizontal, HBTheme.screenPadding)
+    }
+}
+
+extension HBSectionHeader where Trailing == EmptyView {
+    init(_ title: String, accent: Color = HBTheme.brand) {
+        self.init(title: title, accent: accent, trailing: { EmptyView() })
+    }
+}
+
+/// Kompaktní stavový odznak zápasu (čas / LIVE / KONEC).
+struct HBStatusPill: View {
+    let match: Match
+
+    var body: some View {
+        switch match.status {
+        case .scheduled:
+            label(match.scheduledAt.hbTime, color: HBTheme.brand, filled: false)
+        case .live:
+            LiveBadge(compact: true)
+        case .finished:
+            label("KONEC", color: HBTheme.textTertiary, filled: false)
+        case .postponed:
+            label("ODLOŽ.", color: .orange, filled: false)
+        }
+    }
+
+    private func label(_ text: String, color: Color, filled: Bool) -> some View {
+        Text(text)
+            .font(.hbMontserrat(size: 11, weight: .bold))
+            .tracking(0.3)
+            .foregroundStyle(filled ? HBTheme.onBrand : color)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
+                (filled ? color : color.opacity(0.12)),
+                in: Capsule()
+            )
+    }
+}
+
+extension String {
+    /// První písmeno velké (zbytek beze změny) — pro česká data.
+    var capitalizedFirst: String {
+        guard let first else { return self }
+        return first.uppercased() + dropFirst()
+    }
+}
+
 extension Color {
     init(hex: String) {
         let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)

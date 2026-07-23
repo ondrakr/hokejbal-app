@@ -48,7 +48,7 @@ struct MatchesByCompetitionView: View {
             .safeAreaInset(edge: .top, spacing: 0) {
                 MatchDayStrip(selectedDate: $selectedDate, datesWithMatches: datesWithMatches)
             }
-            .background(HBTheme.surface)
+            .background(HBTheme.canvas)
             .hbNavTitle("Zápasy", systemImage: "sportscourt.fill")
             .hbNavigationStyle()
             .toolbar {
@@ -84,7 +84,7 @@ struct MatchesByCompetitionView: View {
                 .buttonStyle(.plain)
                 .hbHideDisclosure()
                 .listRowInsets(EdgeInsets())
-                .listRowBackground(HBTheme.surface)
+                .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
             }
 
@@ -108,7 +108,7 @@ struct MatchesByCompetitionView: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
-        .background(HBTheme.surface)
+        .background(HBTheme.canvas)
     }
 
     private func competitionLink(_ competition: Competition) -> some View {
@@ -124,44 +124,53 @@ struct MatchesByCompetitionView: View {
         .buttonStyle(.plain)
         .hbHideDisclosure()
         .listRowInsets(EdgeInsets())
-        .listRowBackground(HBTheme.surface)
+        .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
     }
 
     private var allMatchesRow: some View {
         HStack(spacing: 12) {
-            Image(systemName: "list.bullet")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(HBTheme.textSecondary)
-                .frame(width: 28, height: 28)
+            ZStack {
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .fill(HBTheme.brand.opacity(0.12))
+                    .frame(width: 34, height: 34)
+                Image(systemName: "square.stack.3d.up.fill")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(HBTheme.brand)
+            }
 
             Text("Všechny zápasy")
-                .font(.hbMontserrat(size: 15, weight: .semibold))
+                .font(.hbMontserrat(size: 15, weight: .bold))
                 .foregroundStyle(HBTheme.textPrimary)
+
+            Spacer(minLength: 0)
 
             if !matchesOnSelectedDay.isEmpty {
                 Text("\(matchesOnSelectedDay.count)")
-                    .font(.system(size: 11, weight: .bold).monospacedDigit())
+                    .font(.hbNumber(size: 12, weight: .bold))
                     .foregroundStyle(HBTheme.onBrand)
-                    .padding(.horizontal, 7)
+                    .padding(.horizontal, 8)
                     .padding(.vertical, 3)
                     .background(HBTheme.brand, in: Capsule())
             }
 
-            Spacer(minLength: 0)
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(HBTheme.textTertiary)
         }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 13)
+        .hbCard(cornerRadius: HBTheme.radiusMd)
         .padding(.horizontal, HBTheme.screenPadding)
-        .padding(.vertical, 14)
-        .overlay(alignment: .bottom) {
-            Rectangle().fill(HBTheme.separator).frame(height: 0.5)
-        }
+        .padding(.vertical, 5)
+        .contentShape(Rectangle())
     }
 
     private func competitionRow(_ competition: Competition) -> some View {
         let dayCount = matchesOnSelectedDay.filter { $0.competitionId == competition.id }.count
 
         return HStack(spacing: 12) {
-            CompetitionBadge(competition: competition, size: 28)
+            CompetitionBadge(competition: competition, size: 30)
 
             Text(competition.name)
                 .font(.hbMontserrat(size: 15, weight: .semibold))
@@ -171,26 +180,29 @@ struct MatchesByCompetitionView: View {
             Spacer(minLength: 0)
 
             Text("\(dayCount)")
-                .font(.system(size: 14, weight: .medium).monospacedDigit())
+                .font(.hbNumber(size: 14, weight: .semibold))
                 .foregroundStyle(HBTheme.textSecondary)
-                .frame(minWidth: 24, alignment: .trailing)
+                .frame(minWidth: 22, alignment: .trailing)
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(HBTheme.textTertiary)
         }
-        .padding(.horizontal, HBTheme.screenPadding)
+        .padding(.horizontal, 14)
         .padding(.vertical, 12)
-        .overlay(alignment: .bottom) {
-            Rectangle().fill(HBTheme.separator).frame(height: 0.5)
-        }
+        .hbCard(cornerRadius: HBTheme.radiusMd)
+        .padding(.horizontal, HBTheme.screenPadding)
+        .padding(.vertical, 5)
         .contentShape(Rectangle())
     }
 
     private func sectionHeader(_ title: String, accent: Color) -> some View {
-        Text(title.uppercased())
-            .font(.hbMontserrat(size: 12, weight: .bold))
-            .foregroundStyle(accent)
-            .tracking(0.4)
-            .padding(.top, 8)
+        HBSectionHeader(title, accent: accent)
+            .padding(.top, 10)
+            .padding(.bottom, 2)
             .textCase(nil)
-            .listRowInsets(EdgeInsets(top: 8, leading: HBTheme.screenPadding, bottom: 4, trailing: HBTheme.screenPadding))
+            .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+            .listRowBackground(Color.clear)
     }
 
     private func load() async {
@@ -258,7 +270,7 @@ struct DayMatchesView: View {
                     }
                 }
             }
-            .background(HBTheme.surface)
+            .background(HBTheme.canvas)
             .navigationTitle(selectedCompetition == nil ? title : "")
             .navigationBarTitleDisplayMode(.inline)
             .hbNavigationStyle()
@@ -331,7 +343,7 @@ struct DayMatchesView: View {
         .buttonStyle(.plain)
         .hbHideDisclosure()
         .listRowInsets(HBTheme.matchRowInsets)
-        .listRowBackground(HBTheme.surface)
+        .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
     }
 

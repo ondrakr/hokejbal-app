@@ -52,7 +52,7 @@ struct LiveView: View {
                                 .buttonStyle(.plain)
                                 .hbHideDisclosure()
                                 .listRowInsets(HBTheme.matchRowInsets)
-                                .listRowBackground(HBTheme.surface)
+                                .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
                             }
                         }
@@ -60,13 +60,13 @@ struct LiveView: View {
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
-                .background(HBTheme.surface)
+                .background(HBTheme.canvas)
                 .refreshable {
                     await liveScores.pollOnce(using: apiClient.api)
                 }
             }
         }
-        .background(HBTheme.surface)
+        .background(HBTheme.canvas)
         .hbNavTitle("Živě", systemImage: "dot.radiowaves.left.and.right")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
