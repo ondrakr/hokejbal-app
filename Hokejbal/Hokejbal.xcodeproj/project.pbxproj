@@ -1,0 +1,607 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		03CB7751F0D53D831E441E02 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A23BA156A61409343B2A454C /* Theme.swift */; };
+		1C3BCA840D5227092AE90A85 /* MatchesByCompetitionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45712E6A226C62DA6CBE10ED /* MatchesByCompetitionView.swift */; };
+		1DEDD2F1978840515BD894F6 /* MockHokejbalAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71C13FB9044679F64715A51C /* MockHokejbalAPI.swift */; };
+		23C76023A1A8354C2214C1EF /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 159681556D036A4CF06A2CA1 /* MainTabView.swift */; };
+		29C7CF8D21DE71600F1D98DD /* HokejbalAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCFE5DEADEB1EBDE0D30BA71 /* HokejbalAPI.swift */; };
+		2FE6DB9B8AA0C62ECC3CF903 /* FavoritesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 428938D1D415D7B7915B7D5B /* FavoritesView.swift */; };
+		3782EDA32D1166B16E1EF5A2 /* Stores.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C1A82347E484D47C6A6C66 /* Stores.swift */; };
+		40A9F1E01BC805F6F55D2667 /* HBSolidMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA48939022459AC2A7BD6D8B /* HBSolidMenu.swift */; };
+		44DDFD993E09D24B1C5177FD /* HBPillSelector.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7F128AC6988C441EE8F06FA /* HBPillSelector.swift */; };
+		4514A8F301F20A300CB2B8B7 /* CommonViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DEB0E7450BCD0D8597A9309 /* CommonViews.swift */; };
+		48AFD8824FC853B2C1DE89B2 /* SupabaseConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = A91839024E594CD731931377 /* SupabaseConfig.swift */; };
+		4A24B11E197C7FEDB9D4C11D /* MatchDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14AAF6DD1957BE7B5E429D39 /* MatchDetailView.swift */; };
+		4D77C1BDD7203119A25FA57E /* MatchDayStrip.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD8A3F0C2D3921FE29053AF9 /* MatchDayStrip.swift */; };
+		50DE51C4DC56563175DFF68B /* LiveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B9DC695B7A39891DE66797B /* LiveView.swift */; };
+		52A3247ACD6E7898EAED15AE /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10C9CFA630E2A385BAAF2B44 /* SettingsView.swift */; };
+		57CE612FED8AC574F864E430 /* CompetitionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 509E029E43A9C3E0C9E497C6 /* CompetitionsView.swift */; };
+		6E2B44DBFCAB0361489BB3DB /* TeamDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047D6545E51F3D7FCA10D558 /* TeamDetailView.swift */; };
+		7095FC64B192E6DA6AC7E887 /* RemoteHokejbalAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49169EC701DF70DB6241909C /* RemoteHokejbalAPI.swift */; };
+		8E872CB48D965C8594CA8431 /* HokejbalApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5537609AE4F349D3DFD7F571 /* HokejbalApp.swift */; };
+		93CB5CB523AFBD6CB70C4B0B /* MoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F6F74D6DAD9EE0B64B74EDF /* MoreView.swift */; };
+		94C6AFCCB2B5C4BE1979DE35 /* BrandLogo.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87049AC07F0735B880DC9BD /* BrandLogo.swift */; };
+		972D1B07AE05C7C305147698 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F0FD1C5FE1FD7658BA2C7170 /* Assets.xcassets */; };
+		9A71565898E115DFDA465BE0 /* PlayerSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C64552FF8A6C65907E74788B /* PlayerSearchView.swift */; };
+		9C8F108F90321778D5C51B9B /* StandingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7E9B8229689CFD07295693D /* StandingsView.swift */; };
+		A2C7B8EE2E704B01F4675191 /* NewsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4639EC7270DEA48F7F47CCE1 /* NewsView.swift */; };
+		B7E4A1C29F0D4E8A9B1C2D3E /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1D2E3F405162738495A6B7C /* HomeView.swift */; };
+		A7CF7584E6B99B506912F23D /* HBAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC1B45B8A1C31BF05E0CAD17 /* HBAppearance.swift */; };
+		AA062481542C53BDC6982687 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3F8D5289259278645387A09 /* Models.swift */; };
+		AE72D5757B7E5EA8E71411A8 /* MatchesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF86F353A69F3CF84BA51526 /* MatchesView.swift */; };
+		CC2C5CFF9AB7B91A812837F3 /* CompetitionDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D64E143C242EE672A7A7B60 /* CompetitionDetailView.swift */; };
+		D358D21DF7718B77254B3A00 /* PlayerDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 336D7DDB566A7FD28FF05B17 /* PlayerDetailView.swift */; };
+		DC09B73C233CF902129FA499 /* SeasonPickerMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2826E2196F9677EFF52D8574 /* SeasonPickerMenu.swift */; };
+		DE7FA1086B7E396062A724D1 /* FavoriteStarButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = A82A1C479EFF729A8556E676 /* FavoriteStarButton.swift */; };
+		E238DDFBC80B72783414F931 /* HBUnderlineTabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE2A3429EF6821F9F46635A /* HBUnderlineTabs.swift */; };
+		E28859D1C7F1591B1507ADC1 /* MatchRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDA83DF5A92083768D525CF0 /* MatchRowView.swift */; };
+		E31BCA29913DA2C0D9E1B80C /* SupabaseHokejbalAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BD0A6E20FE94BE196F5E777 /* SupabaseHokejbalAPI.swift */; };
+		F1569EBF3E5A43272F54BA79 /* LiveScoreService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FA9CE7B1D2CA10667C1356F /* LiveScoreService.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		047D6545E51F3D7FCA10D558 /* TeamDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeamDetailView.swift; sourceTree = "<group>"; };
+		0DEB0E7450BCD0D8597A9309 /* CommonViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommonViews.swift; sourceTree = "<group>"; };
+		10C9CFA630E2A385BAAF2B44 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		14AAF6DD1957BE7B5E429D39 /* MatchDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchDetailView.swift; sourceTree = "<group>"; };
+		159681556D036A4CF06A2CA1 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
+		1FA9CE7B1D2CA10667C1356F /* LiveScoreService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveScoreService.swift; sourceTree = "<group>"; };
+		2826E2196F9677EFF52D8574 /* SeasonPickerMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeasonPickerMenu.swift; sourceTree = "<group>"; };
+		336D7DDB566A7FD28FF05B17 /* PlayerDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerDetailView.swift; sourceTree = "<group>"; };
+		428938D1D415D7B7915B7D5B /* FavoritesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoritesView.swift; sourceTree = "<group>"; };
+		45712E6A226C62DA6CBE10ED /* MatchesByCompetitionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchesByCompetitionView.swift; sourceTree = "<group>"; };
+		4639EC7270DEA48F7F47CCE1 /* NewsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewsView.swift; sourceTree = "<group>"; };
+		C1D2E3F405162738495A6B7C /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		49169EC701DF70DB6241909C /* RemoteHokejbalAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteHokejbalAPI.swift; sourceTree = "<group>"; };
+		4B9DC695B7A39891DE66797B /* LiveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveView.swift; sourceTree = "<group>"; };
+		4F6F74D6DAD9EE0B64B74EDF /* MoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoreView.swift; sourceTree = "<group>"; };
+		509E029E43A9C3E0C9E497C6 /* CompetitionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompetitionsView.swift; sourceTree = "<group>"; };
+		50C1A82347E484D47C6A6C66 /* Stores.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Stores.swift; sourceTree = "<group>"; };
+		5537609AE4F349D3DFD7F571 /* HokejbalApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HokejbalApp.swift; sourceTree = "<group>"; };
+		5BD0A6E20FE94BE196F5E777 /* SupabaseHokejbalAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseHokejbalAPI.swift; sourceTree = "<group>"; };
+		71C13FB9044679F64715A51C /* MockHokejbalAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockHokejbalAPI.swift; sourceTree = "<group>"; };
+		7D64E143C242EE672A7A7B60 /* CompetitionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompetitionDetailView.swift; sourceTree = "<group>"; };
+		7EAC51D17ADCA4F1C71511B9 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		7EE2A3429EF6821F9F46635A /* HBUnderlineTabs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HBUnderlineTabs.swift; sourceTree = "<group>"; };
+		9BD05CEAA268B53113CDDEE5 /* Hokejbal.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Hokejbal.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A23BA156A61409343B2A454C /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		A7E9B8229689CFD07295693D /* StandingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandingsView.swift; sourceTree = "<group>"; };
+		A82A1C479EFF729A8556E676 /* FavoriteStarButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoriteStarButton.swift; sourceTree = "<group>"; };
+		A91839024E594CD731931377 /* SupabaseConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseConfig.swift; sourceTree = "<group>"; };
+		B3F8D5289259278645387A09 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		BA48939022459AC2A7BD6D8B /* HBSolidMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HBSolidMenu.swift; sourceTree = "<group>"; };
+		C64552FF8A6C65907E74788B /* PlayerSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerSearchView.swift; sourceTree = "<group>"; };
+		C87049AC07F0735B880DC9BD /* BrandLogo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrandLogo.swift; sourceTree = "<group>"; };
+		CC1B45B8A1C31BF05E0CAD17 /* HBAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HBAppearance.swift; sourceTree = "<group>"; };
+		CD8A3F0C2D3921FE29053AF9 /* MatchDayStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchDayStrip.swift; sourceTree = "<group>"; };
+		DDA83DF5A92083768D525CF0 /* MatchRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchRowView.swift; sourceTree = "<group>"; };
+		EF86F353A69F3CF84BA51526 /* MatchesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchesView.swift; sourceTree = "<group>"; };
+		F0FD1C5FE1FD7658BA2C7170 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		F7F128AC6988C441EE8F06FA /* HBPillSelector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HBPillSelector.swift; sourceTree = "<group>"; };
+		FCFE5DEADEB1EBDE0D30BA71 /* HokejbalAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HokejbalAPI.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		189A6D12B969CADAEB266D51 /* PlayerDetail */ = {
+			isa = PBXGroup;
+			children = (
+				336D7DDB566A7FD28FF05B17 /* PlayerDetailView.swift */,
+			);
+			path = PlayerDetail;
+			sourceTree = "<group>";
+		};
+		1F6819F2ECE9FF90627687E6 = {
+			isa = PBXGroup;
+			children = (
+				B1A39A060F1669899A856EE7 /* Hokejbal */,
+				82C574FD3EB6377E97BAD22C /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		33BF7F577AB67A4EEC440488 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				B3F8D5289259278645387A09 /* Models.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		5245DEE6EA6D4D25A4BFD4FC /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				F0FD1C5FE1FD7658BA2C7170 /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		745BDD19EFABDA31A7A50C40 /* Design */ = {
+			isa = PBXGroup;
+			children = (
+				CC1B45B8A1C31BF05E0CAD17 /* HBAppearance.swift */,
+				A23BA156A61409343B2A454C /* Theme.swift */,
+				950FDF2853339D1889418A20 /* Components */,
+			);
+			path = Design;
+			sourceTree = "<group>";
+		};
+		801BA209E5D6CFD91BD753BB /* Favorites */ = {
+			isa = PBXGroup;
+			children = (
+				428938D1D415D7B7915B7D5B /* FavoritesView.swift */,
+			);
+			path = Favorites;
+			sourceTree = "<group>";
+		};
+		82C574FD3EB6377E97BAD22C /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				9BD05CEAA268B53113CDDEE5 /* Hokejbal.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		950FDF2853339D1889418A20 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				C87049AC07F0735B880DC9BD /* BrandLogo.swift */,
+				0DEB0E7450BCD0D8597A9309 /* CommonViews.swift */,
+				A82A1C479EFF729A8556E676 /* FavoriteStarButton.swift */,
+				F7F128AC6988C441EE8F06FA /* HBPillSelector.swift */,
+				BA48939022459AC2A7BD6D8B /* HBSolidMenu.swift */,
+				7EE2A3429EF6821F9F46635A /* HBUnderlineTabs.swift */,
+				CD8A3F0C2D3921FE29053AF9 /* MatchDayStrip.swift */,
+				DDA83DF5A92083768D525CF0 /* MatchRowView.swift */,
+				2826E2196F9677EFF52D8574 /* SeasonPickerMenu.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		95E873A63949D03B5A10E630 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				FCFE5DEADEB1EBDE0D30BA71 /* HokejbalAPI.swift */,
+				1FA9CE7B1D2CA10667C1356F /* LiveScoreService.swift */,
+				71C13FB9044679F64715A51C /* MockHokejbalAPI.swift */,
+				49169EC701DF70DB6241909C /* RemoteHokejbalAPI.swift */,
+				50C1A82347E484D47C6A6C66 /* Stores.swift */,
+				A91839024E594CD731931377 /* SupabaseConfig.swift */,
+				5BD0A6E20FE94BE196F5E777 /* SupabaseHokejbalAPI.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		9CB03824338EC93C627C9B31 /* MatchDetail */ = {
+			isa = PBXGroup;
+			children = (
+				14AAF6DD1957BE7B5E429D39 /* MatchDetailView.swift */,
+			);
+			path = MatchDetail;
+			sourceTree = "<group>";
+		};
+		9F67AC8DFC58AC9C2FF33BEF /* Matches */ = {
+			isa = PBXGroup;
+			children = (
+				7D64E143C242EE672A7A7B60 /* CompetitionDetailView.swift */,
+				509E029E43A9C3E0C9E497C6 /* CompetitionsView.swift */,
+				45712E6A226C62DA6CBE10ED /* MatchesByCompetitionView.swift */,
+				EF86F353A69F3CF84BA51526 /* MatchesView.swift */,
+				C64552FF8A6C65907E74788B /* PlayerSearchView.swift */,
+			);
+			path = Matches;
+			sourceTree = "<group>";
+		};
+		A5F777A037AA07C8C3A0448A /* Live */ = {
+			isa = PBXGroup;
+			children = (
+				4B9DC695B7A39891DE66797B /* LiveView.swift */,
+			);
+			path = Live;
+			sourceTree = "<group>";
+		};
+		A66D2255CD6DBD8FE67A5B91 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				10C9CFA630E2A385BAAF2B44 /* SettingsView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		ACEAC945E530A8F3CCB48637 /* TeamDetail */ = {
+			isa = PBXGroup;
+			children = (
+				047D6545E51F3D7FCA10D558 /* TeamDetailView.swift */,
+			);
+			path = TeamDetail;
+			sourceTree = "<group>";
+		};
+		B0C051D8CD2AFFA58009A200 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				159681556D036A4CF06A2CA1 /* MainTabView.swift */,
+				801BA209E5D6CFD91BD753BB /* Favorites */,
+				D4E5F60718293A4B5C6D7E8F /* Home */,
+				A5F777A037AA07C8C3A0448A /* Live */,
+				9CB03824338EC93C627C9B31 /* MatchDetail */,
+				9F67AC8DFC58AC9C2FF33BEF /* Matches */,
+				BB4F4196982A3274C58E41B2 /* More */,
+				E3E986C00970D960970AB277 /* News */,
+				189A6D12B969CADAEB266D51 /* PlayerDetail */,
+				A66D2255CD6DBD8FE67A5B91 /* Settings */,
+				FB51F9F113B765B6293771AE /* Standings */,
+				ACEAC945E530A8F3CCB48637 /* TeamDetail */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		B1A39A060F1669899A856EE7 /* Hokejbal */ = {
+			isa = PBXGroup;
+			children = (
+				5537609AE4F349D3DFD7F571 /* HokejbalApp.swift */,
+				7EAC51D17ADCA4F1C71511B9 /* Info.plist */,
+				745BDD19EFABDA31A7A50C40 /* Design */,
+				B0C051D8CD2AFFA58009A200 /* Features */,
+				33BF7F577AB67A4EEC440488 /* Models */,
+				5245DEE6EA6D4D25A4BFD4FC /* Resources */,
+				95E873A63949D03B5A10E630 /* Services */,
+			);
+			path = Hokejbal;
+			sourceTree = "<group>";
+		};
+		BB4F4196982A3274C58E41B2 /* More */ = {
+			isa = PBXGroup;
+			children = (
+				4F6F74D6DAD9EE0B64B74EDF /* MoreView.swift */,
+			);
+			path = More;
+			sourceTree = "<group>";
+		};
+		E3E986C00970D960970AB277 /* News */ = {
+			isa = PBXGroup;
+			children = (
+				4639EC7270DEA48F7F47CCE1 /* NewsView.swift */,
+			);
+			path = News;
+			sourceTree = "<group>";
+		};
+		D4E5F60718293A4B5C6D7E8F /* Home */ = {
+			isa = PBXGroup;
+			children = (
+				C1D2E3F405162738495A6B7C /* HomeView.swift */,
+			);
+			path = Home;
+			sourceTree = "<group>";
+		};
+		FB51F9F113B765B6293771AE /* Standings */ = {
+			isa = PBXGroup;
+			children = (
+				A7E9B8229689CFD07295693D /* StandingsView.swift */,
+			);
+			path = Standings;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		214F5560446A88A23A365003 /* Hokejbal */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4154ADBB52A7C8BC9B5961EE /* Build configuration list for PBXNativeTarget "Hokejbal" */;
+			buildPhases = (
+				248777F4280C73F27F3F52D9 /* Sources */,
+				706AA2EBDB96949920D1D9DC /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Hokejbal;
+			packageProductDependencies = (
+			);
+			productName = Hokejbal;
+			productReference = 9BD05CEAA268B53113CDDEE5 /* Hokejbal.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		5D2ADC086708AF16FEC7B674 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 2660;
+			};
+			buildConfigurationList = CDA8A6D8FF35E3F3B8936D14 /* Build configuration list for PBXProject "Hokejbal" */;
+			developmentRegion = cs;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				cs,
+			);
+			mainGroup = 1F6819F2ECE9FF90627687E6;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 82C574FD3EB6377E97BAD22C /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				214F5560446A88A23A365003 /* Hokejbal */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		706AA2EBDB96949920D1D9DC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				972D1B07AE05C7C305147698 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		248777F4280C73F27F3F52D9 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				94C6AFCCB2B5C4BE1979DE35 /* BrandLogo.swift in Sources */,
+				4514A8F301F20A300CB2B8B7 /* CommonViews.swift in Sources */,
+				CC2C5CFF9AB7B91A812837F3 /* CompetitionDetailView.swift in Sources */,
+				57CE612FED8AC574F864E430 /* CompetitionsView.swift in Sources */,
+				DE7FA1086B7E396062A724D1 /* FavoriteStarButton.swift in Sources */,
+				2FE6DB9B8AA0C62ECC3CF903 /* FavoritesView.swift in Sources */,
+				A7CF7584E6B99B506912F23D /* HBAppearance.swift in Sources */,
+				44DDFD993E09D24B1C5177FD /* HBPillSelector.swift in Sources */,
+				40A9F1E01BC805F6F55D2667 /* HBSolidMenu.swift in Sources */,
+				E238DDFBC80B72783414F931 /* HBUnderlineTabs.swift in Sources */,
+				29C7CF8D21DE71600F1D98DD /* HokejbalAPI.swift in Sources */,
+				8E872CB48D965C8594CA8431 /* HokejbalApp.swift in Sources */,
+				B7E4A1C29F0D4E8A9B1C2D3E /* HomeView.swift in Sources */,
+				F1569EBF3E5A43272F54BA79 /* LiveScoreService.swift in Sources */,
+				50DE51C4DC56563175DFF68B /* LiveView.swift in Sources */,
+				23C76023A1A8354C2214C1EF /* MainTabView.swift in Sources */,
+				4D77C1BDD7203119A25FA57E /* MatchDayStrip.swift in Sources */,
+				4A24B11E197C7FEDB9D4C11D /* MatchDetailView.swift in Sources */,
+				E28859D1C7F1591B1507ADC1 /* MatchRowView.swift in Sources */,
+				1C3BCA840D5227092AE90A85 /* MatchesByCompetitionView.swift in Sources */,
+				AE72D5757B7E5EA8E71411A8 /* MatchesView.swift in Sources */,
+				1DEDD2F1978840515BD894F6 /* MockHokejbalAPI.swift in Sources */,
+				AA062481542C53BDC6982687 /* Models.swift in Sources */,
+				93CB5CB523AFBD6CB70C4B0B /* MoreView.swift in Sources */,
+				A2C7B8EE2E704B01F4675191 /* NewsView.swift in Sources */,
+				D358D21DF7718B77254B3A00 /* PlayerDetailView.swift in Sources */,
+				9A71565898E115DFDA465BE0 /* PlayerSearchView.swift in Sources */,
+				7095FC64B192E6DA6AC7E887 /* RemoteHokejbalAPI.swift in Sources */,
+				DC09B73C233CF902129FA499 /* SeasonPickerMenu.swift in Sources */,
+				52A3247ACD6E7898EAED15AE /* SettingsView.swift in Sources */,
+				9C8F108F90321778D5C51B9B /* StandingsView.swift in Sources */,
+				3782EDA32D1166B16E1EF5A2 /* Stores.swift in Sources */,
+				48AFD8824FC853B2C1DE89B2 /* SupabaseConfig.swift in Sources */,
+				E31BCA29913DA2C0D9E1B80C /* SupabaseHokejbalAPI.swift in Sources */,
+				6E2B44DBFCAB0361489BB3DB /* TeamDetailView.swift in Sources */,
+				03CB7751F0D53D831E441E02 /* Theme.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		16EFBDB92EF2BF449AD81704 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = 38U2DZ2F9S;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Hokejbal/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Hokejbal;
+				INFOPLIST_KEY_NSUserNotificationsUsageDescription = "Volitelné upozornění na góly a výsledky oblíbených týmů.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = cz.hokejbal.app;
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		1A94B155937DB73464CD7E02 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 5;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_MODULE_VERIFIER = YES;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.1.1;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		341B79E7D1E7E2EC7444937B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 5;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_MODULE_VERIFIER = YES;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.1.1;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		F6CCEA26732A86AA7147EE1A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = 38U2DZ2F9S;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Hokejbal/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Hokejbal;
+				INFOPLIST_KEY_NSUserNotificationsUsageDescription = "Volitelné upozornění na góly a výsledky oblíbených týmů.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = cz.hokejbal.app;
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		4154ADBB52A7C8BC9B5961EE /* Build configuration list for PBXNativeTarget "Hokejbal" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				16EFBDB92EF2BF449AD81704 /* Debug */,
+				F6CCEA26732A86AA7147EE1A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		CDA8A6D8FF35E3F3B8936D14 /* Build configuration list for PBXProject "Hokejbal" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1A94B155937DB73464CD7E02 /* Debug */,
+				341B79E7D1E7E2EC7444937B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 5D2ADC086708AF16FEC7B674 /* Project object */;
+}

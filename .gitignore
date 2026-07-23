@@ -1,0 +1,15 @@
+# Hokejbal
+.DS_Store
+DerivedData/
+Hokejbal/DerivedData/
+Hokejbal/DerivedDataBuild/
+Hokejbal/DerivedDataBuildDevice/
+**/DerivedData*/
+*.xcuserstate
+xcuserdata/
+*.xccheckout
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
