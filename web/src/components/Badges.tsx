@@ -74,9 +74,18 @@ export function CompetitionBadge({
   );
 }
 
-export function PlayerAvatar({ player, size = 48 }: { player: Player; size?: number }) {
+export function PlayerAvatar({
+  player,
+  size = 48,
+  circle = false,
+}: {
+  player: Player;
+  size?: number;
+  /** Kruh (statistiky / žebříčky), jinak zaoblený čtverec jako iOS default */
+  circle?: boolean;
+}) {
   const initials = `${player.firstName.charAt(0)}${player.lastName.charAt(0)}`.toUpperCase();
-  const radius = size * 0.22;
+  const radius = circle ? size / 2 : size * 0.22;
   if (player.photoURL) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
@@ -86,7 +95,12 @@ export function PlayerAvatar({ player, size = 48 }: { player: Player; size?: num
         width={size}
         height={size}
         className="object-cover"
-        style={{ width: size, height: size, borderRadius: radius }}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: radius,
+          border: "0.5px solid rgba(0,0,0,0.08)",
+        }}
         loading="lazy"
         referrerPolicy="no-referrer"
       />
@@ -94,13 +108,15 @@ export function PlayerAvatar({ player, size = 48 }: { player: Player; size?: num
   }
   return (
     <div
-      className="flex items-center justify-center font-bold text-brand"
+      className="flex items-center justify-center font-bold"
       style={{
         width: size,
         height: size,
         borderRadius: radius,
         background: "color-mix(in srgb, var(--brand) 12%, transparent)",
         fontSize: size * 0.32,
+        color: "var(--brand)",
+        border: "0.5px solid rgba(0,0,0,0.08)",
       }}
     >
       {initials}

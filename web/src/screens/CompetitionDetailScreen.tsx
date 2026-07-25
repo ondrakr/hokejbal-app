@@ -7,13 +7,14 @@ import { CompetitionBadge } from "@/components/Badges";
 import { CompetitionNavStrip, MatchDayStrip } from "@/components/MatchDayStrip";
 import { MatchRow, UnderlineTabs } from "@/components/MatchRow";
 import { StandingsTable } from "@/components/StandingsTable";
+import { CompetitionStatsPanel } from "@/screens/CompetitionStatsScreen";
 import { BackButton, EmptyState, LoadingState, ScreenHeader } from "@/components/ui";
 import { dayKey, todayKey } from "@/lib/format";
 import { useCatalog } from "@/stores/catalog";
 import { useFavorites } from "@/stores/favorites";
 import { useNav } from "@/stores/navigation";
 
-const DETAIL_TABS = ["Program", "Výsledky", "Tabulka", "Zprávy"];
+const DETAIL_TABS = ["Program", "Výsledky", "Tabulka", "Statistiky", "Zprávy"];
 
 /** Port CompetitionDetailView + DayMatchesView (id=all) */
 export function CompetitionDetailScreen({ id, day }: { id: string; day?: string }) {
@@ -217,6 +218,13 @@ export function CompetitionDetailScreen({ id, day }: { id: string; day?: string 
               />
             )}
           </div>
+        )}
+        {tab === "Statistiky" && (
+          <CompetitionStatsPanel
+            competitionId={id}
+            matches={listAll}
+            standings={standings}
+          />
         )}
         {tab === "Zprávy" && (
           <div className="space-y-3 px-4 py-3">

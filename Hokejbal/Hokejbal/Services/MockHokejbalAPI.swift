@@ -611,7 +611,10 @@ actor MockHokejbalAPI: HokejbalAPI {
             result = result.filter { $0.teamId == teamId }
         }
         _ = seasonId
-        _ = competitionId
+        if let competitionId {
+            let teamIds = Set(teamsData.filter { $0.competitionId == competitionId }.map(\.id))
+            result = result.filter { teamIds.contains($0.teamId) || $0.competitionId == competitionId }
+        }
         return result.sorted { $0.points > $1.points }
     }
 

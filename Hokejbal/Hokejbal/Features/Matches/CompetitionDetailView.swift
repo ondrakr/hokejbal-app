@@ -4,6 +4,7 @@ enum CompetitionDetailSection: String, CaseIterable, Hashable {
     case program = "Program"
     case results = "Výsledky"
     case table = "Tabulka"
+    case stats = "Statistiky"
     case news = "Zprávy"
 }
 
@@ -20,8 +21,10 @@ struct CompetitionDetailView: View {
     @State private var section: CompetitionDetailSection = .program
     @State private var matches: [Match] = []
     @State private var standings: [StandingRow] = []
+    @State private var players: [Player] = []
     @State private var articles: [NewsArticle] = []
     @State private var isLoading = false
+    @State private var isLoadingStats = false
     @State private var error: String?
 
     init(competitionId: String) {
@@ -63,6 +66,14 @@ struct CompetitionDetailView: View {
                             tableContent
                                 .padding(.bottom, 24)
                         }
+                    case .stats:
+                        CompetitionStatsPanel(
+                            competitionId: activeCompetitionId,
+                            matches: matches,
+                            standings: standings,
+                            players: players,
+                            isLoading: isLoadingStats
+                        )
                     case .news:
                         ScrollView {
                             newsContent
@@ -301,10 +312,14 @@ struct CompetitionDetailView: View {
             async let s = apiClient.api.standings(competitionId: id)
             async let n = apiClient.api.news(limit: 30)
             async let t = apiClient.api.teams(competitionId: id)
+            async let p = apiClient.api.players(teamId: nil, seasonId: nil, competitionId: id)
 
+            isLoadingStats = true
             matches = (try? await m) ?? []
             standings = (try? await s) ?? []
             articles = (try? await n) ?? []
+            players = (try? await p) ?? []
+            isLoadingStats = false
             if let teams = try? await t {
                 for team in teams { catalog.upsertTeam(team) }
             }

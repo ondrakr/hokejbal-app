@@ -18,6 +18,12 @@ export type Route =
   | { name: "team"; id: string }
   | { name: "player"; id: string }
   | { name: "competition"; id: string; day?: string }
+  | {
+      name: "competitionStats";
+      competitionId: string;
+      scope: "players" | "teams";
+      metric: string;
+    }
   | { name: "news" }
   | { name: "article"; id: string }
   | { name: "search" }

@@ -7,6 +7,7 @@ import { PhoneShell } from "@/components/PhoneShell";
 import { TabBar } from "@/components/ui";
 import { AmateurScreen } from "@/screens/AmateurScreen";
 import { CompetitionDetailScreen } from "@/screens/CompetitionDetailScreen";
+import { CompetitionStatsLeaderboardScreen } from "@/screens/CompetitionStatsScreen";
 import { FavoritesScreen } from "@/screens/FavoritesScreen";
 import { FantasyScreen } from "@/screens/FantasyScreen";
 import { HomeScreen } from "@/screens/HomeScreen";
@@ -63,6 +64,14 @@ function StackRouter() {
         return <PlayerDetailScreen id={top.id} />;
       case "competition":
         return <CompetitionDetailScreen id={top.id} day={top.day} />;
+      case "competitionStats":
+        return (
+          <CompetitionStatsLeaderboardScreen
+            competitionId={top.competitionId}
+            scope={top.scope}
+            metric={top.metric}
+          />
+        );
       case "news":
         return <NewsScreen />;
       case "article":
