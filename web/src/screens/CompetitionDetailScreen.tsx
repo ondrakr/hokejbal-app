@@ -66,7 +66,7 @@ export function CompetitionDetailScreen({ id }: { id: string }) {
       {!allMode && <UnderlineTabs tabs={TABS} value={tab} onChange={setTab} />}
       <div className="py-3">
         {(allMode || tab === "Zápasy") && (
-          <div className="mx-[var(--screen-pad)] overflow-hidden rounded-[var(--radius-md)] border border-[var(--card-stroke)]">
+          <div className="pb-1">
             {list.slice(0, 80).map((m) => (
               <MatchRow key={m.id} match={m} />
             ))}

@@ -1,21 +1,27 @@
 "use client";
 
-import { ScreenHeader } from "@/components/ui";
+import {
+  IconFlag,
+  IconGear,
+  IconHeadphones,
+  IconNews,
+  IconSearch,
+  IconTarget,
+  IconTrophy,
+  IconTv,
+} from "@/components/Icons";
+import { MoreMenuRow, ScreenHeader } from "@/components/ui";
 import { useNav } from "@/stores/navigation";
 
-const ITEMS: {
-  title: string;
-  subtitle: string;
-  action: "fantasy" | "tips" | "amateur" | "settings" | "search" | "news" | "live" | "media";
-}[] = [
-  { title: "Fantasy", subtitle: "Sestav tým a sbírej body", action: "fantasy" },
-  { title: "Tipovačka", subtitle: "Tipuj výsledky extraligy", action: "tips" },
-  { title: "Amatérské turnaje", subtitle: "Vlastní turnaje offline", action: "amateur" },
-  { title: "Nastavení", subtitle: "Sezóna a vzhled", action: "settings" },
-  { title: "Vyhledávání", subtitle: "Týmy, hráči, soutěže", action: "search" },
-  { title: "Novinky", subtitle: "Aktuality ze světa hokejbalu", action: "news" },
-  { title: "Živé přenosy", subtitle: "Live zápasy se streamem", action: "live" },
-  { title: "Dělníci hokejbalu", subtitle: "Videa a reportáže", action: "media" },
+const ITEMS = [
+  { title: "Fantasy", icon: <IconTrophy size={18} />, action: "fantasy" as const },
+  { title: "Tipovačka", icon: <IconTarget size={18} />, action: "tips" as const },
+  { title: "Amatérské turnaje", icon: <IconFlag size={18} />, action: "amateur" as const },
+  { title: "Nastavení", icon: <IconGear size={18} />, action: "settings" as const },
+  { title: "Vyhledávání", icon: <IconSearch size={18} />, action: "search" as const },
+  { title: "Novinky", icon: <IconNews size={18} />, action: "news" as const },
+  { title: "Živé přenosy", icon: <IconTv size={18} />, action: "live" as const },
+  { title: "Dělníci hokejbalu", icon: <IconHeadphones size={18} />, action: "media" as const },
 ];
 
 export function MoreScreen() {
@@ -23,13 +29,13 @@ export function MoreScreen() {
 
   return (
     <div className="hb-scroll hb-enter flex-1">
-      <ScreenHeader title="Více" large />
-      <div className="space-y-2 px-[var(--screen-pad)] pb-8">
+      <ScreenHeader title="Více" systemImage />
+      <div className="flex flex-col gap-2.5 px-4 pt-3 pb-6">
         {ITEMS.map((item) => (
-          <button
+          <MoreMenuRow
             key={item.title}
-            type="button"
-            className="hb-card flex w-full items-center justify-between px-4 py-3.5 text-left"
+            icon={item.icon}
+            title={item.title}
             onClick={() => {
               switch (item.action) {
                 case "fantasy":
@@ -58,13 +64,7 @@ export function MoreScreen() {
                   break;
               }
             }}
-          >
-            <div>
-              <div className="text-[15px] font-bold">{item.title}</div>
-              <div className="hb-muted">{item.subtitle}</div>
-            </div>
-            <span className="text-[var(--text-tertiary)]">›</span>
-          </button>
+          />
         ))}
       </div>
     </div>

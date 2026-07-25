@@ -4,7 +4,8 @@ import { useMemo, useState } from "react";
 import { addDays, format, parseISO, startOfDay } from "date-fns";
 import { cs } from "date-fns/locale";
 import { MatchRow } from "@/components/MatchRow";
-import { EmptyState, LoadingState, ScreenHeader } from "@/components/ui";
+import { IconSearch } from "@/components/Icons";
+import { EmptyState, LoadingState, ScreenHeader, SectionHeader } from "@/components/ui";
 import { dayKey, formatDayNum, formatShortDay, todayKey } from "@/lib/format";
 import { useCatalog } from "@/stores/catalog";
 import { useFavorites } from "@/stores/favorites";
@@ -57,19 +58,18 @@ export function MatchesScreen() {
     <div className="hb-scroll hb-enter flex-1">
       <ScreenHeader
         title="Zápasy"
-        large
         right={
           <button
             type="button"
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--card)] font-bold"
+            className="flex h-9 w-9 items-center justify-center"
             onClick={() => push({ name: "search" })}
           >
-            ⌕
+            <IconSearch size={16} />
           </button>
         }
       />
 
-      <div className="mb-3 flex gap-2 overflow-x-auto px-[var(--screen-pad)] pb-1">
+      <div className="mb-2 flex gap-2 overflow-x-auto px-4 py-2">
         {days.map((d) => {
           const active = d.key === selectedDay;
           return (
@@ -78,7 +78,7 @@ export function MatchesScreen() {
               type="button"
               onClick={() => setSelectedDay(d.key)}
               className={`relative flex w-12 shrink-0 flex-col items-center rounded-[14px] py-2 ${
-                active ? "bg-[var(--brand)] text-white" : "bg-[var(--card)]"
+                active ? "bg-[var(--brand)] text-white" : "hb-card !shadow-none"
               }`}
             >
               <span className="text-[10px] font-semibold uppercase opacity-80">
@@ -95,13 +95,13 @@ export function MatchesScreen() {
         })}
       </div>
 
-      <div className="px-[var(--screen-pad)] pb-2 text-[13px] font-semibold text-[var(--text-secondary)]">
+      <div className="px-4 pb-2 text-[13px] font-semibold text-[var(--text-secondary)]">
         {format(parseISO(selectedDay), "EEEE d. MMMM", { locale: cs })}
       </div>
 
       <button
         type="button"
-        className="mx-[var(--screen-pad)] mb-3 flex w-[calc(100%-32px)] items-center justify-between rounded-[var(--radius-md)] border border-[var(--card-stroke)] bg-[var(--card)] px-4 py-3 text-left"
+        className="hb-card mx-4 mb-3 flex w-[calc(100%-32px)] items-center justify-between px-4 py-3 text-left"
         onClick={() => push({ name: "competition", id: "all" })}
       >
         <span className="font-semibold">Všechny zápasy</span>
@@ -109,23 +109,13 @@ export function MatchesScreen() {
       </button>
 
       {byCompetition.map(({ competition, matches: list }) => (
-        <section key={competition!.id} className="mb-4">
-          <button
-            type="button"
-            onClick={() => push({ name: "competition", id: competition!.id })}
-            className="mb-1 flex w-full items-center justify-between px-[var(--screen-pad)]"
-          >
-            <div className="text-left">
-              <div className="text-[14px] font-bold">{competition!.name}</div>
-              <div className="hb-muted">{competition!.season}</div>
-            </div>
-            <span className="rounded-full bg-[var(--card-inset)] px-2 py-0.5 text-[12px] font-bold">
-              {list.length}
-            </span>
+        <section key={competition!.id} className="mb-3">
+          <button type="button" onClick={() => push({ name: "competition", id: competition!.id })}>
+            <SectionHeader title={competition!.shortName || competition!.name} />
           </button>
-          <div className="mx-[var(--screen-pad)] overflow-hidden rounded-[var(--radius-md)] border border-[var(--card-stroke)]">
+          <div className="pb-1">
             {list.map((m) => (
-              <MatchRow key={m.id} match={m} compact />
+              <MatchRow key={m.id} match={m} />
             ))}
           </div>
         </section>

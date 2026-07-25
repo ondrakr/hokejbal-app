@@ -1,8 +1,10 @@
 @import "tailwindcss";
 
+/* HB Arena — tokeny 1:1 z Theme.swift (iOS systemGrouped / label) */
 :root {
   --brand: #c92a2a;
   --brand-dark: #a92323;
+  --brand-bright: #d92e2e;
   --live: #db2626;
   --win: #2ea651;
   --draw: #bf8c1f;
@@ -10,14 +12,20 @@
   --on-brand: #ffffff;
   --ink: #171a21;
   --ink-soft: #292b36;
+  --ink-mid: #21242e;
+
   --canvas: #f2f2f7;
   --card: #ffffff;
   --card-inset: #e5e5ea;
-  --card-stroke: rgba(60, 60, 67, 0.18);
+  --surface: #ffffff;
+  --secondary-surface: #f2f2f7;
+  --separator: rgba(60, 60, 67, 0.29);
+  --card-stroke: rgba(60, 60, 67, 0.1305);
+
   --text-primary: #000000;
   --text-secondary: rgba(60, 60, 67, 0.6);
   --text-tertiary: rgba(60, 60, 67, 0.3);
-  --separator: rgba(60, 60, 67, 0.29);
+
   --radius-lg: 20px;
   --radius-md: 16px;
   --radius-sm: 10px;
@@ -25,27 +33,30 @@
   --phone-w: 390px;
   --phone-h: 844px;
   --safe-top: 47px;
-  --tab-h: 56px;
-  --font-display: var(--font-display), system-ui, sans-serif;
-  --font-body: var(--font-body), system-ui, sans-serif;
+  --tab-h: 49px;
+
+  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  --font-rounded: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 }
 
 [data-theme="dark"] {
   --canvas: #000000;
   --card: #1c1c1e;
   --card-inset: #2c2c2e;
-  --card-stroke: rgba(84, 84, 88, 0.45);
+  --surface: #000000;
+  --secondary-surface: #1c1c1e;
+  --separator: rgba(84, 84, 88, 0.65);
+  --card-stroke: rgba(84, 84, 88, 0.2925);
   --text-primary: #ffffff;
   --text-secondary: rgba(235, 235, 245, 0.6);
   --text-tertiary: rgba(235, 235, 245, 0.3);
-  --separator: rgba(84, 84, 88, 0.65);
 }
 
 @theme inline {
   --color-brand: var(--brand);
   --color-canvas: var(--canvas);
   --color-card: var(--card);
-  --font-sans: var(--font-body);
+  --font-sans: var(--font-ui);
 }
 
 * {
@@ -58,8 +69,9 @@ body {
   min-height: 100%;
   background: #0b0c10;
   color: var(--text-primary);
-  font-family: var(--font-body);
+  font-family: var(--font-ui);
   -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
 }
 
 button,
@@ -86,6 +98,7 @@ a {
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+  background: var(--canvas);
 }
 
 .hb-scroll::-webkit-scrollbar {
@@ -93,17 +106,16 @@ a {
   height: 0;
 }
 
+/* hbCard — Theme.swift */
 .hb-card {
   background: var(--card);
-  border: 1px solid var(--card-stroke);
   border-radius: var(--radius-md);
+  border: 0.75px solid var(--card-stroke);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.06);
 }
 
-.hb-section-title {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 1.125rem;
-  letter-spacing: -0.02em;
+.hb-card-lg {
+  border-radius: var(--radius-lg);
 }
 
 .hb-muted {
@@ -111,43 +123,59 @@ a {
   font-size: 0.8125rem;
 }
 
+.hb-display {
+  font-family: var(--font-rounded);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.hb-number {
+  font-family: var(--font-rounded);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
 .hb-brand-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
-  background: linear-gradient(135deg, #d92e2e, var(--brand-dark));
+  background: linear-gradient(135deg, var(--brand-bright), var(--brand-dark));
   color: var(--on-brand);
   font-weight: 700;
   border-radius: 999px;
   padding: 0.65rem 1.1rem;
 }
 
-.hb-live-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--live);
-  box-shadow: 0 0 0 0 rgba(219, 38, 38, 0.55);
-  animation: hb-pulse 1.6s ease-out infinite;
+.hb-accent-bar {
+  width: 5px;
+  height: 18px;
+  background: var(--brand);
+  clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
+  flex-shrink: 0;
 }
 
-@keyframes hb-pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(219, 38, 38, 0.55);
+.hb-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fff;
+  animation: hb-pulse-opacity 0.85s ease-in-out infinite alternate;
+}
+
+@keyframes hb-pulse-opacity {
+  from {
+    opacity: 1;
   }
-  70% {
-    box-shadow: 0 0 0 8px rgba(219, 38, 38, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(219, 38, 38, 0);
+  to {
+    opacity: 0.35;
   }
 }
 
 @keyframes hb-fade-up {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -156,5 +184,10 @@ a {
 }
 
 .hb-enter {
-  animation: hb-fade-up 0.28s ease-out both;
+  animation: hb-fade-up 0.22s ease-out both;
+}
+
+.hb-nav-bar {
+  background: var(--surface);
+  border-bottom: 0.5px solid var(--separator);
 }

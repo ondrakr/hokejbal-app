@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchLiveMatches } from "@/lib/api";
 import type { Match } from "@/lib/types";
-import { MatchRow, Pill } from "@/components/MatchRow";
-import { EmptyState, LoadingState, ScreenHeader } from "@/components/ui";
+import { LiveBadge, MatchRow, Pill, PillTrack } from "@/components/MatchRow";
+import { EmptyState, LoadingState, ScreenHeader, SectionHeader } from "@/components/ui";
 import { useCatalog } from "@/stores/catalog";
 import { useNav } from "@/stores/navigation";
 
@@ -54,39 +54,26 @@ export function LiveScreen() {
 
   return (
     <div className="hb-scroll hb-enter flex-1">
-      <ScreenHeader
-        title="LIVE"
-        large
-        right={
-          <div className="flex items-center gap-1 rounded-full bg-[var(--live)] px-2 py-1 text-[11px] font-bold text-white">
-            <span className="hb-live-dot !bg-white" />
-            LIVE
-          </div>
-        }
-      />
+      <ScreenHeader title="LIVE" right={<LiveBadge />} />
 
-      <div className="mb-3 flex gap-2 px-[var(--screen-pad)]">
+      <PillTrack>
         <Pill active={liveFilter === "all"} onClick={() => selectLive("all")}>
           Vše
         </Pill>
         <Pill active={liveFilter === "broadcasts"} onClick={() => selectLive("broadcasts")}>
           Živé přenosy
         </Pill>
-      </div>
+      </PillTrack>
 
       {loading && <LoadingState label="Načítám živé zápasy…" />}
 
       {!loading &&
         grouped.map(({ competition, matches: list }) => (
-          <section key={competition?.id ?? list[0]?.id} className="mb-4">
-            <div className="mb-1 px-[var(--screen-pad)] text-[14px] font-bold">
-              {competition?.name ?? "Soutěž"}
-            </div>
-            <div className="mx-[var(--screen-pad)] overflow-hidden rounded-[var(--radius-md)] border border-[var(--card-stroke)]">
-              {list.map((m) => (
-                <MatchRow key={m.id} match={m} compact />
-              ))}
-            </div>
+          <section key={competition?.id ?? list[0]?.id} className="mb-3">
+            <SectionHeader title={competition?.name ?? "Soutěž"} />
+            {list.map((m) => (
+              <MatchRow key={m.id} match={m} />
+            ))}
           </section>
         ))}
 

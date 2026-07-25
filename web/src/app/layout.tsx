@@ -1,17 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Manrope, Sora } from "next/font/google";
 import "./globals.css";
-
-const body = Manrope({
-  variable: "--font-body",
-  subsets: ["latin", "latin-ext"],
-});
-
-const display = Sora({
-  variable: "--font-display",
-  subsets: ["latin", "latin-ext"],
-  weight: ["600", "700", "800"],
-});
 
 export const metadata: Metadata = {
   title: "Hokejbal",
@@ -34,7 +22,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="cs">
-      <body className={`${body.variable} ${display.variable} antialiased`}>{children}</body>
+      <body className="antialiased">{children}</body>
     </html>
   );
 }

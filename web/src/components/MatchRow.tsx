@@ -1,81 +1,237 @@
 "use client";
 
 import type { Match, Team } from "@/lib/types";
-import { formatMatchTime } from "@/lib/format";
+import {
+  formatFinishedStamp,
+  formatMatchTime,
+  formatShortDate,
+  shortPeriodLabel,
+} from "@/lib/format";
+import { IconTv } from "@/components/Icons";
 import { useCatalog } from "@/stores/catalog";
 import { useNav } from "@/stores/navigation";
 
-function TeamMark({ team }: { team?: Team }) {
-  if (!team) return <div className="h-8 w-8 rounded-full bg-[var(--card-inset)]" />;
+export function TeamBadge({ team, size = 24 }: { team?: Team; size?: number }) {
+  if (!team) {
+    return <div style={{ width: size, height: size }} className="rounded-sm bg-[var(--card-inset)]" />;
+  }
   if (team.logoURL) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
-      <img src={team.logoURL} alt="" className="h-8 w-8 rounded-full object-cover" />
+      <img
+        src={team.logoURL}
+        alt=""
+        width={size}
+        height={size}
+        className="object-contain"
+        style={{ width: size, height: size }}
+      />
     );
   }
   return (
     <div
-      className="flex h-8 w-8 items-center justify-center rounded-full text-[10px] font-bold text-white"
-      style={{ background: team.primaryColorHex || "var(--brand)" }}
+      className="flex items-center justify-center font-bold"
+      style={{
+        width: size,
+        height: size,
+        fontSize: size * 0.34,
+        color: team.primaryColorHex || "var(--brand)",
+      }}
     >
       {team.logoInitials}
     </div>
   );
 }
 
-export function MatchRow({ match, compact }: { match: Match; compact?: boolean }) {
+export function LiveBadge({ compact = false }: { compact?: boolean }) {
+  return (
+    <span className="inline-flex shrink-0 items-center gap-[5px] rounded-full bg-[var(--live)] px-2 py-1 text-[11px] font-bold tracking-[0.4px] text-white">
+      <span className="hb-live-dot" />
+      {compact ? "LIVE" : "ŽIVĚ"}
+    </span>
+  );
+}
+
+/**
+ * 1:1 port MatchRowView.swift — elevated karta s accent stripem.
+ */
+export function MatchRow({
+  match,
+  showCompetition = false,
+  competitionName,
+  embedded = false,
+  width,
+}: {
+  match: Match;
+  showCompetition?: boolean;
+  competitionName?: string;
+  embedded?: boolean;
+  width?: number;
+}) {
   const { teamById, competitionById } = useCatalog();
   const { push } = useNav();
   const home = teamById(match.homeTeamId);
   const away = teamById(match.awayTeamId);
   const comp = competitionById(match.competitionId);
-  const live = match.status === "live";
-  const finished = match.status === "finished";
-  const showScore = live || finished;
+  const compLabel = competitionName ?? comp?.name;
+  const isBroadcast = Boolean(match.streamURL);
+  const homeLeads = match.status !== "scheduled" && match.homeScore > match.awayScore;
+  const awayLeads = match.status !== "scheduled" && match.awayScore > match.homeScore;
+
+  const accent =
+    match.status === "live"
+      ? "var(--live)"
+      : match.status === "scheduled"
+        ? "var(--brand)"
+        : match.status === "postponed"
+          ? "#f97316"
+          : "color-mix(in srgb, var(--brand) 35%, transparent)";
+
+  const scoreColor = (leads: boolean) => {
+    if (match.status === "live") return leads ? "var(--live)" : "var(--text-secondary)";
+    return leads ? "var(--text-primary)" : "var(--text-secondary)";
+  };
+
+  const headerLeading = (() => {
+    if (match.status === "finished") {
+      return (
+        <span className="truncate text-[10px] font-bold tracking-[0.3px] text-[var(--text-tertiary)]">
+          {formatFinishedStamp(match.scheduledAt)}
+        </span>
+      );
+    }
+    if (match.status === "scheduled") {
+      return (
+        <span className="truncate text-[10px] font-bold tracking-[0.3px] text-[var(--text-tertiary)]">
+          {formatShortDate(match.scheduledAt)}
+        </span>
+      );
+    }
+    if (match.status === "live") {
+      if (showCompetition && compLabel) {
+        return (
+          <span className="truncate text-[10px] font-bold tracking-[0.4px] text-[var(--text-tertiary)]">
+            {compLabel.toUpperCase()}
+          </span>
+        );
+      }
+      return (
+        <span className="truncate text-[10px] font-bold tracking-[0.4px] text-[var(--live)]">
+          {shortPeriodLabel(match.period)}
+        </span>
+      );
+    }
+    if (showCompetition && compLabel) {
+      return (
+        <span className="truncate text-[10px] font-bold tracking-[0.4px] text-[var(--text-tertiary)]">
+          {compLabel.toUpperCase()}
+        </span>
+      );
+    }
+    return null;
+  })();
+
+  const teamNameRow = (team: Team | undefined, emphasized: boolean) => (
+    <div className="flex min-w-0 items-center gap-2.5">
+      <div className="flex h-[26px] w-[26px] shrink-0 items-center justify-center">
+        <TeamBadge team={team} size={24} />
+      </div>
+      <span
+        className="truncate text-[15px]"
+        style={{
+          fontWeight: emphasized ? 700 : 600,
+          color: emphasized ? "var(--text-primary)" : "color-mix(in srgb, var(--text-primary) 88%, transparent)",
+        }}
+      >
+        {team?.shortName ?? "—"}
+      </span>
+    </div>
+  );
+
+  const teamRow = (team: Team | undefined, score: number, leads: boolean) => (
+    <div className="flex min-w-0 items-center gap-2.5">
+      <div className="flex h-[26px] w-[26px] shrink-0 items-center justify-center">
+        <TeamBadge team={team} size={24} />
+      </div>
+      <span
+        className="min-w-0 flex-1 truncate text-[15px]"
+        style={{
+          fontWeight: leads ? 700 : 500,
+          color: leads
+            ? "var(--text-primary)"
+            : "color-mix(in srgb, var(--text-primary) 82%, transparent)",
+        }}
+      >
+        {team?.shortName ?? "—"}
+      </span>
+      <span
+        className="hb-number min-w-[28px] text-right text-[20px]"
+        style={{
+          fontWeight: leads ? 800 : 600,
+          color: scoreColor(leads),
+        }}
+      >
+        {score}
+      </span>
+    </div>
+  );
+
+  const inner = (
+    <div className="flex">
+      <div className="w-1 shrink-0 self-stretch" style={{ background: accent }} />
+      <div className="flex min-w-0 flex-1 flex-col gap-[11px] px-[14px] py-[13px]">
+        <div className="flex items-center gap-1.5">
+          <div className="min-w-0 flex-1">{headerLeading}</div>
+          {isBroadcast && (
+            <span className="text-[var(--brand)]">
+              <IconTv size={12} />
+            </span>
+          )}
+          {match.status === "live" && <LiveBadge compact />}
+          {match.status === "finished" && (
+            <span className="rounded-full bg-[color-mix(in_srgb,var(--text-tertiary)_12%,transparent)] px-2 py-1 text-[11px] font-bold tracking-[0.3px] text-[var(--text-tertiary)]">
+              KONEC
+            </span>
+          )}
+          {match.status === "postponed" && (
+            <span className="rounded-full bg-orange-500/15 px-2 py-1 text-[11px] font-bold text-orange-500">
+              ODLOŽ.
+            </span>
+          )}
+        </div>
+
+        {match.status === "scheduled" ? (
+          <div className="flex items-center gap-3">
+            <div className="flex min-w-0 flex-1 flex-col gap-[9px]">
+              {teamNameRow(home, false)}
+              {teamNameRow(away, false)}
+            </div>
+            <span className="hb-number min-w-[56px] text-right text-[22px] font-extrabold text-[var(--brand)]">
+              {formatMatchTime(match.scheduledAt)}
+            </span>
+          </div>
+        ) : (
+          <>
+            {teamRow(home, match.homeScore, homeLeads)}
+            {teamRow(away, match.awayScore, awayLeads)}
+          </>
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <button
       type="button"
       onClick={() => push({ name: "match", id: match.id })}
-      className="flex w-full items-center gap-3 border-b border-[var(--separator)] bg-[var(--card)] px-[var(--screen-pad)] py-3 text-left transition active:bg-[var(--card-inset)]"
+      className={`block w-full text-left ${embedded ? "" : "px-4 py-[5px]"}`}
+      style={width ? { width } : undefined}
     >
-      <div className="w-12 shrink-0 text-center">
-        {live ? (
-          <div className="flex flex-col items-center gap-1">
-            <span className="hb-live-dot" />
-            <span className="text-[10px] font-bold text-[var(--live)]">LIVE</span>
-            {match.clock && <span className="text-[10px] text-[var(--text-secondary)]">{match.clock}</span>}
-          </div>
-        ) : (
-          <div className="text-[12px] font-semibold text-[var(--text-secondary)]">
-            {formatMatchTime(match.scheduledAt)}
-          </div>
-        )}
-      </div>
-      <div className="min-w-0 flex-1">
-        {!compact && comp && (
-          <div className="mb-1 truncate text-[11px] font-medium text-[var(--text-tertiary)]">
-            {comp.shortName || comp.name}
-          </div>
-        )}
-        <div className="flex items-center gap-2">
-          <TeamMark team={home} />
-          <span className="truncate text-[14px] font-semibold">{home?.shortName ?? "—"}</span>
-          {showScore && (
-            <span className="ml-auto font-[family-name:var(--font-display)] text-[16px] font-extrabold tabular-nums">
-              {match.homeScore}
-            </span>
-          )}
-        </div>
-        <div className="mt-1 flex items-center gap-2">
-          <TeamMark team={away} />
-          <span className="truncate text-[14px] font-semibold">{away?.shortName ?? "—"}</span>
-          {showScore && (
-            <span className="ml-auto font-[family-name:var(--font-display)] text-[16px] font-extrabold tabular-nums">
-              {match.awayScore}
-            </span>
-          )}
-        </div>
+      <div
+        className={`overflow-hidden ${embedded ? "hb-card h-full" : "hb-card"}`}
+        style={embedded ? { width: width ?? 250 } : undefined}
+      >
+        {inner}
       </div>
     </button>
   );
@@ -94,10 +250,10 @@ export function Pill({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-full px-3 py-1.5 text-[12px] font-semibold whitespace-nowrap ${
+      className={`flex-1 rounded-[10px] py-2 text-[12px] font-bold transition ${
         active
-          ? "bg-[var(--brand)] text-white"
-          : "bg-[var(--card-inset)] text-[var(--text-secondary)]"
+          ? "bg-[var(--card)] text-[var(--text-primary)] shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
+          : "text-[var(--text-secondary)]"
       }`}
     >
       {children}
@@ -105,6 +261,16 @@ export function Pill({
   );
 }
 
+/** HBPillSelector track */
+export function PillTrack({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="px-4 py-3">
+      <div className="flex gap-[3px] rounded-[12px] bg-[var(--card-inset)] p-1">{children}</div>
+    </div>
+  );
+}
+
+/** HBUnderlineTabs */
 export function UnderlineTabs({
   tabs,
   value,
@@ -115,22 +281,25 @@ export function UnderlineTabs({
   onChange: (v: string) => void;
 }) {
   return (
-    <div className="flex gap-4 overflow-x-auto border-b border-[var(--separator)] px-[var(--screen-pad)]">
-      {tabs.map((t) => (
-        <button
-          key={t}
-          type="button"
-          onClick={() => onChange(t)}
-          className={`relative shrink-0 pb-2.5 pt-2 text-[13px] font-semibold ${
-            value === t ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)]"
-          }`}
-        >
-          {t}
-          {value === t && (
-            <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-[var(--brand)]" />
-          )}
-        </button>
-      ))}
+    <div className="flex h-[46px] items-stretch gap-1 overflow-x-auto border-b border-[var(--separator)] bg-[var(--surface)] px-0.5">
+      {tabs.map((t) => {
+        const active = value === t;
+        return (
+          <button
+            key={t}
+            type="button"
+            onClick={() => onChange(t)}
+            className={`relative shrink-0 px-3 pt-3 text-[12px] font-bold tracking-[0.3px] uppercase ${
+              active ? "text-[var(--brand)]" : "text-[var(--text-tertiary)]"
+            }`}
+          >
+            {t}
+            {active && (
+              <span className="absolute inset-x-3 bottom-0 h-[3px] rounded-full bg-[var(--brand)]" />
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }

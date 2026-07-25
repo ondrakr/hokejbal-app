@@ -63,7 +63,7 @@ export function FavoritesScreen() {
       {tab === "Zápasy" && (
         <div className="mt-2">
           {favMatches.length ? (
-            <div className="mx-[var(--screen-pad)] overflow-hidden rounded-[var(--radius-md)] border border-[var(--card-stroke)]">
+            <div className="pb-2">
               {favMatches.slice(0, 40).map((m) => (
                 <MatchRow key={m.id} match={m} />
               ))}
