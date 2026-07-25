@@ -256,11 +256,11 @@ export function HomeScreen() {
               className="pointer-events-none absolute top-0 right-6 h-full w-[46px] bg-white/12"
               style={{ clipPath: "polygon(18px 0, 100% 0, calc(100% - 18px) 100%, 0 100%)" }}
             />
-            <div className="relative space-y-2">
-              <div className="text-[11px] font-bold tracking-[0.6px]">{banner.eyebrow}</div>
-              <div className="text-[18px] font-bold">{banner.title}</div>
-              <div className="text-[13px] font-medium opacity-90">{banner.subtitle}</div>
-              <span className="mt-1 inline-flex rounded-full bg-white/20 px-3 py-2 text-[12px] font-bold uppercase">
+            <div className="relative space-y-2 text-white">
+              <div className="text-[11px] font-bold tracking-[0.6px] text-white">{banner.eyebrow}</div>
+              <div className="text-[18px] font-bold text-white">{banner.title}</div>
+              <div className="text-[13px] font-medium text-white/90">{banner.subtitle}</div>
+              <span className="mt-1 inline-flex rounded-full bg-white/20 px-3 py-2 text-[12px] font-bold uppercase text-white">
                 {banner.ctaTitle}
               </span>
             </div>
