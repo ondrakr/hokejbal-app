@@ -329,6 +329,22 @@ export async function fetchStandings(competitionId: string): Promise<StandingRow
 }
 
 export async function fetchNews(limit = 20): Promise<NewsArticle[]> {
+  // 1) Stejně jako iOS: nejdřív živé články z hokejbal.cz (s fotkami).
+  try {
+    const url =
+      typeof window === "undefined"
+        ? `${process.env.NEXT_PUBLIC_SITE_URL ?? "http://127.0.0.1:3000"}/api/news?limit=${limit}`
+        : `/api/news?limit=${limit}`;
+    const res = await fetch(url, { cache: "no-store" });
+    if (res.ok) {
+      const json = (await res.json()) as { articles?: NewsArticle[] };
+      if (json.articles?.length) return json.articles;
+    }
+  } catch {
+    /* fallback níže */
+  }
+
+  // 2) Fallback: Supabase `news`
   const { data, error } = await getSupabase()
     .from("news")
     .select("*")
@@ -341,10 +357,52 @@ export async function fetchNews(limit = 20): Promise<NewsArticle[]> {
     summary: r.summary ?? "",
     category: r.category ?? "Aktuality",
     publishedAt: r.published_at,
-    photoURL: r.photo_url,
-    articleURL: r.article_url,
-    imageGradientIndex: i % 4,
+    photoURL: r.photo_url ?? null,
+    articleURL: r.article_url ?? null,
+    imageGradientIndex: r.image_gradient_index ?? i % 4,
   }));
+}
+
+/** Všechny kluby (loga) — doplněk k team_entries. */
+export async function fetchClubs(): Promise<Team[]> {
+  const { data, error } = await getSupabase()
+    .from("clubs")
+    .select("id,name,short_name,city,primary_color_hex,logo_initials,logo_url")
+    .order("name", { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map((c) => ({
+    id: c.id,
+    name: c.name,
+    shortName: c.short_name,
+    city: c.city,
+    primaryColorHex: c.primary_color_hex,
+    logoInitials: c.logo_initials,
+    logoURL: c.logo_url,
+    competitionId: "",
+  }));
+}
+
+/** Týmy pro sezónu — paralelní načtení po soutěžích (jako CatalogStore na iOS). */
+export async function fetchTeamsForSeason(seasonId: string): Promise<Team[]> {
+  const comps = await fetchCompetitions(seasonId);
+  const batches = await Promise.all(comps.map((c) => fetchTeams(c.id)));
+  const unique = new Map<string, Team>();
+  for (const batch of batches) {
+    for (const t of batch) unique.set(t.id, t);
+  }
+  // Doplň loga z clubs, pokud team_entries nemá URL.
+  const clubs = await fetchClubs();
+  for (const club of clubs) {
+    const existing = unique.get(club.id);
+    if (existing) {
+      if (!existing.logoURL && club.logoURL) {
+        unique.set(club.id, { ...existing, logoURL: club.logoURL });
+      }
+    } else {
+      unique.set(club.id, club);
+    }
+  }
+  return [...unique.values()];
 }
 
 export async function fetchPlayer(id: string): Promise<Player | null> {

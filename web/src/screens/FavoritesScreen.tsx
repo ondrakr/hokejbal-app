@@ -1,34 +1,26 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { PlayerAvatar, TeamBadge } from "@/components/Badges";
 import { MatchRow, UnderlineTabs } from "@/components/MatchRow";
 import { EmptyState, ScreenHeader } from "@/components/ui";
 import { playerFullName } from "@/lib/types";
 import { useCatalog } from "@/stores/catalog";
 import { useFavorites } from "@/stores/favorites";
 import { useNav } from "@/stores/navigation";
-import { fetchPlayers } from "@/lib/api";
-import { useEffect } from "react";
-import type { Player } from "@/lib/types";
+import { useMemo, useState } from "react";
 
 const TABS = ["Zápasy", "Týmy", "Hráči", "Soutěže"];
 
 export function FavoritesScreen() {
-  const { matches, teams, competitions } = useCatalog();
+  const { matches, teams, competitions, players: catalogPlayers } = useCatalog();
   const fav = useFavorites();
   const { push } = useNav();
   const [tab, setTab] = useState(TABS[0]);
-  const [players, setPlayers] = useState<Player[]>([]);
 
-  useEffect(() => {
-    if (!fav.players.length) {
-      setPlayers([]);
-      return;
-    }
-    void fetchPlayers().then((all) => {
-      setPlayers(all.filter((p) => fav.players.includes(p.id)));
-    });
-  }, [fav.players]);
+  const players = useMemo(
+    () => catalogPlayers.filter((p) => fav.players.includes(p.id)),
+    [catalogPlayers, fav.players]
+  );
 
   const favMatches = useMemo(() => {
     return matches.filter(
@@ -83,9 +75,12 @@ export function FavoritesScreen() {
               onClick={() => push({ name: "team", id: t.id })}
               className="hb-card flex w-full items-center justify-between px-4 py-3 text-left"
             >
-              <div>
-                <div className="font-bold">{t.name}</div>
-                <div className="hb-muted">{t.city}</div>
+              <div className="flex items-center gap-3">
+                <TeamBadge team={t} size={32} />
+                <div>
+                  <div className="font-bold">{t.name}</div>
+                  <div className="hb-muted">{t.city}</div>
+                </div>
               </div>
               <button
                 type="button"
@@ -112,10 +107,13 @@ export function FavoritesScreen() {
               onClick={() => push({ name: "player", id: p.id })}
               className="hb-card flex w-full items-center justify-between px-4 py-3 text-left"
             >
-              <div>
-                <div className="font-bold">{playerFullName(p)}</div>
-                <div className="hb-muted">
-                  #{p.number} · {p.points} b
+              <div className="flex items-center gap-3">
+                <PlayerAvatar player={p} size={36} />
+                <div>
+                  <div className="font-bold">{playerFullName(p)}</div>
+                  <div className="hb-muted">
+                    #{p.number} · {p.points} b
+                  </div>
                 </div>
               </div>
               <button

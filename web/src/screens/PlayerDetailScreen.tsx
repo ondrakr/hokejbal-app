@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { fetchPlayer, fetchPlayerHistory, fetchPlayers } from "@/lib/api";
 import type { Player, PlayerSeasonStat } from "@/lib/types";
 import { playerFullName, positionLabel } from "@/lib/types";
+import { PlayerAvatar } from "@/components/Badges";
 import { MatchRow, UnderlineTabs } from "@/components/MatchRow";
 import { BackButton, EmptyState, LoadingState, ScreenHeader } from "@/components/ui";
 import { useCatalog } from "@/stores/catalog";
@@ -78,9 +79,7 @@ export function PlayerDetailScreen({ id }: { id: string }) {
       />
       <div className="px-[var(--screen-pad)] py-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--ink)] text-xl font-bold text-white">
-            #{player.number}
-          </div>
+          <PlayerAvatar player={player} size={64} />
           <div>
             <h1 className="font-[family-name:var(--font-display)] text-[22px] font-extrabold">
               {playerFullName(player)}

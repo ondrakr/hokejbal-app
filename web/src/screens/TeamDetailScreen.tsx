@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { fetchPlayers, fetchStandings, fetchTeam } from "@/lib/api";
 import type { Player, StandingRow, Team } from "@/lib/types";
 import { playerFullName, positionLabel } from "@/lib/types";
+import { TeamBadge } from "@/components/Badges";
 import { MatchRow, UnderlineTabs } from "@/components/MatchRow";
 import { BackButton, EmptyState, LoadingState, ScreenHeader } from "@/components/ui";
 import { useCatalog } from "@/stores/catalog";
@@ -80,12 +81,7 @@ export function TeamDetailScreen({ id }: { id: string }) {
       />
       <div className="px-[var(--screen-pad)] py-4">
         <div className="flex items-center gap-3">
-          <div
-            className="flex h-16 w-16 items-center justify-center rounded-full text-lg font-bold text-white"
-            style={{ background: team.primaryColorHex }}
-          >
-            {team.logoInitials}
-          </div>
+          <TeamBadge team={team} size={64} />
           <div>
             <h1 className="font-[family-name:var(--font-display)] text-[22px] font-extrabold">{team.name}</h1>
             <div className="hb-muted">

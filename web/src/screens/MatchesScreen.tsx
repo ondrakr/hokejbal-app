@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { addDays, format, startOfDay } from "date-fns";
 import { cs } from "date-fns/locale";
+import { CompetitionBadge } from "@/components/Badges";
 import { IconChevronRight, IconSearch } from "@/components/Icons";
 import { EmptyState, LoadingState, ScreenHeader, SectionHeader } from "@/components/ui";
 import { dayKey, formatDayNum, todayKey } from "@/lib/format";
@@ -187,12 +188,8 @@ function CompetitionCard({
           <div className="flex h-[34px] w-[34px] items-center justify-center rounded-[9px] bg-[color-mix(in_srgb,var(--brand)_12%,transparent)] text-[var(--brand)]">
             ▤
           </div>
-        ) : competition?.logoURL ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={competition.logoURL} alt="" className="h-[30px] w-[30px] object-contain" />
         ) : (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src="/brand/BrandLogo.png" alt="" className="h-[30px] w-[30px] object-contain" />
+          <CompetitionBadge competition={competition} size={30} />
         )}
         <span className={`min-w-0 flex-1 text-[15px] ${brandIcon ? "font-bold" : "font-semibold"}`}>
           {title ?? competition?.name}

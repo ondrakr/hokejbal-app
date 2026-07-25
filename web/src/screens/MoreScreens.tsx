@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { formatNewsDate } from "@/lib/format";
 import { trustedOpenUrl } from "@/lib/supabase";
+import { CompetitionBadge, PlayerAvatar, TeamBadge } from "@/components/Badges";
 import { BackButton, EmptyState, ScreenHeader } from "@/components/ui";
 import { useCatalog } from "@/stores/catalog";
 import { useNav } from "@/stores/navigation";
@@ -72,18 +73,29 @@ export function ArticleScreen({ id }: { id: string }) {
 }
 
 export function SearchScreen() {
-  const { teams, competitions, matches } = useCatalog();
+  const { teams, competitions, matches, players, teamById } = useCatalog();
   const { pop, push } = useNav();
   const [q, setQ] = useState("");
   const query = q.trim().toLowerCase();
 
   const results = useMemo(() => {
-    if (query.length < 2) return { teams: [], competitions: [], matches: [] };
+    if (query.length < 2) {
+      return { teams: [], competitions: [], matches: [], players: [] };
+    }
+    const uniquePlayers = new Map(players.map((p) => [p.id, p]));
     return {
       teams: teams.filter(
         (t) => t.name.toLowerCase().includes(query) || t.shortName.toLowerCase().includes(query)
       ),
       competitions: competitions.filter((c) => c.name.toLowerCase().includes(query)),
+      players: [...uniquePlayers.values()]
+        .filter(
+          (p) =>
+            p.firstName.toLowerCase().includes(query) ||
+            p.lastName.toLowerCase().includes(query) ||
+            `${p.firstName} ${p.lastName}`.toLowerCase().includes(query)
+        )
+        .slice(0, 30),
       matches: matches
         .filter((m) => {
           const home = teams.find((t) => t.id === m.homeTeamId);
@@ -95,7 +107,7 @@ export function SearchScreen() {
         })
         .slice(0, 20),
     };
-  }, [query, teams, competitions, matches]);
+  }, [query, teams, competitions, matches, players]);
 
   return (
     <div className="hb-scroll hb-enter flex-1">
@@ -104,7 +116,7 @@ export function SearchScreen() {
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Tým, soutěž, zápas…"
+          placeholder="Tým, hráč, soutěž, zápas…"
           className="w-full rounded-[14px] border border-[var(--card-stroke)] bg-[var(--card)] px-4 py-3 outline-none focus:border-[var(--brand)]"
           autoFocus
         />
@@ -116,23 +128,46 @@ export function SearchScreen() {
               <button
                 key={t.id}
                 type="button"
-                className="hb-card mb-2 flex w-full px-4 py-3 text-left font-semibold"
+                className="hb-card mb-2 flex w-full items-center gap-3 px-4 py-3 text-left"
                 onClick={() => push({ name: "team", id: t.id })}
               >
-                {t.name}
+                <TeamBadge team={t} size={28} />
+                <span className="font-semibold">{t.name}</span>
               </button>
             ))}
             {!results.teams.length && <div className="hb-muted">Nic</div>}
+          </ResultGroup>
+          <ResultGroup title="Hráči">
+            {results.players.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                className="hb-card mb-2 flex w-full items-center gap-3 px-4 py-3 text-left"
+                onClick={() => push({ name: "player", id: p.id })}
+              >
+                <PlayerAvatar player={p} size={36} />
+                <div>
+                  <div className="font-semibold">
+                    {p.firstName} {p.lastName}
+                  </div>
+                  <div className="hb-muted">
+                    {teamById(p.teamId)?.shortName ?? p.teamId} · #{p.number}
+                  </div>
+                </div>
+              </button>
+            ))}
+            {!results.players.length && <div className="hb-muted">Nic</div>}
           </ResultGroup>
           <ResultGroup title="Soutěže">
             {results.competitions.map((c) => (
               <button
                 key={c.id}
                 type="button"
-                className="hb-card mb-2 flex w-full px-4 py-3 text-left font-semibold"
+                className="hb-card mb-2 flex w-full items-center gap-3 px-4 py-3 text-left"
                 onClick={() => push({ name: "competition", id: c.id })}
               >
-                {c.name}
+                <CompetitionBadge competition={c} size={28} />
+                <span className="font-semibold">{c.name}</span>
               </button>
             ))}
             {!results.competitions.length && <div className="hb-muted">Nic</div>}
@@ -145,10 +180,14 @@ export function SearchScreen() {
                 <button
                   key={m.id}
                   type="button"
-                  className="hb-card mb-2 flex w-full px-4 py-3 text-left font-semibold"
+                  className="hb-card mb-2 flex w-full items-center gap-3 px-4 py-3 text-left font-semibold"
                   onClick={() => push({ name: "match", id: m.id })}
                 >
-                  {home?.shortName} – {away?.shortName}
+                  <TeamBadge team={home} size={22} />
+                  <span>
+                    {home?.shortName} – {away?.shortName}
+                  </span>
+                  <TeamBadge team={away} size={22} />
                 </button>
               );
             })}

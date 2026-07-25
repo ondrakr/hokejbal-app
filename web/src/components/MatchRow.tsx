@@ -7,41 +7,10 @@ import {
   formatShortDate,
   shortPeriodLabel,
 } from "@/lib/format";
+import { TeamBadge } from "@/components/Badges";
 import { IconTv } from "@/components/Icons";
 import { useCatalog } from "@/stores/catalog";
 import { useNav } from "@/stores/navigation";
-
-export function TeamBadge({ team, size = 24 }: { team?: Team; size?: number }) {
-  if (!team) {
-    return <div style={{ width: size, height: size }} className="rounded-sm bg-[var(--card-inset)]" />;
-  }
-  if (team.logoURL) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={team.logoURL}
-        alt=""
-        width={size}
-        height={size}
-        className="object-contain"
-        style={{ width: size, height: size }}
-      />
-    );
-  }
-  return (
-    <div
-      className="flex items-center justify-center font-bold"
-      style={{
-        width: size,
-        height: size,
-        fontSize: size * 0.34,
-        color: team.primaryColorHex || "var(--brand)",
-      }}
-    >
-      {team.logoInitials}
-    </div>
-  );
-}
 
 export function LiveBadge({ compact = false }: { compact?: boolean }) {
   return (

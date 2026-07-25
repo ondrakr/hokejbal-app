@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchLiveMatches } from "@/lib/api";
 import type { Match } from "@/lib/types";
+import { CompetitionBadge } from "@/components/Badges";
 import { LiveBadge, MatchRow, Pill, PillTrack } from "@/components/MatchRow";
 import { EmptyState, LoadingState, ScreenHeader } from "@/components/ui";
 import { useCatalog } from "@/stores/catalog";
@@ -79,13 +80,7 @@ export function LiveScreen() {
                 className="mb-1 flex w-full items-center gap-2 bg-[var(--secondary-surface)] px-4 py-2.5 text-left"
                 onClick={() => push({ name: "competition", id: competition.id })}
               >
-                {competition.logoURL ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={competition.logoURL} alt="" className="h-[18px] w-[18px] object-contain" />
-                ) : (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src="/brand/BrandLogo.png" alt="" className="h-[18px] w-[18px] object-contain" />
-                )}
+                <CompetitionBadge competition={competition} size={18} />
                 <span className="flex-1 truncate text-[11px] font-semibold uppercase text-[var(--text-secondary)]">
                   {competition.name}
                 </span>
