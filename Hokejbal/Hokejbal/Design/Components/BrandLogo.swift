@@ -23,24 +23,39 @@ struct BrandLogoImage: View {
     }
 }
 
-/// Splash / loading obrazovka s oficiálním logem.
+/// Splash / loading — logo uprostřed; volitelná zpráva pod ním (lokální loadery).
 struct BrandLoadingView: View {
-    var message: String = "Načítám…"
+    var message: String? = nil
+    var logoSize: CGFloat = 132
+
+    @State private var visible = false
 
     var body: some View {
-        VStack(spacing: 20) {
-            BrandLogoImage(size: 128)
+        ZStack {
+            HBTheme.canvas
+                .ignoresSafeArea()
 
-            ProgressView()
-                .tint(HBTheme.brand)
+            VStack(spacing: 18) {
+                BrandLogoImage(size: logoSize)
+                    .scaleEffect(visible ? 1 : 0.94)
+                    .opacity(visible ? 1 : 0)
 
-            Text(message)
-                .font(.hbMontserrat(size: 14, weight: .medium))
-                .foregroundStyle(HBTheme.textSecondary)
+                if let message {
+                    ProgressView()
+                        .tint(HBTheme.brand)
+                    Text(message)
+                        .font(.hbMontserrat(size: 14, weight: .medium))
+                        .foregroundStyle(HBTheme.textSecondary)
+                }
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(HBTheme.surface.ignoresSafeArea())
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Hokejbal, \(message)")
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.4)) {
+                visible = true
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(message.map { "Hokejbal, \($0)" } ?? "Hokejbal, načítám")
     }
 }

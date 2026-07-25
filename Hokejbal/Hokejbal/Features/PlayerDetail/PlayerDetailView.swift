@@ -28,12 +28,19 @@ struct PlayerDetailView: View {
         return appearances.filter { $0.seasonId == selectedSeasonId }
     }
 
+    private var selectedSeasonStat: PlayerSeasonStat? {
+        guard let selectedSeasonId else { return history.first }
+        return history.first { $0.seasonId == selectedSeasonId } ?? history.first
+    }
+
     var body: some View {
         Group {
             if let player {
                 content(player)
             } else {
                 ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(HBTheme.canvas)
             }
         }
         .navigationBarTitleDisplayMode(.inline)
@@ -63,66 +70,96 @@ struct PlayerDetailView: View {
                 case .seasons:
                     ScrollView {
                         seasonsContent
-                            .padding(.bottom, 24)
+                            .padding(.bottom, 28)
                     }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(HBTheme.surface)
+            .background(HBTheme.canvas)
         }
-        .background(HBTheme.surface)
+        .background(HBTheme.canvas)
     }
 
     // MARK: - Header
 
     private func header(_ player: Player) -> some View {
         let team = catalog.team(player.teamId)
-        return HStack(alignment: .center, spacing: 14) {
-            ZStack {
-                Circle()
-                    .fill(HBTheme.brand.opacity(0.12))
-                Text("\(player.number)")
-                    .font(.hbMontserrat(size: 26, weight: .bold))
-                    .foregroundStyle(HBTheme.brand)
-                    .monospacedDigit()
-            }
-            .frame(width: 64, height: 64)
+        let stats = selectedSeasonStat
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(player.fullName)
-                    .font(.hbMontserrat(size: 22, weight: .bold))
-                    .foregroundStyle(HBTheme.textPrimary)
-                    .lineLimit(2)
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .center, spacing: 14) {
+                PlayerAvatar(player: player, size: 68)
 
-                Text(player.position.label.capitalized)
-                    .font(.hbMontserrat(size: 13, weight: .medium))
-                    .foregroundStyle(HBTheme.textSecondary)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(player.fullName)
+                        .font(.hbDisplay(size: 24, weight: .heavy))
+                        .foregroundStyle(HBTheme.textPrimary)
+                        .lineLimit(2)
 
-                if let team {
-                    NavigationLink {
-                        TeamDetailView(teamId: team.id)
-                    } label: {
-                        HStack(spacing: 6) {
-                            TeamBadge(team: team, size: 18)
-                            Text(team.shortName)
-                                .font(.hbMontserrat(size: 13, weight: .semibold))
-                                .foregroundStyle(HBTheme.textPrimary)
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 10, weight: .semibold))
-                                .foregroundStyle(HBTheme.textTertiary)
+                    if let team {
+                        NavigationLink {
+                            TeamDetailView(teamId: team.id)
+                        } label: {
+                            HStack(spacing: 6) {
+                                TeamBadge(team: team, size: 18)
+                                Text(team.shortName)
+                                    .font(.hbMontserrat(size: 13, weight: .semibold))
+                                    .foregroundStyle(HBTheme.textPrimary)
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundStyle(HBTheme.textTertiary)
+                            }
                         }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
-                    .padding(.top, 2)
                 }
+
+                Spacer(minLength: 0)
             }
 
-            Spacer(minLength: 0)
+            if let stats {
+                playerStatsStrip(stats)
+            }
         }
         .padding(.horizontal, HBTheme.screenPadding)
-        .padding(.top, 8)
-        .padding(.bottom, 14)
+        .padding(.top, 10)
+        .padding(.bottom, 16)
         .background(HBTheme.surface)
+    }
+
+    private func playerStatsStrip(_ stats: PlayerSeasonStat) -> some View {
+        HStack(spacing: 0) {
+            if stats.position == .goalie {
+                headerStat("Z", "\(stats.games)")
+                headerStat("%", String(format: "%.0f", stats.savePercentage ?? 0))
+                headerStat("GAA", String(format: "%.2f", stats.goalsAgainstAverage ?? 0))
+                headerStat("TM", "\(stats.penaltyMinutes)")
+            } else {
+                headerStat("Z", "\(stats.games)")
+                headerStat("G", "\(stats.goals)")
+                headerStat("A", "\(stats.assists)")
+                headerStat("KB", "\(stats.points)")
+                headerStat("TM", "\(stats.penaltyMinutes)")
+            }
+        }
+        .padding(.vertical, 12)
+        .background(HBTheme.cardInset, in: RoundedRectangle(cornerRadius: HBTheme.radiusMd, style: .continuous))
+    }
+
+    private func headerStat(_ label: String, _ value: String) -> some View {
+        VStack(spacing: 4) {
+            Text(label)
+                .font(.hbMontserrat(size: 10, weight: .bold))
+                .tracking(0.3)
+                .foregroundStyle(HBTheme.textTertiary)
+            Text(value)
+                .font(.hbNumber(size: 16, weight: .heavy))
+                .foregroundStyle(HBTheme.textPrimary)
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .frame(maxWidth: .infinity)
     }
 
     // MARK: - Matches
@@ -131,8 +168,8 @@ struct PlayerDetailView: View {
         VStack(spacing: 0) {
             if !seasonChips.isEmpty {
                 seasonChipRow
-                    .padding(.top, 10)
-                    .padding(.bottom, 6)
+                    .padding(.top, 12)
+                    .padding(.bottom, 8)
             }
 
             if filteredAppearances.isEmpty {
@@ -143,22 +180,19 @@ struct PlayerDetailView: View {
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                List {
-                    ForEach(filteredAppearances) { item in
-                        NavigationLink {
-                            MatchDetailView(matchId: item.match.id)
-                        } label: {
-                            playerMatchRow(item, focusTeamId: player.teamId)
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(filteredAppearances) { item in
+                            NavigationLink {
+                                MatchDetailView(matchId: item.match.id)
+                            } label: {
+                                playerMatchRow(item, focusTeamId: player.teamId)
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
-                        .hbHideDisclosure()
-                        .listRowInsets(EdgeInsets())
-                        .listRowBackground(HBTheme.surface)
-                        .listRowSeparator(.hidden)
                     }
+                    .padding(.bottom, 28)
                 }
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
             }
         }
     }
@@ -179,8 +213,12 @@ struct PlayerDetailView: View {
                             .padding(.vertical, 8)
                             .background(
                                 Capsule(style: .continuous)
-                                    .fill(selected ? HBTheme.brand : HBTheme.secondarySurface)
+                                    .fill(selected ? HBTheme.brand : HBTheme.card)
                             )
+                            .overlay {
+                                Capsule(style: .continuous)
+                                    .strokeBorder(selected ? Color.clear : HBTheme.cardStroke, lineWidth: 1)
+                            }
                     }
                     .buttonStyle(.plain)
                 }
@@ -214,18 +252,18 @@ struct PlayerDetailView: View {
                 .frame(height: 0.75)
                 .padding(.horizontal, 14)
 
-            HStack(spacing: 12) {
+            HStack(spacing: 0) {
                 appearanceStat("G", "\(item.goals)")
                 appearanceStat("A", "\(item.assists)")
                 appearanceStat("KB", "\(item.points)")
                 appearanceStat("TM", "\(item.penaltyMinutes)")
 
-                Spacer(minLength: 0)
+                Spacer(minLength: 8)
 
                 if match.status == .finished {
                     Text(match.homeScore == match.awayScore ? "R" : (focusWon ? "V" : "P"))
                         .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(HBTheme.onBrand)
+                        .foregroundStyle(.white)
                         .frame(width: 22, height: 22)
                         .background(
                             (match.homeScore == match.awayScore
@@ -233,26 +271,22 @@ struct PlayerDetailView: View {
                              : (focusWon ? HBTheme.win : HBTheme.loss)),
                             in: RoundedRectangle(cornerRadius: 4, style: .continuous)
                         )
+                        .padding(.trailing, 4)
                 }
             }
-            .padding(.horizontal, 14)
+            .padding(.horizontal, 6)
             .padding(.vertical, 10)
+            .background(HBTheme.cardInset, in: RoundedRectangle(cornerRadius: HBTheme.radiusSm, style: .continuous))
+            .padding(.horizontal, 10)
+            .padding(.bottom, 10)
+            .padding(.top, 8)
         }
+        .background(HBTheme.card)
+        .clipShape(RoundedRectangle(cornerRadius: HBTheme.radiusMd, style: .continuous))
         .hbCard(cornerRadius: HBTheme.radiusMd)
         .padding(.horizontal, HBTheme.screenPadding)
         .padding(.vertical, 5)
         .contentShape(Rectangle())
-    }
-
-    private func appearanceStat(_ label: String, _ value: String) -> some View {
-        HStack(spacing: 3) {
-            Text(label)
-                .font(.hbMontserrat(size: 11, weight: .semibold))
-                .foregroundStyle(HBTheme.textTertiary)
-            Text(value)
-                .font(.system(size: 13, weight: .semibold).monospacedDigit())
-                .foregroundStyle(HBTheme.textPrimary)
-        }
     }
 
     // MARK: - Seasons
@@ -263,29 +297,30 @@ struct PlayerDetailView: View {
                 EmptyStateView(icon: "calendar", title: "Bez historie", message: "Zatím nemáme sezónní statistiky.")
                     .padding(.top, 40)
             } else {
-                VStack(spacing: 0) {
+                VStack(spacing: 10) {
                     ForEach(history) { row in
-                        seasonRow(row)
+                        seasonCard(row)
                     }
                 }
-                .padding(.top, 8)
+                .padding(.horizontal, HBTheme.screenPadding)
+                .padding(.top, 12)
             }
         }
     }
 
-    private func seasonRow(_ row: PlayerSeasonStat) -> some View {
+    private func seasonCard(_ row: PlayerSeasonStat) -> some View {
         let team = catalog.team(row.clubId)
-        return VStack(alignment: .leading, spacing: 10) {
+        return VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
                 if let team {
                     TeamBadge(team: team, size: 28)
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(row.competitionName)
-                        .font(.hbMontserrat(size: 14, weight: .semibold))
+                        .font(.hbMontserrat(size: 14, weight: .bold))
                         .foregroundStyle(HBTheme.textPrimary)
                         .lineLimit(2)
-                    Text("\(team?.shortName ?? "") · \(row.seasonLabel)")
+                    Text("\(team?.shortName ?? "Tým") · \(row.seasonLabel)")
                         .font(.hbMontserrat(size: 12, weight: .medium))
                         .foregroundStyle(HBTheme.textSecondary)
                         .lineLimit(1)
@@ -295,35 +330,38 @@ struct PlayerDetailView: View {
 
             HStack(spacing: 0) {
                 if row.position == .goalie {
-                    seasonStat("Z", "\(row.games)")
-                    seasonStat("%", String(format: "%.0f", row.savePercentage ?? 0))
-                    seasonStat("GAA", String(format: "%.2f", row.goalsAgainstAverage ?? 0))
-                    seasonStat("TM", "\(row.penaltyMinutes)")
+                    appearanceStat("Z", "\(row.games)")
+                    appearanceStat("%", String(format: "%.0f", row.savePercentage ?? 0))
+                    appearanceStat("GAA", String(format: "%.2f", row.goalsAgainstAverage ?? 0))
+                    appearanceStat("TM", "\(row.penaltyMinutes)")
                 } else {
-                    seasonStat("Z", "\(row.games)")
-                    seasonStat("KB", "\(row.points)")
-                    seasonStat("G", "\(row.goals)")
-                    seasonStat("A", "\(row.assists)")
-                    seasonStat("TM", "\(row.penaltyMinutes)")
+                    appearanceStat("Z", "\(row.games)")
+                    appearanceStat("G", "\(row.goals)")
+                    appearanceStat("A", "\(row.assists)")
+                    appearanceStat("KB", "\(row.points)")
+                    appearanceStat("TM", "\(row.penaltyMinutes)")
                 }
             }
+            .padding(.vertical, 10)
+            .background(HBTheme.cardInset, in: RoundedRectangle(cornerRadius: HBTheme.radiusSm, style: .continuous))
         }
-        .padding(.horizontal, HBTheme.screenPadding)
-        .padding(.vertical, 12)
-        .overlay(alignment: .bottom) {
-            Rectangle().fill(HBTheme.separator).frame(height: 0.5)
-        }
+        .padding(14)
+        .hbCard(cornerRadius: HBTheme.radiusMd)
     }
 
-    private func seasonStat(_ label: String, _ value: String) -> some View {
+    /// Společná buňka statistik pro Zápasy i Sezóny.
+    private func appearanceStat(_ label: String, _ value: String) -> some View {
         VStack(spacing: 3) {
             Text(label)
-                .font(.hbMontserrat(size: 10, weight: .semibold))
+                .font(.hbMontserrat(size: 10, weight: .bold))
+                .tracking(0.3)
                 .foregroundStyle(HBTheme.textTertiary)
             Text(value)
-                .font(.hbMontserrat(size: 14, weight: .bold))
+                .font(.hbNumber(size: 14, weight: .heavy))
                 .foregroundStyle(HBTheme.textPrimary)
                 .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
         }
         .frame(maxWidth: .infinity)
     }
@@ -337,8 +375,20 @@ struct PlayerDetailView: View {
 
         var collected: [PlayerMatchAppearance] = []
         var seen = Set<String>()
+        var matchesByCompetition: [String: [Match]] = [:]
+
         for row in history {
-            let matches = (try? await apiClient.api.matches(query: MatchesQuery(competitionId: row.competitionId))) ?? []
+            let matches: [Match]
+            if let cached = matchesByCompetition[row.competitionId] {
+                matches = cached
+            } else {
+                let loaded = await MatchListCache.shared.matches(
+                    competitionId: row.competitionId,
+                    using: apiClient.api
+                )
+                matchesByCompetition[row.competitionId] = loaded
+                matches = loaded
+            }
             for match in matches {
                 guard !seen.contains(match.id) else { continue }
                 let goals = match.events.filter { $0.kind == .goal && $0.playerId == playerId }.count

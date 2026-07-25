@@ -12,9 +12,15 @@ final class LiveScoreService: ObservableObject {
     private var cursor: String?
     private var task: Task<Void, Never>?
     private let interval: Duration
-    private var previousScores: [String: String] = [:]
+    private var previousScores: [String: (home: Int, away: Int)] = [:]
+    private var previousStatus: [String: MatchStatus] = [:]
+    private var lastKnownById: [String: Match] = [:]
+    private var previouslyLiveIds: Set<String> = []
+    private var finishedAnnouncedIds: Set<String> = []
 
-    var onGoal: ((Match) -> Void)?
+    /// `(match, scoringTeamId)` — scoringTeamId je tým, který právě skóroval.
+    var onGoal: ((Match, String?) -> Void)?
+    var onMatchFinished: ((Match) -> Void)?
 
     init(intervalSeconds: Double = 8) {
         self.interval = .seconds(intervalSeconds)
@@ -41,14 +47,30 @@ final class LiveScoreService: ObservableObject {
         await poll(api: api)
     }
 
+    /// Po změně data source — ať nevzniknou falešné góly ze starých skóre.
+    func resetTrackingState() {
+        previousScores = [:]
+        previousStatus = [:]
+        lastKnownById = [:]
+        previouslyLiveIds = []
+        finishedAnnouncedIds = []
+        liveMatches = []
+        cursor = nil
+    }
+
     private func poll(api: any HokejbalAPI) async {
         do {
             let response = try await api.liveMatches(since: cursor)
             detectGoals(in: response.matches)
+            detectFinished(in: response.matches)
             let sorted = response.matches.sorted { $0.scheduledAt < $1.scheduledAt }
-            // Nepropisuj stejný stav — zbytečné překreslení celé appky.
             let changed = sorted.count != liveMatches.count
-                || zip(sorted, liveMatches).contains { $0.id != $1.id || $0.scoreText != $1.scoreText || $0.clock != $1.clock }
+                || zip(sorted, liveMatches).contains {
+                    $0.id != $1.id
+                        || $0.scoreText != $1.scoreText
+                        || $0.clock != $1.clock
+                        || $0.status != $1.status
+                }
             if changed {
                 liveMatches = sorted
             }
@@ -56,11 +78,11 @@ final class LiveScoreService: ObservableObject {
             cursor = response.cursor
             errorMessage = nil
         } catch {
-            // Remote zatím není – při mocku by chyba neměla nastat
             errorMessage = error.localizedDescription
             if liveMatches.isEmpty {
-                // fallback: načti z matches?status=live
                 if let matches = try? await api.matches(query: MatchesQuery(status: .live)) {
+                    detectGoals(in: matches)
+                    detectFinished(in: matches)
                     liveMatches = matches
                 }
             }
@@ -69,11 +91,49 @@ final class LiveScoreService: ObservableObject {
 
     private func detectGoals(in matches: [Match]) {
         for match in matches {
-            let key = match.scoreText
-            if let previous = previousScores[match.id], previous != key {
-                onGoal?(match)
+            let current = (home: match.homeScore, away: match.awayScore)
+            if let previous = previousScores[match.id], match.status == .live {
+                let homeUp = current.home > previous.home
+                let awayUp = current.away > previous.away
+                if homeUp || awayUp {
+                    var scoringId: String? = homeUp ? match.homeTeamId : match.awayTeamId
+                    if homeUp && awayUp {
+                        scoringId = match.events.last(where: { $0.kind == .goal })?.teamId
+                    } else if let lastGoal = match.events.last(where: { $0.kind == .goal }) {
+                        scoringId = lastGoal.teamId
+                    }
+                    onGoal?(match, scoringId)
+                }
             }
-            previousScores[match.id] = key
+            previousScores[match.id] = current
+            lastKnownById[match.id] = match
+            previousStatus[match.id] = match.status
         }
+    }
+
+    private func detectFinished(in matches: [Match]) {
+        let currentLiveIds = Set(matches.filter { $0.status == .live }.map(\.id))
+
+        for match in matches {
+            lastKnownById[match.id] = match
+
+            if match.status == .finished,
+               !finishedAnnouncedIds.contains(match.id),
+               (previousStatus[match.id] == .live || previouslyLiveIds.contains(match.id)) {
+                finishedAnnouncedIds.insert(match.id)
+                onMatchFinished?(match)
+            }
+            previousStatus[match.id] = match.status
+        }
+
+        for id in previouslyLiveIds where !currentLiveIds.contains(id) {
+            guard !finishedAnnouncedIds.contains(id), var known = lastKnownById[id] else { continue }
+            finishedAnnouncedIds.insert(id)
+            known.status = .finished
+            lastKnownById[id] = known
+            onMatchFinished?(known)
+        }
+
+        previouslyLiveIds = currentLiveIds
     }
 }

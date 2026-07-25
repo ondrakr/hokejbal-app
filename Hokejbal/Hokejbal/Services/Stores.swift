@@ -1,5 +1,6 @@
 import Foundation
 import UserNotifications
+import UIKit
 
 @MainActor
 final class FavoritesStore: ObservableObject {
@@ -16,10 +17,18 @@ final class FavoritesStore: ObservableObject {
     private let competitionsKey = "hb.fav.competitions"
 
     init() {
-        teamIDs = Set(defaults.stringArray(forKey: teamsKey) ?? ["hostivar", "letohrad"])
-        playerIDs = Set(defaults.stringArray(forKey: playersKey) ?? ["cejka"])
-        matchIDs = Set(defaults.stringArray(forKey: matchesKey) ?? [])
-        competitionSlugs = Set(defaults.stringArray(forKey: competitionsKey) ?? [])
+        // Prázdné výchozí — mock ID (hostivar…) v Supabase neexistují.
+        if defaults.object(forKey: teamsKey) == nil {
+            teamIDs = []
+            playerIDs = []
+            matchIDs = []
+            competitionSlugs = []
+        } else {
+            teamIDs = Set(defaults.stringArray(forKey: teamsKey) ?? [])
+            playerIDs = Set(defaults.stringArray(forKey: playersKey) ?? [])
+            matchIDs = Set(defaults.stringArray(forKey: matchesKey) ?? [])
+            competitionSlugs = Set(defaults.stringArray(forKey: competitionsKey) ?? [])
+        }
     }
 
     func isFavorite(team id: String) -> Bool { teamIDs.contains(id) }
@@ -90,6 +99,115 @@ final class MatchAlertsStore: ObservableObject {
 
     private func persist() {
         defaults.set(Array(mutedMatchIDs), forKey: key)
+    }
+}
+
+/// Soutěže a týmy zobrazené ve slideru Zápasů na Domů.
+@MainActor
+final class HomeMatchFeedStore: ObservableObject {
+    @Published private(set) var competitionSlugs: Set<String>
+    @Published private(set) var teamIDs: Set<String>
+
+    private let defaults = UserDefaults.standard
+    private let competitionsKey = "hb.home.feed.competitions"
+    private let teamsKey = "hb.home.feed.teams"
+    private let seededKey = "hb.home.feed.seeded"
+
+    var hasSelection: Bool {
+        !competitionSlugs.isEmpty || !teamIDs.isEmpty
+    }
+
+    var selectionSummary: String {
+        var parts: [String] = []
+        if !competitionSlugs.isEmpty {
+            parts.append("\(competitionSlugs.count) soutěží")
+        }
+        if !teamIDs.isEmpty {
+            parts.append("\(teamIDs.count) týmů")
+        }
+        return parts.isEmpty ? "Nic nevybráno" : parts.joined(separator: " · ")
+    }
+
+    init() {
+        competitionSlugs = Set(defaults.stringArray(forKey: competitionsKey) ?? [])
+        teamIDs = Set(defaults.stringArray(forKey: teamsKey) ?? [])
+    }
+
+    func includes(match: Match, catalog: CatalogStore) -> Bool {
+        guard hasSelection else { return false }
+        if teamIDs.contains(match.homeTeamId) || teamIDs.contains(match.awayTeamId) {
+            return true
+        }
+        if let slug = catalog.competitions.first(where: { $0.id == match.competitionId })?.slug,
+           competitionSlugs.contains(slug) {
+            return true
+        }
+        return false
+    }
+
+    func isCompetitionSelected(_ competition: Competition) -> Bool {
+        competitionSlugs.contains(competition.slug)
+    }
+
+    func isTeamSelected(_ teamId: String) -> Bool {
+        teamIDs.contains(teamId)
+    }
+
+    func toggleCompetition(_ competition: Competition) {
+        if competitionSlugs.contains(competition.slug) {
+            competitionSlugs.remove(competition.slug)
+        } else {
+            competitionSlugs.insert(competition.slug)
+        }
+        persist()
+    }
+
+    func toggleTeam(_ teamId: String) {
+        if teamIDs.contains(teamId) {
+            teamIDs.remove(teamId)
+        } else {
+            teamIDs.insert(teamId)
+        }
+        persist()
+    }
+
+    func selectAllCompetitions(_ competitions: [Competition]) {
+        competitionSlugs = Set(competitions.map(\.slug))
+        persist()
+    }
+
+    func clearCompetitions() {
+        competitionSlugs = []
+        persist()
+    }
+
+    func clearTeams() {
+        teamIDs = []
+        persist()
+    }
+
+    func clearAll() {
+        competitionSlugs = []
+        teamIDs = []
+        persist()
+    }
+
+    /// Při první instalaci předvybere Extraligu (nebo první soutěž).
+    func seedDefaultsIfNeeded(competitions: [Competition]) {
+        guard !defaults.bool(forKey: seededKey) else { return }
+        defaults.set(true, forKey: seededKey)
+        guard competitionSlugs.isEmpty, teamIDs.isEmpty, !competitions.isEmpty else { return }
+        if let extraliga = competitions.first(where: { $0.slug == "extraliga" }) {
+            competitionSlugs = [extraliga.slug]
+        } else {
+            competitionSlugs = [competitions[0].slug]
+        }
+        persist()
+    }
+
+    private func persist() {
+        defaults.set(Array(competitionSlugs), forKey: competitionsKey)
+        defaults.set(Array(teamIDs), forKey: teamsKey)
     }
 }
 
@@ -187,6 +305,44 @@ final class NotificationSettingsStore: ObservableObject {
 
     private let defaults = UserDefaults.standard
 
+    var isSystemAuthorized: Bool {
+        switch authorizationStatus {
+        case .authorized, .provisional, .ephemeral: return true
+        default: return false
+        }
+    }
+
+    var systemStatusTitle: String {
+        switch authorizationStatus {
+        case .authorized, .provisional, .ephemeral: return "Povoleno"
+        case .denied: return "Zakázáno"
+        case .notDetermined: return "Nenastaveno"
+        @unknown default: return "—"
+        }
+    }
+
+    var systemStatusDetail: String {
+        switch authorizationStatus {
+        case .authorized, .provisional, .ephemeral:
+            return "Systémová upozornění jsou aktivní. In-app bannery fungují i bez nich."
+        case .denied:
+            return "Notifikace jsou v iOS vypnuté. Zapni je v Nastavení systému."
+        case .notDetermined:
+            return "Pro banner nahoře v appce stačí nastavení níže. Pro upozornění mimo appku povol systémová oprávnění."
+        @unknown default:
+            return ""
+        }
+    }
+
+    var activeLiveTypesSummary: String {
+        var parts: [String] = []
+        if goalsEnabled { parts.append("Góly") }
+        if matchStartEnabled { parts.append("Začátky") }
+        if finalScoreEnabled { parts.append("Konce") }
+        if parts.isEmpty { return "Vypnuto" }
+        return parts.joined(separator: " · ")
+    }
+
     init() {
         goalsEnabled = defaults.object(forKey: "hb.notif.goals") as? Bool ?? true
         matchStartEnabled = defaults.object(forKey: "hb.notif.start") as? Bool ?? true
@@ -211,16 +367,57 @@ final class NotificationSettingsStore: ObservableObject {
         }
     }
 
+    func openSystemSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
+    }
+
     /// Lokální demo notifikace (při napojení API nahradí push z backendu).
-    func scheduleDemoGoalNotification(home: String, away: String, score: String) {
+    func scheduleDemoGoalNotification(home: String, away: String, score: String, matchId: String? = nil) {
         guard goalsEnabled else { return }
         let content = UNMutableNotificationContent()
         content.title = "GÓL!"
         content.body = "\(home) – \(away) \(score)"
         content.sound = .default
+        if let matchId {
+            content.userInfo = ["matchId": matchId, "kind": "goal"]
+        }
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
         let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
         UNUserNotificationCenter.current().add(request)
+    }
+
+    func scheduleDemoFinalNotification(home: String, away: String, score: String, matchId: String? = nil) {
+        guard finalScoreEnabled else { return }
+        let content = UNMutableNotificationContent()
+        content.title = "KONEC"
+        content.body = "\(home) – \(away) \(score)"
+        content.sound = .default
+        if let matchId {
+            content.userInfo = ["matchId": matchId, "kind": "final"]
+        }
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+        let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
+        UNUserNotificationCenter.current().add(request)
+    }
+
+    /// Má se pro daný zápas posílat upozornění (gól / konec)?
+    func shouldNotify(
+        match: Match,
+        matchAlerts: MatchAlertsStore,
+        favorites: FavoritesStore
+    ) -> Bool {
+        let favMatch = favorites.isFavorite(match: match.id)
+        let favTeam = favorites.isFavorite(team: match.homeTeamId)
+            || favorites.isFavorite(team: match.awayTeamId)
+        let matchAlertOn = matchAlerts.isEnabled(matchId: match.id)
+
+        // Ztlumený zápas (zvonek) → nikdy neposílat.
+        guard matchAlertOn else { return false }
+        if onlyFavorites {
+            return favTeam || favMatch
+        }
+        return true
     }
 }
 
@@ -242,11 +439,17 @@ final class CatalogStore: ObservableObject {
             let competitionList = try await comps
             competitions = competitionList
 
-            // Týmy ze všech soutěží aktuální sezóny (dedupe podle club id).
+            // Paralelní načtení týmů ze všech soutěží (místo N+1 sekvenčně).
             var teams: [Team] = []
-            for comp in competitionList {
-                let t = try await api.teams(competitionId: comp.id)
-                teams.append(contentsOf: t)
+            await withTaskGroup(of: [Team].self) { group in
+                for comp in competitionList {
+                    group.addTask {
+                        (try? await api.teams(competitionId: comp.id)) ?? []
+                    }
+                }
+                for await batch in group {
+                    teams.append(contentsOf: batch)
+                }
             }
             var unique: [String: Team] = [:]
             for t in teams { unique[t.id] = t }
@@ -255,7 +458,8 @@ final class CatalogStore: ObservableObject {
             arePlayersLoaded = false
             playersById = [:]
         } catch {
-            isLoaded = false
+            // I při chybě uvolníme splash — UI ukáže prázdné stavy.
+            isLoaded = true
         }
     }
 

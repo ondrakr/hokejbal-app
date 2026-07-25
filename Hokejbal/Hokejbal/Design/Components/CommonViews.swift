@@ -7,19 +7,12 @@ struct TeamBadge: View {
     var body: some View {
         Group {
             if let logoURL = team.logoURL, let url = URL(string: logoURL) {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let img):
-                        img
-                            .resizable()
-                            .scaledToFit()
-                    case .empty:
-                        initials
-                    case .failure:
-                        initials
-                    @unknown default:
-                        initials
-                    }
+                HBCachedAsyncImage(url: url) { img in
+                    img
+                        .resizable()
+                        .scaledToFit()
+                } placeholder: {
+                    initials
                 }
             } else {
                 initials
@@ -37,6 +30,53 @@ struct TeamBadge: View {
     }
 }
 
+/// Profilová fotka hráče s fallbackem na iniciály.
+struct PlayerAvatar: View {
+    let player: Player
+    var size: CGFloat = 48
+    var cornerRadius: CGFloat? = nil
+
+    private var radius: CGFloat { cornerRadius ?? size * 0.22 }
+
+    var body: some View {
+        Group {
+            if let url = player.photoURLValue {
+                HBCachedAsyncImage(url: url) { img in
+                    img
+                        .resizable()
+                        .scaledToFill()
+                } placeholder: {
+                    placeholder
+                }
+            } else {
+                placeholder
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: radius, style: .continuous)
+                .strokeBorder(Color.black.opacity(0.08), lineWidth: 0.5)
+        }
+        .accessibilityLabel(player.fullName)
+    }
+
+    private var placeholder: some View {
+        ZStack {
+            HBTheme.brand.opacity(0.12)
+            Text(initials)
+                .font(.hbMontserrat(size: size * 0.32, weight: .bold))
+                .foregroundStyle(HBTheme.brand)
+        }
+    }
+
+    private var initials: String {
+        let f = player.firstName.prefix(1).uppercased()
+        let l = player.lastName.prefix(1).uppercased()
+        return "\(f)\(l)"
+    }
+}
+
 struct CompetitionBadge: View {
     let competition: Competition
     var size: CGFloat = 36
@@ -44,19 +84,12 @@ struct CompetitionBadge: View {
     var body: some View {
         Group {
             if let logoURL = competition.logoURL, let url = URL(string: logoURL) {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let img):
-                        img
-                            .resizable()
-                            .scaledToFit()
-                    case .empty:
-                        fallback
-                    case .failure:
-                        fallback
-                    @unknown default:
-                        fallback
-                    }
+                HBCachedAsyncImage(url: url) { img in
+                    img
+                        .resizable()
+                        .scaledToFit()
+                } placeholder: {
+                    fallback
                 }
             } else {
                 fallback
@@ -183,6 +216,44 @@ struct EmptyStateView: View {
     }
 }
 
+/// Ikona hokejbalového míčku (oranžový míček s otvory — ne hokejový puk).
+struct HokejbalBallIcon: View {
+    var size: CGFloat = 12
+    var color: Color = .white
+
+    var body: some View {
+        Canvas { context, canvasSize in
+            let rect = CGRect(origin: .zero, size: canvasSize)
+            let ball = Path(ellipseIn: rect.insetBy(dx: 0.5, dy: 0.5))
+            context.fill(ball, with: .color(color))
+
+            // Otvorový vzor typický pro hokejbalový míček
+            let holeColor = Color.black.opacity(0.28)
+            let holes: [(CGFloat, CGFloat, CGFloat)] = [
+                (0.30, 0.28, 0.13),
+                (0.68, 0.26, 0.12),
+                (0.50, 0.50, 0.14),
+                (0.28, 0.70, 0.12),
+                (0.70, 0.68, 0.13),
+                (0.48, 0.78, 0.10)
+            ]
+            for (x, y, r) in holes {
+                let holeRect = CGRect(
+                    x: canvasSize.width * x - canvasSize.width * r,
+                    y: canvasSize.height * y - canvasSize.height * r,
+                    width: canvasSize.width * r * 2,
+                    height: canvasSize.height * r * 2
+                )
+                context.fill(Path(ellipseIn: holeRect), with: .color(holeColor))
+            }
+
+            context.stroke(ball, with: .color(Color.black.opacity(0.2)), lineWidth: max(0.6, size * 0.06))
+        }
+        .frame(width: size, height: size)
+        .accessibilityHidden(true)
+    }
+}
+
 struct SectionHeaderLabel: View {
     let title: String
     var trailing: String? = nil
@@ -234,10 +305,11 @@ struct HBSkew: Shape {
 }
 
 /// Sekční hlavička s diagonálním akcentem + volitelný „Vše“ trailing.
-struct HBSectionHeader<Trailing: View>: View {
+struct HBSectionHeader<Trailing: View, TitleAccessory: View>: View {
     let title: String
     var accent: Color = HBTheme.brand
     @ViewBuilder var trailing: () -> Trailing
+    @ViewBuilder var titleAccessory: () -> TitleAccessory
 
     var body: some View {
         HStack(spacing: 10) {
@@ -246,6 +318,7 @@ struct HBSectionHeader<Trailing: View>: View {
                 .font(.hbDisplay(size: 17, weight: .heavy))
                 .tracking(0.5)
                 .foregroundStyle(HBTheme.textPrimary)
+            titleAccessory()
             Spacer(minLength: 8)
             trailing()
         }
@@ -253,9 +326,15 @@ struct HBSectionHeader<Trailing: View>: View {
     }
 }
 
-extension HBSectionHeader where Trailing == EmptyView {
+extension HBSectionHeader where Trailing == EmptyView, TitleAccessory == EmptyView {
     init(_ title: String, accent: Color = HBTheme.brand) {
-        self.init(title: title, accent: accent, trailing: { EmptyView() })
+        self.init(title: title, accent: accent, trailing: { EmptyView() }, titleAccessory: { EmptyView() })
+    }
+}
+
+extension HBSectionHeader where TitleAccessory == EmptyView {
+    init(title: String, accent: Color = HBTheme.brand, @ViewBuilder trailing: @escaping () -> Trailing) {
+        self.init(title: title, accent: accent, trailing: trailing, titleAccessory: { EmptyView() })
     }
 }
 
@@ -391,20 +470,24 @@ struct NewsThumbnail: View {
     var body: some View {
         ZStack {
             gradient
-            AsyncImage(url: article.photoURL, transaction: .init(animation: .easeOut(duration: 0.25))) { phase in
-                if case .success(let image) = phase {
-                    image.resizable().scaledToFill().transition(.opacity)
-                } else {
-                    Color.clear
-                }
+            HBCachedAsyncImage(url: article.photoURL) { image in
+                image
+                    .resizable()
+                    .scaledToFill()
+                    .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+                    .clipped()
+            } placeholder: {
+                Color.clear
             }
         }
+        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+        .clipped()
+        .contentShape(Rectangle())
         .overlay(alignment: .bottomLeading) {
             if showsCategory {
                 CategoryTag(title: article.category)
                     .padding(12)
             }
         }
-        .clipped()
     }
 }

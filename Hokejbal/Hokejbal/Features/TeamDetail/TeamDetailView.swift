@@ -88,14 +88,30 @@ struct TeamDetailView: View {
     }
 
     private func header(_ team: Team) -> some View {
-        HStack(alignment: .center, spacing: 14) {
-            TeamBadge(team: team, size: 64)
+        let form = TeamFormCalculator.items(from: matches, teamId: team.id)
 
-            Text(team.shortName)
-                .font(.hbMontserrat(size: 26, weight: .bold))
-                .foregroundStyle(HBTheme.textPrimary)
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center, spacing: 14) {
+                TeamBadge(team: team, size: 64)
 
-            Spacer(minLength: 0)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(team.shortName)
+                        .font(.hbMontserrat(size: 26, weight: .bold))
+                        .foregroundStyle(HBTheme.textPrimary)
+
+                    if !form.isEmpty {
+                        HStack(spacing: 8) {
+                            Text("FORMA")
+                                .font(.hbMontserrat(size: 10, weight: .bold))
+                                .tracking(0.5)
+                                .foregroundStyle(HBTheme.textTertiary)
+                            TeamFormBadges(items: form, size: 20)
+                        }
+                    }
+                }
+
+                Spacer(minLength: 0)
+            }
         }
         .padding(.horizontal, HBTheme.screenPadding)
         .padding(.top, 8)
@@ -162,13 +178,7 @@ struct TeamDetailView: View {
                             } label: {
                                 HStack(spacing: 12) {
                                     ZStack(alignment: .bottomTrailing) {
-                                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                            .fill(HBTheme.tertiarySurface)
-                                            .frame(width: 48, height: 48)
-                                            .overlay {
-                                                Image(systemName: "person.fill")
-                                                    .foregroundStyle(HBTheme.textTertiary)
-                                            }
+                                        PlayerAvatar(player: player, size: 48)
 
                                         Text("\(player.number)")
                                             .font(.system(size: 10, weight: .bold).monospacedDigit())
@@ -306,63 +316,13 @@ struct TeamDetailView: View {
     }
 
     private var tableSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if standings.isEmpty {
-                EmptyStateView(icon: "list.number", title: "Bez tabulky", message: "Tabulka pro tuto soutěž není k dispozici.")
-                    .padding(.top, 40)
-            } else {
-                HStack {
-                    Text("#").frame(width: 28, alignment: .leading)
-                    Text("Tým").frame(maxWidth: .infinity, alignment: .leading)
-                    Text("Z").frame(width: 28)
-                    Text("B").frame(width: 32)
-                    Text("Skóre").frame(width: 56, alignment: .trailing)
-                }
-                .font(.hbMontserrat(size: 11, weight: .semibold))
-                .foregroundStyle(HBTheme.textTertiary)
-                .padding(.horizontal, HBTheme.screenPadding)
-                .padding(.vertical, 10)
-
-                ForEach(standings) { row in
-                    let isFocus = row.teamId == teamId
-                    HStack(spacing: 10) {
-                        Text("\(row.rank)")
-                            .font(.hbMontserrat(size: 13, weight: .bold))
-                            .foregroundStyle(isFocus ? HBTheme.brand : HBTheme.textSecondary)
-                            .frame(width: 28, alignment: .leading)
-
-                        if let t = catalog.team(row.teamId) {
-                            TeamBadge(team: t, size: 22)
-                            Text(t.shortName)
-                                .font(.hbMontserrat(size: 14, weight: isFocus ? .bold : .semibold))
-                                .foregroundStyle(HBTheme.textPrimary)
-                                .lineLimit(1)
-                        } else {
-                            Text(row.teamId)
-                                .font(.hbMontserrat(size: 14, weight: .medium))
-                        }
-
-                        Spacer(minLength: 0)
-
-                        Text("\(row.played)")
-                            .font(.system(size: 13).monospacedDigit())
-                            .frame(width: 28)
-                        Text("\(row.points)")
-                            .font(.system(size: 13, weight: .bold).monospacedDigit())
-                            .foregroundStyle(HBTheme.brand)
-                            .frame(width: 32)
-                        Text(row.scoreText)
-                            .font(.system(size: 12).monospacedDigit())
-                            .foregroundStyle(HBTheme.textSecondary)
-                            .frame(width: 56, alignment: .trailing)
-                    }
-                    .padding(.horizontal, HBTheme.screenPadding)
-                    .padding(.vertical, 10)
-                    .background(isFocus ? HBTheme.brand.opacity(0.08) : Color.clear)
-                }
-            }
-        }
-        .padding(.top, 8)
+        let slug = catalog.competitions.first { $0.id == team?.competitionId }?.slug
+        return StandingsTableView(
+            rows: standings,
+            highlightTeamIds: [teamId],
+            emptyMessage: "Tabulka pro tuto soutěž není k dispozici.",
+            competitionSlug: slug
+        )
     }
 
     private func load() async {

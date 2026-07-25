@@ -4,21 +4,39 @@ import SwiftUI
 @MainActor
 final class AppTabRouter: ObservableObject {
     enum Tab: Int { case home = 0, matches, live, favorites, more }
+
+    enum LiveFilter: String, CaseIterable, Hashable {
+        case all = "Vše"
+        case broadcasts = "Živé přenosy"
+    }
+
     @Published var selection: Int = Tab.home.rawValue
+    @Published var liveFilter: LiveFilter = .all
 
     func select(_ tab: Tab) { selection = tab.rawValue }
+
+    func selectLive(filter: LiveFilter = .all) {
+        liveFilter = filter
+        selection = Tab.live.rawValue
+    }
+}
+
+private struct InAppMatchRoute: Identifiable, Hashable {
+    let id: String
 }
 
 struct MainTabView: View {
     @EnvironmentObject private var tabRouter: AppTabRouter
     @EnvironmentObject private var apiClient: APIClient
     @EnvironmentObject private var catalog: CatalogStore
-    @EnvironmentObject private var seasons: SeasonStore
     @EnvironmentObject private var favorites: FavoritesStore
-    @EnvironmentObject private var notifications: NotificationSettingsStore
     @EnvironmentObject private var liveScores: LiveScoreService
-    @EnvironmentObject private var competitionOrder: CompetitionOrderStore
     @EnvironmentObject private var matchAlerts: MatchAlertsStore
+    @EnvironmentObject private var idleTimer: IdleTimerController
+    @EnvironmentObject private var banners: InAppBannerCenter
+    @EnvironmentObject private var tips: MatchTipStore
+
+    @State private var presentedMatch: InAppMatchRoute?
 
     var body: some View {
         TabView(selection: $tabRouter.selection) {
@@ -47,39 +65,34 @@ struct MainTabView: View {
         .tint(HBTheme.brand)
         .toolbarBackground(HBTheme.surface, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
-        .task {
-            await seasons.load(using: apiClient.api)
-            let currentSeasonId = seasons.seasons.first(where: \.isCurrent)?.id ?? seasons.seasons.first?.id
-            seasons.selectedSeasonId = currentSeasonId
-            await catalog.load(using: apiClient.api, seasonId: currentSeasonId)
-            competitionOrder.sync(with: catalog.competitions)
-
-            liveScores.onGoal = { [weak notifications, weak catalog, weak matchAlerts] match in
-                guard let notifications, notifications.goalsEnabled else { return }
-                guard let matchAlerts, matchAlerts.isEnabled(matchId: match.id) else { return }
-                let home = catalog?.team(match.homeTeamId)?.shortName ?? "?"
-                let away = catalog?.team(match.awayTeamId)?.shortName ?? "?"
-                notifications.scheduleDemoGoalNotification(home: home, away: away, score: match.scoreText)
-            }
-            liveScores.start { apiClient.api }
-            await notifications.refreshAuthorization()
-
-            try? await Task.sleep(for: .milliseconds(800))
-            await catalog.loadPlayersIfNeeded(using: apiClient.api, seasonId: currentSeasonId)
+        .overlay(alignment: .top) {
+            InAppBannerOverlay()
+                .zIndex(1000)
         }
-        .onChange(of: apiClient.source) { _, _ in
-            Task {
-                await seasons.load(using: apiClient.api)
-                let currentSeasonId = seasons.seasons.first(where: \.isCurrent)?.id ?? seasons.seasons.first?.id
-                seasons.selectedSeasonId = currentSeasonId
-                await catalog.load(using: apiClient.api, seasonId: currentSeasonId)
-                competitionOrder.sync(with: catalog.competitions)
-                await liveScores.pollOnce(using: apiClient.api)
-                await catalog.loadPlayersIfNeeded(using: apiClient.api, seasonId: currentSeasonId)
-            }
+        .onChange(of: tabRouter.selection) { _, _ in
+            idleTimer.allowSleep()
         }
-        .onChange(of: catalog.competitions) { _, comps in
-            competitionOrder.sync(with: comps)
+        .onChange(of: banners.openMatchId) { _, matchId in
+            guard let matchId else { return }
+            presentedMatch = InAppMatchRoute(id: matchId)
+            _ = banners.consumeOpenMatch()
+        }
+        .sheet(item: $presentedMatch) { route in
+            NavigationStack {
+                MatchDetailView(matchId: route.id)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Zavřít") { presentedMatch = nil }
+                        }
+                    }
+            }
+            .environmentObject(apiClient)
+            .environmentObject(catalog)
+            .environmentObject(liveScores)
+            .environmentObject(matchAlerts)
+            .environmentObject(favorites)
+            .environmentObject(banners)
+            .environmentObject(tips)
         }
     }
 }

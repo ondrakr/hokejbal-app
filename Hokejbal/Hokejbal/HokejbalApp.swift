@@ -12,14 +12,21 @@ struct HokejbalApp: App {
     @StateObject private var competitionOrder = CompetitionOrderStore()
     @StateObject private var matchAlerts = MatchAlertsStore()
     @StateObject private var tabRouter = AppTabRouter()
+    @StateObject private var idleTimer = IdleTimerController()
+    @StateObject private var homeMatchFeed = HomeMatchFeedStore()
+    @StateObject private var fantasySquad = FantasySquadStore()
+    @StateObject private var amateurTournaments = AmateurTournamentStore()
+    @StateObject private var matchTips = MatchTipStore()
+    @StateObject private var inAppBanners = InAppBannerCenter()
 
     init() {
         HBAppearance.apply()
+        UIApplication.shared.isIdleTimerDisabled = false
     }
 
     var body: some Scene {
         WindowGroup {
-            MainTabView()
+            AppRootView()
                 .environmentObject(apiClient)
                 .environmentObject(catalog)
                 .environmentObject(seasons)
@@ -30,9 +37,19 @@ struct HokejbalApp: App {
                 .environmentObject(competitionOrder)
                 .environmentObject(matchAlerts)
                 .environmentObject(tabRouter)
+                .environmentObject(idleTimer)
+                .environmentObject(homeMatchFeed)
+                .environmentObject(fantasySquad)
+                .environmentObject(amateurTournaments)
+                .environmentObject(matchTips)
+                .environmentObject(inAppBanners)
                 .tint(HBTheme.brand)
                 .preferredColorScheme(appearanceStore.appearance.colorScheme)
-                .background(HBTheme.surface)
+                .background(HBTheme.canvas)
+                .onAppear {
+                    IdleTimerAccess.controller = idleTimer
+                    idleTimer.allowSleep()
+                }
         }
     }
 }

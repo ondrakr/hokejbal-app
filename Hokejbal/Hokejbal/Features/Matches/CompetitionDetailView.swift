@@ -1,7 +1,8 @@
 import SwiftUI
 
 enum CompetitionDetailSection: String, CaseIterable, Hashable {
-    case matches = "Zápasy"
+    case program = "Program"
+    case results = "Výsledky"
     case table = "Tabulka"
     case news = "Zprávy"
 }
@@ -16,7 +17,7 @@ struct CompetitionDetailView: View {
     @State private var activeCompetitionId: String
     @State private var competition: Competition?
     @State private var seasonOptions: [Competition] = []
-    @State private var section: CompetitionDetailSection = .matches
+    @State private var section: CompetitionDetailSection = .program
     @State private var matches: [Match] = []
     @State private var standings: [StandingRow] = []
     @State private var articles: [NewsArticle] = []
@@ -53,8 +54,10 @@ struct CompetitionDetailView: View {
                     ContentUnavailableView("Chyba", systemImage: "exclamationmark.triangle", description: Text(error))
                 } else {
                     switch section {
-                    case .matches:
-                        matchesContent
+                    case .program:
+                        programContent
+                    case .results:
+                        resultsContent
                     case .table:
                         ScrollView {
                             tableContent
@@ -166,41 +169,44 @@ struct CompetitionDetailView: View {
         }
     }
 
-    // MARK: - Matches
+    // MARK: - Program / Výsledky
 
-    private var matchesContent: some View {
+    private var programContent: some View {
+        matchListContent(
+            matches: upcomingMatches,
+            emptyIcon: "calendar",
+            emptyTitle: "Bez programu",
+            emptyMessage: "Pro tento ročník zatím nejsou naplánované zápasy."
+        )
+    }
+
+    private var resultsContent: some View {
+        matchListContent(
+            matches: finishedMatches,
+            emptyIcon: "flag.checkered",
+            emptyTitle: "Bez výsledků",
+            emptyMessage: "Pro tento ročník zatím nejsou odehrané zápasy."
+        )
+    }
+
+    private func matchListContent(
+        matches: [Match],
+        emptyIcon: String,
+        emptyTitle: String,
+        emptyMessage: String
+    ) -> some View {
         Group {
-            if upcomingMatches.isEmpty && finishedMatches.isEmpty {
+            if matches.isEmpty {
                 EmptyStateView(
-                    icon: "sportscourt",
-                    title: "Bez zápasů",
-                    message: "Pro tento ročník zatím nejsou zápasy."
+                    icon: emptyIcon,
+                    title: emptyTitle,
+                    message: emptyMessage
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List {
-                    if !upcomingMatches.isEmpty {
-                        Section {
-                            ForEach(upcomingMatches) { match in
-                                matchLink(match)
-                            }
-                        } header: {
-                            Text("NADCHÁZEJÍCÍ")
-                                .font(.hbMontserrat(size: 12, weight: .bold))
-                                .foregroundStyle(HBTheme.textTertiary)
-                        }
-                    }
-
-                    if !finishedMatches.isEmpty {
-                        Section {
-                            ForEach(finishedMatches) { match in
-                                matchLink(match)
-                            }
-                        } header: {
-                            Text("VÝSLEDKY")
-                                .font(.hbMontserrat(size: 12, weight: .bold))
-                                .foregroundStyle(HBTheme.textTertiary)
-                        }
+                    ForEach(matches) { match in
+                        matchLink(match)
                     }
                 }
                 .listStyle(.plain)
@@ -232,84 +238,12 @@ struct CompetitionDetailView: View {
     // MARK: - Table
 
     private var tableContent: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if standings.isEmpty {
-                EmptyStateView(icon: "list.number", title: "Bez tabulky", message: "Tabulka pro tento ročník není k dispozici.")
-                    .padding(.top, 40)
-            } else {
-                HStack {
-                    Text("#").frame(width: 28, alignment: .leading)
-                    Text("Tým").frame(maxWidth: .infinity, alignment: .leading)
-                    Text("Z").frame(width: 28)
-                    Text("B").frame(width: 32)
-                    Text("Skóre").frame(width: 56, alignment: .trailing)
-                }
-                .font(.hbMontserrat(size: 11, weight: .semibold))
-                .foregroundStyle(HBTheme.textTertiary)
-                .padding(.horizontal, HBTheme.screenPadding)
-                .padding(.vertical, 10)
-
-                ForEach(standings) { row in
-                    standingRow(row)
-                }
-            }
-        }
-        .padding(.top, 8)
-    }
-
-    private func standingRow(_ row: StandingRow) -> some View {
-        let team = catalog.team(row.teamId)
-        return HStack(spacing: 8) {
-            NavigationLink {
-                TeamDetailView(teamId: row.teamId)
-            } label: {
-                HStack(spacing: 10) {
-                    Text("\(row.rank)")
-                        .font(.hbMontserrat(size: 13, weight: .bold))
-                        .foregroundStyle(HBTheme.textSecondary)
-                        .frame(width: 28, alignment: .leading)
-
-                    if let team {
-                        TeamBadge(team: team, size: 22)
-                        Text(team.shortName)
-                            .font(.hbMontserrat(size: 14, weight: .semibold))
-                            .foregroundStyle(HBTheme.textPrimary)
-                            .lineLimit(1)
-                    } else {
-                        Text(row.teamId)
-                            .font(.hbMontserrat(size: 14, weight: .medium))
-                    }
-
-                    Spacer(minLength: 0)
-
-                    Text("\(row.played)")
-                        .font(.system(size: 13).monospacedDigit())
-                        .frame(width: 28)
-                    Text("\(row.points)")
-                        .font(.system(size: 13, weight: .bold).monospacedDigit())
-                        .foregroundStyle(HBTheme.brand)
-                        .frame(width: 32)
-                    Text(row.scoreText)
-                        .font(.system(size: 12).monospacedDigit())
-                        .foregroundStyle(HBTheme.textSecondary)
-                        .frame(width: 56, alignment: .trailing)
-                }
-            }
-            .buttonStyle(.plain)
-
-            FavoriteStarButton(
-                isFavorite: favorites.isFavorite(team: row.teamId),
-                accessibilityLabel: "Oblíbený tým"
-            ) {
-                favorites.toggleTeam(row.teamId)
-            }
-        }
-        .padding(.leading, HBTheme.screenPadding)
-        .padding(.trailing, 8)
-        .padding(.vertical, 10)
-        .overlay(alignment: .bottom) {
-            Rectangle().fill(HBTheme.separator).frame(height: 0.5)
-        }
+        StandingsTableView(
+            rows: standings,
+            showsFavoriteStar: true,
+            emptyMessage: "Tabulka pro tento ročník není k dispozici.",
+            competitionSlug: competition?.slug
+        )
     }
 
     // MARK: - News

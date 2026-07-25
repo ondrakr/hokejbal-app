@@ -208,7 +208,10 @@ struct MatchesByCompetitionView: View {
     private func load() async {
         isLoading = true
         defer { isLoading = false }
-        allMatches = (try? await apiClient.api.matches(query: MatchesQuery())) ?? []
+        allMatches = await MatchListCache.shared.seasonMatches(
+            using: apiClient.api,
+            seasonId: nil
+        )
     }
 }
 
@@ -351,11 +354,16 @@ struct DayMatchesView: View {
         isLoading = true
         error = nil
         defer { isLoading = false }
-        do {
-            allMatches = try await apiClient.api.matches(query: MatchesQuery(competitionId: competitionId))
-        } catch {
-            self.error = error.localizedDescription
-            allMatches = []
+        if let competitionId {
+            allMatches = await MatchListCache.shared.matches(
+                competitionId: competitionId,
+                using: apiClient.api
+            )
+        } else {
+            allMatches = await MatchListCache.shared.seasonMatches(
+                using: apiClient.api,
+                seasonId: nil
+            )
         }
     }
 }

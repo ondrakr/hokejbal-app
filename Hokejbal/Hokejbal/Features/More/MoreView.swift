@@ -2,6 +2,8 @@ import SwiftUI
 
 /// Záložka Více.
 struct MoreView: View {
+    @EnvironmentObject private var tabRouter: AppTabRouter
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -47,9 +49,43 @@ struct MoreView: View {
             }
             .buttonStyle(.plain)
 
-        case .url(let url):
-            Link(destination: url) {
-                MoreMenuRowLabel(item: item, showsExternalHint: true)
+        case .media:
+            NavigationLink {
+                MediaView()
+            } label: {
+                MoreMenuRowLabel(item: item)
+            }
+            .buttonStyle(.plain)
+
+        case .liveStreams:
+            Button {
+                tabRouter.selectLive(filter: .broadcasts)
+            } label: {
+                MoreMenuRowLabel(item: item)
+            }
+            .buttonStyle(.plain)
+
+        case .fantasy:
+            NavigationLink {
+                FantasyView()
+            } label: {
+                MoreMenuRowLabel(item: item)
+            }
+            .buttonStyle(.plain)
+
+        case .amateur:
+            NavigationLink {
+                AmateurTournamentsView()
+            } label: {
+                MoreMenuRowLabel(item: item)
+            }
+            .buttonStyle(.plain)
+
+        case .tips:
+            NavigationLink {
+                TipovaniView()
+            } label: {
+                MoreMenuRowLabel(item: item)
             }
             .buttonStyle(.plain)
         }
@@ -58,7 +94,6 @@ struct MoreView: View {
 
 private struct MoreMenuRowLabel: View {
     let item: MoreMenuItem
-    var showsExternalHint: Bool = false
 
     var body: some View {
         HStack(spacing: 14) {
@@ -74,7 +109,7 @@ private struct MoreMenuRowLabel: View {
 
             Spacer(minLength: 0)
 
-            Image(systemName: showsExternalHint ? "arrow.up.right" : "chevron.right")
+            Image(systemName: "chevron.right")
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(HBTheme.textTertiary)
         }
@@ -86,45 +121,64 @@ private struct MoreMenuRowLabel: View {
 }
 
 private enum MoreMenuItem: String, CaseIterable, Identifiable {
+    case fantasy
+    case tips
+    case amateur
     case settings
     case search
     case news
-    case fantasy
+    case liveStreams
+    case media
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
+        case .fantasy: return "Fantasy"
+        case .tips: return "Tipovačka"
+        case .amateur: return "Amatérské turnaje"
         case .settings: return "Nastavení"
         case .search: return "Vyhledávání"
         case .news: return "Novinky"
-        case .fantasy: return "Fantasy"
+        case .liveStreams: return "Živé přenosy"
+        case .media: return "Dělníci hokejbalu"
         }
     }
 
     var systemImage: String {
         switch self {
+        case .fantasy: return "trophy.fill"
+        case .tips: return "target"
+        case .amateur: return "flag.checkered"
         case .settings: return "gearshape.fill"
         case .search: return "magnifyingglass"
         case .news: return "newspaper.fill"
-        case .fantasy: return "gamecontroller.fill"
+        case .liveStreams: return "tv.fill"
+        case .media: return "headphones"
         }
     }
 
     enum Destination {
+        case fantasy
+        case tips
+        case amateur
         case settings
         case search
         case news
-        case url(URL)
+        case liveStreams
+        case media
     }
 
     var destination: Destination {
         switch self {
+        case .fantasy: return .fantasy
+        case .tips: return .tips
+        case .amateur: return .amateur
         case .settings: return .settings
         case .search: return .search
         case .news: return .news
-        case .fantasy:
-            return .url(URL(string: "https://hokejbal-fantasy.cz")!)
+        case .liveStreams: return .liveStreams
+        case .media: return .media
         }
     }
 }

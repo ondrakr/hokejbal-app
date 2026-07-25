@@ -71,12 +71,17 @@ final class APIClient: ObservableObject {
     }
 
     private init() {
-        let raw = UserDefaults.standard.string(forKey: "hb.dataSource") ?? DataSource.mock.rawValue
+        #if DEBUG
+        let fallback = DataSource.mock.rawValue
+        #else
+        let fallback = DataSource.supabase.rawValue
+        #endif
+        let raw = UserDefaults.standard.string(forKey: "hb.dataSource") ?? fallback
         // Migrace ze starého „remote“
         if raw == "remote" {
             source = .supabase
         } else {
-            source = DataSource(rawValue: raw) ?? .mock
+            source = DataSource(rawValue: raw) ?? .supabase
         }
     }
 }

@@ -89,6 +89,81 @@ enum HokejbalCzNewsClient {
         return articles
     }
 
+    /// Stáhne plný text článku z detailní stránky hokejbal.cz.
+    static func fetchBody(urlString: String) async throws -> String {
+        guard let url = HBTrustedURL.fetchable(urlString) else {
+            throw URLError(.badURL)
+        }
+        var request = URLRequest(url: url)
+        request.setValue("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)", forHTTPHeaderField: "User-Agent")
+        request.timeoutInterval = 20
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),
+              let html = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .isoLatin1)
+        else {
+            throw URLError(.badServerResponse)
+        }
+        return parseBody(html: html)
+    }
+
+    static func parseBody(html: String) -> String {
+        // Preferuj obsah v typography bloku (detail článku).
+        let blockPattern = #"<div[^>]*class=\"[^\"]*typography[^\"]*\"[^>]*>([\s\S]*?)</div>"#
+        let source: String
+        if let blockRegex = try? NSRegularExpression(pattern: blockPattern, options: [.caseInsensitive]),
+           let match = blockRegex.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
+           let range = Range(match.range(at: 1), in: html) {
+            source = String(html[range])
+        } else {
+            source = html
+        }
+
+        let paragraphPattern = #"<p[^>]*>([\s\S]*?)</p>"#
+        guard let paragraphRegex = try? NSRegularExpression(pattern: paragraphPattern, options: [.caseInsensitive]) else {
+            return ""
+        }
+
+        let ns = source as NSString
+        let matches = paragraphRegex.matches(in: source, range: NSRange(location: 0, length: ns.length))
+        var paragraphs: [String] = []
+        let junk = ["cookie", "souhlas", "gdpr", "newsletter", "přihlášení"]
+
+        for match in matches {
+            guard match.numberOfRanges >= 2,
+                  let range = Range(match.range(at: 1), in: source)
+            else { continue }
+
+            let text = decodeHTMLEntities(stripTags(String(source[range])))
+                .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+
+            guard text.count >= 40 else { continue }
+            let lower = text.lowercased()
+            if junk.contains(where: { lower.contains($0) }) { continue }
+            paragraphs.append(text)
+        }
+
+        return paragraphs.joined(separator: "\n\n")
+    }
+
+    private static func decodeHTMLEntities(_ text: String) -> String {
+        var result = text
+        let entities: [(String, String)] = [
+            ("&nbsp;", " "),
+            ("&amp;", "&"),
+            ("&lt;", "<"),
+            ("&gt;", ">"),
+            ("&quot;", "\""),
+            ("&#39;", "'"),
+            ("&apos;", "'")
+        ]
+        for (entity, value) in entities {
+            result = result.replacingOccurrences(of: entity, with: value)
+        }
+        return result
+    }
+
     private static func stripTags(_ html: String) -> String {
         html.replacingOccurrences(of: #"<[^>]+>"#, with: " ", options: .regularExpression)
     }

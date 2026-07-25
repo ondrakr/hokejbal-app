@@ -72,9 +72,18 @@ struct Player: Identifiable, Codable, Hashable, Sendable {
     var seasonId: String? = nil
     var seasonLabel: String? = nil
     var competitionId: String? = nil
+    /// URL profilové fotky (Supabase / CDN).
+    var photoURL: String? = nil
 
     var fullName: String { "\(firstName) \(lastName)" }
     var shortName: String { "\(firstName.prefix(1)). \(lastName)" }
+
+    var photoURLValue: URL? {
+        if let photoURL, let url = URL(string: photoURL) { return url }
+        let encoded = "\(firstName)+\(lastName)"
+            .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "Hrac"
+        return URL(string: "https://ui-avatars.com/api/?name=\(encoded)&background=C8102E&color=fff&size=256&bold=true")
+    }
 }
 
 /// Statistiky hráče v konkrétní sezóně / soutěži (historie napříč ročníky).

@@ -396,7 +396,10 @@ struct FavoritesView: View {
     private func loadMatches() async {
         isLoadingMatches = true
         defer { isLoadingMatches = false }
-        allMatches = (try? await apiClient.api.matches(query: MatchesQuery())) ?? []
+        allMatches = await MatchListCache.shared.seasonMatches(
+            using: apiClient.api,
+            seasonId: nil
+        )
     }
 }
 

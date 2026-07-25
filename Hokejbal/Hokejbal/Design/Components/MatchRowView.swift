@@ -23,7 +23,7 @@ struct MatchRowView: View {
         switch match.status {
         case .live: return HBTheme.live
         case .scheduled: return HBTheme.brand
-        case .finished: return HBTheme.textTertiary.opacity(0.5)
+        case .finished: return HBTheme.brand.opacity(0.35)
         case .postponed: return .orange
         }
     }
@@ -36,9 +36,10 @@ struct MatchRowView: View {
             VStack(alignment: .leading, spacing: 11) {
                 if hasHeaderContent { header }
 
-                if match.status == .scheduled {
+                switch match.status {
+                case .scheduled:
                     scheduledBody
-                } else {
+                case .live, .finished, .postponed:
                     teamRow(team: home, score: match.homeScore, leads: homeLeads)
                     teamRow(team: away, score: match.awayScore, leads: awayLeads)
                 }
@@ -61,86 +62,92 @@ struct MatchRowView: View {
     }
 
     private var hasHeaderContent: Bool {
-        (showCompetition && competitionName != nil)
+        match.status == .scheduled
             || match.status == .live
             || match.status == .finished
             || match.status == .postponed
+            || (showCompetition && competitionName != nil)
             || match.isBroadcast
     }
 
     private var header: some View {
         HStack(spacing: 6) {
+            headerLeading
+            Spacer(minLength: 8)
+            if match.isBroadcast {
+                broadcastIcon
+            }
+            if match.status == .live || match.status == .finished || match.status == .postponed {
+                scoreStatusLabel
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var headerLeading: some View {
+        switch match.status {
+        case .finished:
+            Text("\(match.scheduledAt.hbShortDate) | \(match.scheduledAt.hbTime)")
+                .font(.hbMontserrat(size: 10, weight: .bold))
+                .tracking(0.3)
+                .foregroundStyle(HBTheme.textTertiary)
+                .lineLimit(1)
+        case .scheduled:
+            Text(match.scheduledAt.hbShortDate)
+                .font(.hbMontserrat(size: 10, weight: .bold))
+                .tracking(0.3)
+                .foregroundStyle(HBTheme.textTertiary)
+                .lineLimit(1)
+        case .live:
             if showCompetition, let competitionName {
                 Text(competitionName.uppercased())
                     .font(.hbMontserrat(size: 10, weight: .bold))
                     .tracking(0.4)
                     .foregroundStyle(HBTheme.textTertiary)
                     .lineLimit(1)
-            } else if match.status == .live {
+            } else {
                 Text(shortPeriod)
                     .font(.hbMontserrat(size: 10, weight: .bold))
                     .tracking(0.4)
                     .foregroundStyle(HBTheme.live)
                     .lineLimit(1)
             }
-            Spacer(minLength: 8)
-            if match.isBroadcast {
-                Image(systemName: "tv")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(HBTheme.brand)
-                    .accessibilityLabel("Živé vysílání")
-            }
-            // Naplánovaný zápas má čas ve výrazném bloku vpravo — pill je nadbytečný.
-            if match.status != .scheduled {
-                HBStatusPill(match: match)
+        default:
+            if showCompetition, let competitionName {
+                Text(competitionName.uppercased())
+                    .font(.hbMontserrat(size: 10, weight: .bold))
+                    .tracking(0.4)
+                    .foregroundStyle(HBTheme.textTertiary)
+                    .lineLimit(1)
             }
         }
     }
 
-    /// Naplánovaný zápas: týmy vlevo, výrazný čas + datum vpravo (aby karta nebyla prázdná).
+    private var broadcastIcon: some View {
+        Image(systemName: "tv")
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(HBTheme.brand)
+            .accessibilityLabel("Živé vysílání")
+    }
+
+    /// Naplánovaný zápas: týmy vlevo, výrazný čas vpravo.
     private var scheduledBody: some View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 9) {
-                teamNameRow(home)
-                teamNameRow(away)
+                teamNameRow(home, emphasized: false)
+                teamNameRow(away, emphasized: false)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-            Spacer(minLength: 6)
-
-            Rectangle()
-                .fill(HBTheme.cardStroke)
-                .frame(width: 0.75, height: 36)
-
-            VStack(spacing: 1) {
-                Text(match.scheduledAt.hbTime)
-                    .font(.hbNumber(size: 22, weight: .heavy))
-                    .foregroundStyle(HBTheme.brand)
-                Text(match.scheduledAt.hbShortDate)
-                    .font(.hbMontserrat(size: 10, weight: .semibold))
-                    .tracking(0.3)
-                    .foregroundStyle(HBTheme.textTertiary)
-            }
-            .fixedSize()
+            Text(match.scheduledAt.hbTime)
+                .font(.hbNumber(size: 22, weight: .heavy))
+                .foregroundStyle(HBTheme.brand)
+                .frame(minWidth: 56, alignment: .trailing)
+                .fixedSize()
         }
     }
 
-    private func teamNameRow(_ team: Team?) -> some View {
-        HStack(spacing: 10) {
-            if let team {
-                TeamBadge(team: team, size: 24)
-                    .frame(width: 26, height: 26)
-                Text(team.shortName)
-                    .font(.hbMontserrat(size: 15, weight: .semibold))
-                    .foregroundStyle(HBTheme.textPrimary)
-                    .lineLimit(1)
-            } else {
-                Text("—")
-                    .font(.hbMontserrat(size: 15, weight: .medium))
-                    .foregroundStyle(HBTheme.textSecondary)
-            }
-        }
-    }
-
+    /// Live / výsledek: řádek týmu se skóre vpravo.
     private func teamRow(team: Team?, score: Int, leads: Bool) -> some View {
         HStack(spacing: 10) {
             if let team {
@@ -158,12 +165,50 @@ struct MatchRowView: View {
 
             Spacer(minLength: 8)
 
-            if match.status != .scheduled {
-                Text("\(score)")
-                    .font(.hbNumber(size: 20, weight: leads ? .heavy : .semibold))
-                    .foregroundStyle(scoreColor(leads: leads))
-                    .frame(minWidth: 24, alignment: .trailing)
+            Text("\(score)")
+                .font(.hbNumber(size: 20, weight: leads ? .heavy : .semibold))
+                .foregroundStyle(scoreColor(leads: leads))
+                .frame(minWidth: 28, alignment: .trailing)
+                .monospacedDigit()
+        }
+    }
+
+    @ViewBuilder
+    private var scoreStatusLabel: some View {
+        switch match.status {
+        case .live:
+            LiveBadge(compact: true)
+        case .finished:
+            Text("KONEC")
+                .font(.hbMontserrat(size: 11, weight: .bold))
+                .tracking(0.3)
+                .foregroundStyle(HBTheme.textTertiary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(HBTheme.textTertiary.opacity(0.12), in: Capsule())
+        case .postponed:
+            HBStatusPill(match: match)
+        case .scheduled:
+            EmptyView()
+        }
+    }
+
+    private func teamNameRow(_ team: Team?, emphasized: Bool) -> some View {
+        HStack(spacing: 10) {
+            if let team {
+                TeamBadge(team: team, size: 24)
+                    .frame(width: 26, height: 26)
+                Text(team.shortName)
+                    .font(.hbMontserrat(size: 15, weight: emphasized ? .bold : .semibold))
+                    .foregroundStyle(emphasized ? HBTheme.textPrimary : HBTheme.textPrimary.opacity(0.88))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+            } else {
+                Text("—")
+                    .font(.hbMontserrat(size: 15, weight: .medium))
+                    .foregroundStyle(HBTheme.textSecondary)
             }
+            Spacer(minLength: 0)
         }
     }
 

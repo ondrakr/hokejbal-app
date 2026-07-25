@@ -89,19 +89,22 @@ actor SupabaseHokejbalAPI: HokejbalAPI {
         var items = [
             URLQueryItem(
                 name: "select",
-                value: "*,players(id,first_name,last_name),competitions(id,season_id,name,seasons(label))"
+                value: "*,players(id,first_name,last_name,photo_url),competitions(id,season_id,name,seasons(label))"
             ),
             URLQueryItem(name: "order", value: "points.desc")
         ]
         if let teamId {
-            items.append(URLQueryItem(name: "club_id", value: "eq.\(teamId)"))
+            guard let safe = HBTrustedURL.sanitizeFilterId(teamId) else { return [] }
+            items.append(URLQueryItem(name: "club_id", value: "eq.\(safe)"))
         }
         if let competitionId {
-            items.append(URLQueryItem(name: "competition_id", value: "eq.\(competitionId)"))
+            guard let safe = HBTrustedURL.sanitizeFilterId(competitionId) else { return [] }
+            items.append(URLQueryItem(name: "competition_id", value: "eq.\(safe)"))
         } else if let seasonId {
+            guard HBTrustedURL.sanitizeFilterId(seasonId) != nil else { return [] }
             // Filtr přes vnořenou soutěž — nejdřív načti competition ids sezóny.
             let comps = try await competitions(seasonId: seasonId)
-            let ids = comps.map(\.id)
+            let ids = comps.compactMap { HBTrustedURL.sanitizeFilterId($0.id) }
             guard !ids.isEmpty else { return [] }
             items.append(URLQueryItem(name: "competition_id", value: "in.(\(ids.joined(separator: ",")))"))
         }
@@ -115,10 +118,12 @@ actor SupabaseHokejbalAPI: HokejbalAPI {
             URLQueryItem(name: "order", value: "scheduled_at.asc")
         ]
         if let competitionId = query.competitionId {
-            items.append(URLQueryItem(name: "competition_id", value: "eq.\(competitionId)"))
+            guard let safe = HBTrustedURL.sanitizeFilterId(competitionId) else { return [] }
+            items.append(URLQueryItem(name: "competition_id", value: "eq.\(safe)"))
         } else if let seasonId = query.seasonId {
+            guard HBTrustedURL.sanitizeFilterId(seasonId) != nil else { return [] }
             let comps = try await competitions(seasonId: seasonId)
-            let ids = comps.map(\.id)
+            let ids = comps.compactMap { HBTrustedURL.sanitizeFilterId($0.id) }
             guard !ids.isEmpty else { return [] }
             items.append(URLQueryItem(name: "competition_id", value: "in.(\(ids.joined(separator: ",")))"))
         }
@@ -126,7 +131,8 @@ actor SupabaseHokejbalAPI: HokejbalAPI {
             items.append(URLQueryItem(name: "status", value: "eq.\(status.rawValue)"))
         }
         if let teamId = query.teamId {
-            items.append(URLQueryItem(name: "or", value: "(home_club_id.eq.\(teamId),away_club_id.eq.\(teamId))"))
+            guard let safe = HBTrustedURL.sanitizeFilterId(teamId) else { return [] }
+            items.append(URLQueryItem(name: "or", value: "(home_club_id.eq.\(safe),away_club_id.eq.\(safe))"))
         }
         if let date = query.date {
             let cal = Calendar.current
@@ -179,52 +185,48 @@ actor SupabaseHokejbalAPI: HokejbalAPI {
     }
 
     func player(id: String) async throws -> Player {
-        // Aktuální sezóna preferována
-        let seasons = try await seasons()
-        let current = seasons.first(where: \.isCurrent) ?? seasons.first
-        if let current {
-            let list = try await players(teamId: nil, seasonId: current.id, competitionId: nil)
-            if let found = list.first(where: { $0.id == id }) { return found }
-        }
-        let any = try await players(teamId: nil, seasonId: nil, competitionId: nil)
-        guard let found = any.first(where: { $0.id == id }) else { throw APIError.notFound }
-        return found
+        guard let safeId = HBTrustedURL.sanitizeFilterId(id) else { throw APIError.notFound }
+        let rows: [PlayerSeasonRow] = try await get("player_seasons", query: [
+            URLQueryItem(
+                name: "select",
+                value: "*,players(id,first_name,last_name,photo_url),competitions(id,season_id,name,seasons(label))"
+            ),
+            URLQueryItem(name: "player_id", value: "eq.\(safeId)"),
+            URLQueryItem(name: "order", value: "points.desc"),
+            URLQueryItem(name: "limit", value: "1")
+        ])
+        if let found = rows.compactMap(\.asPlayer).first { return found }
+        throw APIError.notFound
     }
 
     func team(id: String) async throws -> Team {
-        let seasons = try await seasons()
-        let current = seasons.first(where: \.isCurrent) ?? seasons.first
+        guard let safeId = HBTrustedURL.sanitizeFilterId(id) else { throw APIError.notFound }
         let all = try await teams(competitionId: nil)
-        if let current {
-            let comps = try await competitions(seasonId: current.id)
-            let ids = Set(comps.map(\.id))
-            if let t = all.first(where: { $0.id == id && ids.contains($0.competitionId) }) {
-                return t
-            }
-        }
-        guard let t = all.first(where: { $0.id == id }) else { throw APIError.notFound }
+        guard let t = all.first(where: { $0.id == safeId }) else { throw APIError.notFound }
         return t
     }
 
     func playerHistory(playerId: String) async throws -> [PlayerSeasonStat] {
+        guard let safeId = HBTrustedURL.sanitizeFilterId(playerId) else { return [] }
         let rows: [PlayerSeasonRow] = try await get("player_seasons", query: [
             URLQueryItem(
                 name: "select",
-                value: "*,players(id,first_name,last_name),competitions(id,season_id,name,seasons(label))"
+                value: "*,players(id,first_name,last_name,photo_url),competitions(id,season_id,name,seasons(label))"
             ),
-            URLQueryItem(name: "player_id", value: "eq.\(playerId)"),
+            URLQueryItem(name: "player_id", value: "eq.\(safeId)"),
             URLQueryItem(name: "order", value: "competition_id.desc")
         ])
         return rows.compactMap { $0.asHistory }
     }
 
     func clubSeasonHistory(clubId: String) async throws -> [ClubSeasonRecord] {
+        guard let safeId = HBTrustedURL.sanitizeFilterId(clubId) else { return [] }
         let rows: [StandingHistoryRow] = try await get("standings", query: [
             URLQueryItem(
                 name: "select",
                 value: "*,competitions(id,season_id,name,seasons(label))"
             ),
-            URLQueryItem(name: "club_id", value: "eq.\(clubId)"),
+            URLQueryItem(name: "club_id", value: "eq.\(safeId)"),
             URLQueryItem(name: "order", value: "competition_id.desc")
         ])
         return rows.compactMap { $0.asRecord }
@@ -341,6 +343,7 @@ private struct PlayerEmbed: Decodable {
     let id: String
     let firstName: String
     let lastName: String
+    let photoUrl: String?
 }
 
 private struct CompetitionEmbed: Decodable {
@@ -389,7 +392,8 @@ private struct PlayerSeasonRow: Decodable {
             goalsAgainstAverage: goalsAgainstAverage,
             seasonId: competitions?.seasonId,
             seasonLabel: competitions?.seasons?.label,
-            competitionId: competitionId
+            competitionId: competitionId,
+            photoURL: p.photoUrl
         )
     }
 

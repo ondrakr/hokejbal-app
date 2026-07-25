@@ -915,7 +915,9 @@ actor MockHokejbalAPI: HokejbalAPI {
             hour: Int,
             minute: Int = 0,
             venue: String,
-            round: Int
+            round: Int,
+            streamURL: String? = nil,
+            streamLabel: String? = nil
         ) -> Match {
             Match(
                 id: id,
@@ -934,33 +936,35 @@ actor MockHokejbalAPI: HokejbalAPI {
                 venue: venue,
                 round: round,
                 events: [],
-                attendance: nil
+                attendance: nil,
+                streamURL: streamURL,
+                streamLabel: streamLabel
             )
         }
 
         var matches: [Match] = [
             Match(id: "m-live-1", competitionId: "extraliga-2025-26", homeTeamId: "hostivar", awayTeamId: "svitkov", scheduledAt: at(0, hour: 18), status: .live, period: .second, clock: "08:42", phase: .regular, homeScore: 3, awayScore: 2, homePeriodScores: [1, 2], awayPeriodScores: [1, 1], venue: "HBC Hostivař Arena", round: 23, events: [
-                .init(id: "e1", kind: .goal, minute: 7, second: 12, teamId: "hostivar", playerId: "cejka", assistIds: [], description: "Gól Jan Čejka", period: 1),
-                .init(id: "e2", kind: .goal, minute: 14, second: 3, teamId: "svitkov", playerId: "benes", assistIds: [], description: "Gól Martin Beneš", period: 1),
+                .init(id: "e1", kind: .goal, minute: 7, second: 12, teamId: "hostivar", playerId: "cejka", assistIds: ["hos-divis", "hos-dostal"], description: "Gól Jan Čejka", period: 1),
+                .init(id: "e2", kind: .goal, minute: 14, second: 3, teamId: "svitkov", playerId: "benes", assistIds: ["svi-f1", "svi-f2"], description: "Gól Martin Beneš", period: 1),
                 .init(id: "e2b", kind: .penalty, minute: 18, second: 36, teamId: "hostivar", playerId: "cejka", assistIds: [], description: "Vyloučení 2 min – Čejka (Hrubost)", period: 1),
-                .init(id: "e3", kind: .goal, minute: 3, second: 41, teamId: "hostivar", playerId: "cejka", assistIds: [], description: "Gól Jan Čejka", period: 2),
-                .init(id: "e3b", kind: .goal, minute: 8, second: 5, teamId: "svitkov", playerId: "benes", assistIds: [], description: "Gól Martin Beneš", period: 2),
-                .init(id: "e4", kind: .goal, minute: 11, second: 22, teamId: "hostivar", playerId: "cejka", assistIds: [], description: "Gól Jan Čejka", period: 2),
+                .init(id: "e3", kind: .goal, minute: 3, second: 41, teamId: "hostivar", playerId: "cejka", assistIds: ["hos-kern", "hos-krticka"], description: "Gól Jan Čejka", period: 2),
+                .init(id: "e3b", kind: .goal, minute: 8, second: 5, teamId: "svitkov", playerId: "benes", assistIds: ["svi-f2", "svi-f3"], description: "Gól Martin Beneš", period: 2),
+                .init(id: "e4", kind: .goal, minute: 11, second: 22, teamId: "hostivar", playerId: "cejka", assistIds: ["hos-capek", "hos-pirek"], description: "Gól Jan Čejka", period: 2),
                 .init(id: "e4b", kind: .penalty, minute: 13, second: 10, teamId: "svitkov", playerId: "benes", assistIds: [], description: "Vyloučení 2 min – Beneš (Hákování)", period: 2)
             ], attendance: 420, streamURL: "https://www.youtube.com/@hokejbal", streamLabel: "YouTube ČMSHb", homeShots: 28, awayShots: 22, homePowerplayGoals: 1, awayPowerplayGoals: 0, homeShorthandedGoals: 0, awayShorthandedGoals: 0, referees: "Vilém Jonák, Martin Černý"),
             Match(id: "m-live-2", competitionId: "extraliga-2025-26", homeTeamId: "letohrad", awayTeamId: "kert", scheduledAt: at(0, hour: 17, minute: 30), status: .live, period: .third, clock: "12:05", phase: .regular, homeScore: 4, awayScore: 4, homePeriodScores: [2, 1, 1], awayPeriodScores: [1, 2, 1], venue: "Letohrad", round: 23, events: [
-                .init(id: "e5", kind: .goal, minute: 2, second: 0, teamId: "letohrad", playerId: "novak", assistIds: [], description: "Gól Petr Novák", period: 3)
+                .init(id: "e5", kind: .goal, minute: 2, second: 0, teamId: "letohrad", playerId: "novak", assistIds: ["let-bogdany", "let-brozek"], description: "Gól Petr Novák", period: 3)
             ], attendance: 380, streamURL: "https://www.ceskatelevize.cz/sport/", streamLabel: "ČT Sport", homeShots: 31, awayShots: 27, homePowerplayGoals: 0, awayPowerplayGoals: 1, homeShorthandedGoals: 0, awayShorthandedGoals: 0, referees: "Petr Novotný, Jan Svoboda"),
             Match(id: "m-live-3", competitionId: "1liga-2025-26", homeTeamId: "vlci", awayTeamId: "trinec", scheduledAt: at(0, hour: 16), status: .live, period: .first, clock: "04:18", phase: .regular, homeScore: 1, awayScore: 0, homePeriodScores: [1], awayPeriodScores: [0], venue: "Ústí nad Labem", round: 12, events: [
-                .init(id: "e6", kind: .goal, minute: 4, second: 18, teamId: "vlci", playerId: "navarra", assistIds: ["faigl"], description: "Gól Roman Navarra (Faigl)", period: 1)
+                .init(id: "e6", kind: .goal, minute: 4, second: 18, teamId: "vlci", playerId: "navarra", assistIds: ["faigl", "vlci-f1"], description: "Gól Roman Navarra", period: 1)
             ], attendance: 210, streamURL: "https://www.hokejbal.cz", streamLabel: "Hokejbal.cz", homeShots: 12, awayShots: 8, homePowerplayGoals: 0, awayPowerplayGoals: 0, homeShorthandedGoals: 0, awayShorthandedGoals: 0, referees: "Tomáš Horák"),
             Match(id: "m-live-4", competitionId: "regionalni-2025-26", homeTeamId: "kolin", awayTeamId: "benesov", scheduledAt: at(0, hour: 19), status: .live, period: .second, clock: "06:20", phase: .regular, homeScore: 1, awayScore: 0, homePeriodScores: [0, 1], awayPeriodScores: [0, 0], venue: "Kolín", round: 8, events: [
-                .init(id: "e7", kind: .goal, minute: 5, second: 11, teamId: "kolin", playerId: "kolin-f1", assistIds: [], description: "Gól Kolín", period: 2)
+                .init(id: "e7", kind: .goal, minute: 5, second: 11, teamId: "kolin", playerId: "kolin-f1", assistIds: ["kolin-f2", "kolin-f3"], description: "Gól Kolín", period: 2)
             ], attendance: 95, homeShots: 14, awayShots: 9, referees: "Jan Novák"),
             Match(id: "m-live-5", competitionId: "zeny-2025-26", homeTeamId: "palmovka", awayTeamId: "plzen-z", scheduledAt: at(0, hour: 15), status: .live, period: .third, clock: "09:01", phase: .regular, homeScore: 2, awayScore: 1, homePeriodScores: [1, 0, 1], awayPeriodScores: [0, 1, 0], venue: "Praha – Palmovka", round: 6, events: [
-                .init(id: "e8", kind: .goal, minute: 4, second: 0, teamId: "palmovka", playerId: "kantorova", assistIds: [], description: "Gól Andrea Kantorová", period: 1),
-                .init(id: "e9", kind: .goal, minute: 10, second: 22, teamId: "plzen-z", playerId: "plzen-z-f1", assistIds: [], description: "Gól Plzeň Ž", period: 2),
-                .init(id: "e10", kind: .goal, minute: 7, second: 40, teamId: "palmovka", playerId: "kantorova", assistIds: [], description: "Gól Andrea Kantorová", period: 3)
+                .init(id: "e8", kind: .goal, minute: 4, second: 0, teamId: "palmovka", playerId: "kantorova", assistIds: ["palmovka-f1", "palmovka-f2"], description: "Gól Andrea Kantorová", period: 1),
+                .init(id: "e9", kind: .goal, minute: 10, second: 22, teamId: "plzen-z", playerId: "plzen-z-f1", assistIds: ["plzen-z-f2", "plzen-z-f3"], description: "Gól Plzeň Ž", period: 2),
+                .init(id: "e10", kind: .goal, minute: 7, second: 40, teamId: "palmovka", playerId: "kantorova", assistIds: ["palmovka-f2", "palmovka-f3"], description: "Gól Andrea Kantorová", period: 3)
             ], attendance: 140, homeShots: 18, awayShots: 15, referees: "Eva Horáková"),
         ]
 
@@ -988,11 +992,11 @@ actor MockHokejbalAPI: HokejbalAPI {
         ]
 
         matches += [
-            scheduled(id: "m-sch-1", competitionId: "extraliga-2025-26", home: "blatna", away: "hradec", day: 1, hour: 15, venue: "Blatná", round: 24),
-            scheduled(id: "m-sch-2", competitionId: "extraliga-2025-26", home: "svitkov", away: "letohrad", day: 1, hour: 17, minute: 30, venue: "Pardubice – Svítkov", round: 24),
-            scheduled(id: "m-sch-3", competitionId: "extraliga-2025-26", home: "kert", away: "hostivar", day: 2, hour: 18, venue: "Praha – Kert Park", round: 24),
+            scheduled(id: "m-sch-1", competitionId: "extraliga-2025-26", home: "blatna", away: "hradec", day: 1, hour: 15, venue: "Blatná", round: 24, streamURL: "https://www.youtube.com/@hokejbal", streamLabel: "YouTube ČMSHb"),
+            scheduled(id: "m-sch-2", competitionId: "extraliga-2025-26", home: "svitkov", away: "letohrad", day: 1, hour: 17, minute: 30, venue: "Pardubice – Svítkov", round: 24, streamURL: "https://www.ceskatelevize.cz/sport/", streamLabel: "ČT Sport"),
+            scheduled(id: "m-sch-3", competitionId: "extraliga-2025-26", home: "kert", away: "hostivar", day: 2, hour: 18, venue: "Praha – Kert Park", round: 24, streamURL: "https://www.hokejbal.cz", streamLabel: "Hokejbal.cz"),
             scheduled(id: "m-sch-4", competitionId: "extraliga-2025-26", home: "dobrany", away: "plzen", day: 3, hour: 14, venue: "Dobřany", round: 25),
-            scheduled(id: "m-sch-5", competitionId: "1liga-2025-26", home: "trinec", away: "teplice", day: 1, hour: 16, venue: "Třinec", round: 13),
+            scheduled(id: "m-sch-5", competitionId: "1liga-2025-26", home: "trinec", away: "teplice", day: 1, hour: 16, venue: "Třinec", round: 13, streamURL: "https://www.youtube.com/@hokejbal", streamLabel: "YouTube ČMSHb"),
             scheduled(id: "m-sch-6", competitionId: "zeny-2025-26", home: "plzen-z", away: "svitkov-z", day: 2, hour: 13, venue: "Plzeň", round: 7),
             scheduled(id: "m-sch-7", competitionId: "juniori-2025-26", home: "kladno-j", away: "pardubice-j", day: 1, hour: 11, venue: "Kladno", round: 15),
             scheduled(id: "m-sch-8", competitionId: "dorost-2025-26", home: "plzen-d", away: "hostivar-d", day: 2, hour: 12, venue: "Plzeň", round: 13),
@@ -1030,7 +1034,7 @@ actor MockHokejbalAPI: HokejbalAPI {
                     second: (g * 17) % 60,
                     teamId: homeTeamId,
                     playerId: homeScorerId,
-                    assistIds: [],
+                    assistIds: ["\(homeTeamId)-f1", "\(homeTeamId)-f2"],
                     description: "Gól",
                     period: p
                 ))
@@ -1044,7 +1048,7 @@ actor MockHokejbalAPI: HokejbalAPI {
                     second: (g * 23) % 60,
                     teamId: awayTeamId,
                     playerId: awayScorerId,
-                    assistIds: [],
+                    assistIds: ["\(awayTeamId)-f1", "\(awayTeamId)-f2"],
                     description: "Gól",
                     period: p
                 ))
