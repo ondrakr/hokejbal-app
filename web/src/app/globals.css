@@ -128,11 +128,50 @@ a {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
   background: var(--canvas);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .hb-scroll::-webkit-scrollbar {
   width: 0;
   height: 0;
+  display: none;
+}
+
+/* Phone shell: žádné scrollbary + myš jako prst */
+[data-phone-shell] {
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: grab;
+}
+
+[data-phone-shell][data-dragging="true"] {
+  cursor: grabbing;
+}
+
+[data-phone-shell][data-dragging="true"] * {
+  cursor: grabbing !important;
+  pointer-events: none;
+}
+
+[data-phone-shell] input,
+[data-phone-shell] textarea,
+[data-phone-shell] select,
+[data-phone-shell] [contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+  cursor: text;
+}
+
+[data-phone-shell] * {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+[data-phone-shell] *::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
 }
 
 .hb-day-strip {
