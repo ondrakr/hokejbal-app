@@ -76,9 +76,9 @@ export function ScreenHeader({
       <div className="flex h-11 items-center gap-2">
         <div className="flex w-16 shrink-0 justify-start">{left}</div>
         <div className="flex min-w-0 flex-1 items-center justify-center gap-[7px]">
-          {systemImage !== false && (
-            <span className="text-[var(--brand)] text-[14px] font-bold">●</span>
-          )}
+          {systemImage ? (
+            <span className="text-[14px] font-bold text-[var(--brand)]">●</span>
+          ) : null}
           <div className="truncate text-[17px] font-bold tracking-tight">{title}</div>
         </div>
         <div className="flex w-16 shrink-0 justify-end">{right}</div>
@@ -124,15 +124,18 @@ export function SectionHeader({
   title,
   action,
   accent,
+  accessory,
 }: {
   title: string;
   action?: { label: string; onClick: () => void };
   accent?: string;
+  accessory?: ReactNode;
 }) {
   return (
     <div className="mb-2.5 flex items-center gap-2.5 px-[var(--screen-pad)]">
       <span className="hb-accent-bar" style={accent ? { background: accent } : undefined} />
       <h2 className="hb-display text-[17px] tracking-[0.5px] uppercase">{title}</h2>
+      {accessory}
       <div className="min-w-2 flex-1" />
       {action && (
         <button

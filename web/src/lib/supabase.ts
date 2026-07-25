@@ -28,6 +28,8 @@ export function sanitizeFilterId(id: string): string | null {
 const OPEN_HOSTS = new Set([
   "hokejbal.cz",
   "www.hokejbal.cz",
+  "hokejbal-fantasy.cz",
+  "www.hokejbal-fantasy.cz",
   "youtube.com",
   "www.youtube.com",
   "m.youtube.com",

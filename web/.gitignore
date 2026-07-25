@@ -40,3 +40,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local design comparison screenshots
+/design-refs/*.png
+!/design-refs/.gitkeep
+

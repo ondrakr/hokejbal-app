@@ -49,7 +49,7 @@ function StackRouter() {
       case "player":
         return <PlayerDetailScreen id={top.id} />;
       case "competition":
-        return <CompetitionDetailScreen id={top.id} />;
+        return <CompetitionDetailScreen id={top.id} day={top.day} />;
       case "news":
         return <NewsScreen />;
       case "article":

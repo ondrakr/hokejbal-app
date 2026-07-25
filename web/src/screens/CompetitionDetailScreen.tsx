@@ -5,14 +5,14 @@ import { fetchStandings } from "@/lib/api";
 import type { StandingRow } from "@/lib/types";
 import { MatchRow, UnderlineTabs } from "@/components/MatchRow";
 import { BackButton, EmptyState, LoadingState, ScreenHeader } from "@/components/ui";
-import { dayKey, todayKey } from "@/lib/format";
+import { dayKey } from "@/lib/format";
 import { useCatalog } from "@/stores/catalog";
 import { useFavorites } from "@/stores/favorites";
 import { useNav } from "@/stores/navigation";
 
 const TABS = ["Zápasy", "Tabulka"];
 
-export function CompetitionDetailScreen({ id }: { id: string }) {
+export function CompetitionDetailScreen({ id, day }: { id: string; day?: string }) {
   const { competitions, matches, teamById } = useCatalog();
   const { pop, push } = useNav();
   const fav = useFavorites();
@@ -24,14 +24,10 @@ export function CompetitionDetailScreen({ id }: { id: string }) {
   const competition = competitions.find((c) => c.id === id);
 
   const list = useMemo(() => {
-    const src = allMode ? matches : matches.filter((m) => m.competitionId === id);
-    const today = todayKey();
-    return [...src].sort((a, b) => {
-      const ad = dayKey(a.scheduledAt) === today ? 0 : 1;
-      const bd = dayKey(b.scheduledAt) === today ? 0 : 1;
-      return ad - bd || a.scheduledAt.localeCompare(b.scheduledAt);
-    });
-  }, [matches, id, allMode]);
+    let src = allMode ? matches : matches.filter((m) => m.competitionId === id);
+    if (day) src = src.filter((m) => dayKey(m.scheduledAt) === day);
+    return [...src].sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
+  }, [matches, id, allMode, day]);
 
   useEffect(() => {
     if (allMode || !competition) return;
@@ -64,17 +60,17 @@ export function CompetitionDetailScreen({ id }: { id: string }) {
         }
       />
       {!allMode && <UnderlineTabs tabs={TABS} value={tab} onChange={setTab} />}
-      <div className="py-3">
+      <div className="py-2">
         {(allMode || tab === "Zápasy") && (
-          <div className="pb-1">
-            {list.slice(0, 80).map((m) => (
+          <div className="pb-2">
+            {list.map((m) => (
               <MatchRow key={m.id} match={m} />
             ))}
             {!list.length && <EmptyState title="Žádné zápasy" />}
           </div>
         )}
         {!allMode && tab === "Tabulka" && (
-          <div className="mx-[var(--screen-pad)]">
+          <div className="px-4">
             {loadingTable && <LoadingState />}
             {!loadingTable && (
               <div className="hb-card overflow-hidden">

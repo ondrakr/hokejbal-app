@@ -17,7 +17,7 @@ export type Route =
   | { name: "match"; id: string }
   | { name: "team"; id: string }
   | { name: "player"; id: string }
-  | { name: "competition"; id: string }
+  | { name: "competition"; id: string; day?: string }
   | { name: "news" }
   | { name: "article"; id: string }
   | { name: "search" }
