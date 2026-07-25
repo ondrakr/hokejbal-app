@@ -20,8 +20,8 @@ export function SettingsScreen() {
   const order = useCompetitionOrder();
   const dataSource = useDataSource();
   const [theme, setTheme] = useState<"system" | "light" | "dark">(() => {
-    if (typeof window === "undefined") return "system";
-    return (localStorage.getItem("hb.appearance") as "system" | "light" | "dark") || "system";
+    if (typeof window === "undefined") return "light";
+    return (localStorage.getItem("hb.appearance") as "system" | "light" | "dark") || "light";
   });
 
   useEffect(() => {
@@ -33,9 +33,10 @@ export function SettingsScreen() {
     localStorage.setItem("hb.appearance", next);
     const root = document.documentElement;
     if (next === "system") {
-      root.removeAttribute("data-theme");
       if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
         root.setAttribute("data-theme", "dark");
+      } else {
+        root.setAttribute("data-theme", "light");
       }
     } else {
       root.setAttribute("data-theme", next);
@@ -46,7 +47,7 @@ export function SettingsScreen() {
     <div className="hb-scroll hb-enter flex-1 bg-canvas">
       <ScreenHeader title="Nastavení" systemIcon={<IconGear size={14} />} left={<BackButton onClick={pop} />} />
       <div className="space-y-5 px-4 py-4 pb-8">
-        <SettingsSection title="Zobrazení" footer="Tmavý režim přizpůsobí barvy. Podle systému sleduje OS.">
+        <SettingsSection title="Zobrazení" footer="Výchozí je světlý režim. Tmavý přizpůsobí barvy; Podle systému sleduje OS.">
           <div className="grid grid-cols-3 gap-2 p-3">
             {(
               [

@@ -35,10 +35,16 @@ import { NavigationProvider, useNav } from "@/stores/navigation";
 function applyInitialTheme() {
   const saved = localStorage.getItem("hb.appearance") as "system" | "light" | "dark" | null;
   const root = document.documentElement;
-  const preferDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-  if (saved === "dark" || ((!saved || saved === "system") && preferDark)) {
+  const mode = saved ?? "light";
+  if (mode === "dark") {
     root.setAttribute("data-theme", "dark");
-  } else if (saved === "light") {
+  } else if (mode === "system") {
+    if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+      root.setAttribute("data-theme", "dark");
+    } else {
+      root.setAttribute("data-theme", "light");
+    }
+  } else {
     root.setAttribute("data-theme", "light");
   }
 }

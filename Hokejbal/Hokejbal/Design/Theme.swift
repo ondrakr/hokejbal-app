@@ -101,8 +101,8 @@ final class AppearanceStore: ObservableObject {
     private static let key = "hb.appearance"
 
     init() {
-        let raw = UserDefaults.standard.string(forKey: Self.key) ?? AppAppearance.system.rawValue
-        appearance = AppAppearance(rawValue: raw) ?? .system
+        let raw = UserDefaults.standard.string(forKey: Self.key) ?? AppAppearance.light.rawValue
+        appearance = AppAppearance(rawValue: raw) ?? .light
     }
 }
 
