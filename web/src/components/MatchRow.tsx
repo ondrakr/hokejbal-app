@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import type { Match, Team } from "@/lib/types";
 import {
   formatFinishedStamp,
@@ -192,17 +193,18 @@ export function MatchRow({
     </div>
   );
 
+  if (embedded) {
+    return <div className="w-full">{inner}</div>;
+  }
+
   return (
     <button
       type="button"
       onClick={() => push({ name: "match", id: match.id })}
-      className={`block w-full text-left ${embedded ? "" : "px-4 py-[5px]"}`}
+      className="block w-full px-4 py-[5px] text-left"
       style={width ? { width } : undefined}
     >
-      <div
-        className={`overflow-hidden ${embedded ? "hb-card h-full" : "hb-card"}`}
-        style={embedded ? { width: width ?? 250 } : undefined}
-      >
+      <div className="hb-card overflow-hidden" style={width ? { width } : undefined}>
         {inner}
       </div>
     </button>
@@ -215,18 +217,20 @@ export function Pill({
   onClick,
 }: {
   active?: boolean;
-  children: React.ReactNode;
+  children: ReactNode;
   onClick?: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex-1 rounded-[10px] py-2 text-[12px] font-bold transition ${
-        active
-          ? "bg-card text-hb-fg shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
-          : "text-hb-muted"
+      className={`flex-1 rounded-[10px] py-2 font-bold transition ${
+        active ? "bg-card shadow-[0_1px_2px_rgba(0,0,0,0.06)]" : ""
       }`}
+      style={{
+        fontSize: 12,
+        color: active ? "var(--text-primary)" : "var(--text-secondary)",
+      }}
     >
       {children}
     </button>
@@ -234,7 +238,7 @@ export function Pill({
 }
 
 /** HBPillSelector track */
-export function PillTrack({ children }: { children: React.ReactNode }) {
+export function PillTrack({ children }: { children: ReactNode }) {
   return (
     <div className="px-4 py-3">
       <div className="flex gap-[3px] rounded-[12px] bg-card-inset p-1">{children}</div>
@@ -261,9 +265,11 @@ export function UnderlineTabs({
             key={t}
             type="button"
             onClick={() => onChange(t)}
-            className={`relative shrink-0 px-3 pt-3 text-[12px] font-bold tracking-[0.3px] uppercase ${
-              active ? "text-brand" : "text-hb-faint"
-            }`}
+            className="relative shrink-0 px-3 pt-3 font-bold tracking-[0.3px] uppercase"
+            style={{
+              fontSize: 12,
+              color: active ? "var(--brand)" : "var(--text-tertiary)",
+            }}
           >
             {t}
             {active && (

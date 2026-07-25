@@ -30,8 +30,8 @@ function FormBadges({ items }: { items: TeamFormItem[] }) {
       {items.map((item) => (
         <span
           key={item.id}
-          className="flex h-[22px] w-[22px] items-center justify-center rounded text-[10px] font-bold text-white"
-          style={{ background: teamFormColor(item.outcome) }}
+          className="flex h-[22px] w-[22px] items-center justify-center rounded font-bold hb-on-brand"
+          style={{ background: teamFormColor(item.outcome), fontSize: 10 }}
         >
           {teamFormLetter(item.outcome)}
         </span>

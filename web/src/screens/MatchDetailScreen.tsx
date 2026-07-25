@@ -271,18 +271,13 @@ export function MatchDetailScreen({ id }: { id: string }) {
 
           {isBroadcast &&
             (stream ? (
-              <a
-                href={stream}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-2 rounded-[12px] bg-brand px-3.5 py-[11px] text-[13px] font-bold text-white"
-              >
+              <a href={stream} target="_blank" rel="noreferrer" className="hb-broadcast-btn">
                 <IconTv size={14} filled />
                 <span className="flex-1">ŽIVÝ PŘENOS: Hokejbal TV</span>
-                <span className="text-[11px] font-bold">↗</span>
+                <span className="text-[11px] font-bold hb-on-brand">↗</span>
               </a>
             ) : (
-              <div className="flex items-center gap-2 rounded-[12px] bg-card-inset px-3.5 py-[11px] text-[13px] font-bold text-hb-muted">
+              <div className="flex items-center gap-2 rounded-[12px] bg-card-inset px-3.5 py-[11px] font-bold text-hb-muted" style={{ fontSize: 13 }}>
                 <IconTv size={14} />
                 <span className="flex-1">ŽIVÝ PŘENOS: Hokejbal TV</span>
               </div>

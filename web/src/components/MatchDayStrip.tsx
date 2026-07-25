@@ -1,12 +1,15 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useMemo } from "react";
-import { addDays, format, startOfDay } from "date-fns";
-import { cs } from "date-fns/locale";
-import { formatDayNum, todayKey } from "@/lib/format";
+import { useEffect, useMemo, useRef } from "react";
+import {
+  formatDayNumFromKey,
+  formatDowFromKey,
+  shiftDayKey,
+  todayKey,
+} from "@/lib/format";
 
-/** Port MatchDayStrip.swift */
+/** Port MatchDayStrip.swift — vybraný den vždy uprostřed stripu. */
 export function MatchDayStrip({
   selectedDay,
   onSelect,
@@ -20,32 +23,72 @@ export function MatchDayStrip({
   pastDays?: number;
   futureDays?: number;
 }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const selectedRef = useRef<HTMLButtonElement>(null);
+  const didInitialCenter = useRef(false);
+
   const hasSet = useMemo(
     () => (datesWithMatches instanceof Set ? datesWithMatches : new Set(datesWithMatches)),
     [datesWithMatches]
   );
 
   const days = useMemo(() => {
-    const base = startOfDay(new Date());
+    const today = todayKey();
     return Array.from({ length: pastDays + futureDays + 1 }, (_, i) => {
-      const d = addDays(base, i - pastDays);
-      const key = format(d, "yyyy-MM-dd");
-      return { key, date: d, has: hasSet.has(key), isToday: key === todayKey() };
+      const key = shiftDayKey(today, i - pastDays);
+      return { key, has: hasSet.has(key), isToday: key === today };
     });
   }, [hasSet, pastDays, futureDays]);
 
   const isTodaySelected = selectedDay === todayKey();
 
+  useEffect(() => {
+    const el = selectedRef.current;
+    const scroller = scrollRef.current;
+    if (!el || !scroller) return;
+
+    const center = (behavior: ScrollBehavior) => {
+      const scrollerRect = scroller.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+      const delta =
+        elRect.left +
+        elRect.width / 2 -
+        (scrollerRect.left + scrollerRect.width / 2);
+      scroller.scrollTo({
+        left: scroller.scrollLeft + delta,
+        behavior,
+      });
+    };
+
+    // Dvojí rAF: počká na layout dní (včetně pozdního načtení datesWithMatches).
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const smooth = didInitialCenter.current;
+        didInitialCenter.current = true;
+        center(smooth ? "smooth" : "auto");
+      });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [selectedDay, days]);
+
   return (
     <div className="border-b border-separator bg-surface pt-1">
       {!isTodaySelected && (
         <div className="flex justify-end px-4">
-          <button type="button" className="text-[12px] font-bold text-brand" onClick={() => onSelect(todayKey())}>
+          <button
+            type="button"
+            className="font-bold"
+            style={{ fontSize: 12, color: "var(--brand)" }}
+            onClick={() => onSelect(todayKey())}
+          >
             Dnes
           </button>
         </div>
       )}
-      <div className="flex gap-1.5 overflow-x-auto px-4 py-2">
+      <div
+        ref={scrollRef}
+        className="hb-day-strip flex gap-1.5 overflow-x-auto px-4 py-2"
+      >
         {days.map((d) => {
           const active = d.key === selectedDay;
           const enabled = d.has || active;
@@ -66,20 +109,28 @@ export function MatchDayStrip({
           return (
             <button
               key={d.key}
+              ref={active ? selectedRef : undefined}
               type="button"
               disabled={!enabled}
               onClick={() => onSelect(d.key)}
               className="flex min-h-12 min-w-[42px] shrink-0 flex-col items-center justify-center gap-[3px] rounded-[12px]"
               style={{ background: active ? "var(--brand)" : "transparent" }}
             >
-              <span className="text-[10px] font-semibold tracking-[0.3px] uppercase" style={{ color: dowColor }}>
-                {format(d.date, "EE", { locale: cs }).slice(0, 2)}
+              <span
+                className="font-semibold tracking-[0.3px] uppercase"
+                style={{ fontSize: 10, color: dowColor }}
+              >
+                {formatDowFromKey(d.key)}
               </span>
               <span
-                className="hb-number text-[17px]"
-                style={{ color: dayColor, fontWeight: active || d.isToday ? 700 : 500 }}
+                className="hb-number"
+                style={{
+                  fontSize: 17,
+                  color: dayColor,
+                  fontWeight: active || d.isToday ? 700 : 500,
+                }}
               >
-                {formatDayNum(d.date.toISOString())}
+                {formatDayNumFromKey(d.key)}
               </span>
             </button>
           );
@@ -106,10 +157,17 @@ export function CompetitionNavStrip({
       disabled={!onClick}
     >
       {badge}
-      <span className="min-w-0 flex-1 truncate text-[11px] font-semibold tracking-[0.2px] text-hb-muted uppercase">
+      <span
+        className="min-w-0 flex-1 truncate font-semibold tracking-[0.2px] uppercase"
+        style={{ fontSize: 11, color: "var(--text-secondary)" }}
+      >
         {title}
       </span>
-      {onClick && <span className="text-[10px] font-semibold text-hb-faint">›</span>}
+      {onClick && (
+        <span className="font-semibold" style={{ fontSize: 10, color: "var(--text-tertiary)" }}>
+          ›
+        </span>
+      )}
     </button>
   );
 }

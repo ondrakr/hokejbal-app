@@ -2,14 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { fetchPlayer, fetchPlayerHistory, fetchPlayers } from "@/lib/api";
-import { format } from "date-fns";
-import { parseDate } from "@/lib/format";
-import { teamFormColor, teamFormOutcome } from "@/lib/teamForm";
+import { teamFormOutcome } from "@/lib/teamForm";
 import type { Match, Player, PlayerSeasonStat, Team } from "@/lib/types";
 import { playerFullName } from "@/lib/types";
 import { PlayerAvatar, TeamBadge } from "@/components/Badges";
 import { IconChevronRight } from "@/components/Icons";
-import { UnderlineTabs } from "@/components/MatchRow";
+import { MatchRow, UnderlineTabs } from "@/components/MatchRow";
 import { BackButton, EmptyState, LoadingState, ScreenHeader } from "@/components/ui";
 import { useCatalog } from "@/stores/catalog";
 import { useFavorites } from "@/stores/favorites";
@@ -74,7 +72,6 @@ function buildAppearances(
     }
   }
 
-  // Zápasy kde hráč figuroval v eventech, ale nejsou pokryté historií.
   for (const match of matches) {
     if (seen.has(match.id)) continue;
     const inEvents = match.events.some(
@@ -170,18 +167,19 @@ export function PlayerDetailScreen({ id }: { id: string }) {
   if (!player) return <EmptyState title="Hráč nenalezen" />;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col hb-enter bg-surface">
+    <div className="flex min-h-0 flex-1 flex-col hb-enter bg-canvas">
       <ScreenHeader
         title={player.lastName}
         left={<BackButton onClick={pop} />}
         right={
           <button
             type="button"
-            className={fav.isPlayer(player.id) ? "text-brand" : "text-hb-faint"}
+            className="flex h-9 w-9 items-center justify-center text-[20px]"
+            style={{ color: fav.isPlayer(player.id) ? "var(--brand)" : "var(--text-tertiary)" }}
             onClick={() => fav.togglePlayer(player.id)}
             aria-label="Oblíbený hráč"
           >
-            ★
+            {fav.isPlayer(player.id) ? "★" : "☆"}
           </button>
         }
       />
@@ -190,7 +188,10 @@ export function PlayerDetailScreen({ id }: { id: string }) {
         <div className="flex items-center gap-3.5">
           <PlayerAvatar player={player} size={68} />
           <div className="min-w-0 flex-1">
-            <h1 className="hb-display text-[24px] leading-tight text-hb-fg">
+            <h1
+              className="hb-display leading-tight"
+              style={{ fontSize: 24, color: "var(--text-primary)" }}
+            >
               {playerFullName(player)}
             </h1>
             {team ? (
@@ -200,10 +201,13 @@ export function PlayerDetailScreen({ id }: { id: string }) {
                 className="mt-1.5 flex items-center gap-1.5"
               >
                 <TeamBadge team={team} size={18} />
-                <span className="text-[13px] font-semibold text-hb-fg">
+                <span
+                  className="font-semibold"
+                  style={{ fontSize: 13, color: "var(--text-primary)" }}
+                >
                   {team.shortName}
                 </span>
-                <span className="text-hb-faint">
+                <span style={{ color: "var(--text-tertiary)" }}>
                   <IconChevronRight size={10} />
                 </span>
               </button>
@@ -211,9 +215,7 @@ export function PlayerDetailScreen({ id }: { id: string }) {
           </div>
         </div>
 
-        {selectedSeasonStat ? (
-          <PlayerStatsStrip stats={selectedSeasonStat} />
-        ) : null}
+        {selectedSeasonStat ? <PlayerStatsStrip stats={selectedSeasonStat} /> : null}
       </div>
 
       <UnderlineTabs tabs={TABS} value={tab} onChange={setTab} />
@@ -225,19 +227,20 @@ export function PlayerDetailScreen({ id }: { id: string }) {
               <div className="flex gap-2 overflow-x-auto px-4 pt-3 pb-2">
                 {seasonChips.map((seasonId) => {
                   const label =
-                    history.find((h) => h.seasonId === seasonId)?.seasonLabel ??
-                    seasonId;
+                    history.find((h) => h.seasonId === seasonId)?.seasonLabel ?? seasonId;
                   const selected = selectedSeasonId === seasonId;
                   return (
                     <button
                       key={seasonId}
                       type="button"
                       onClick={() => setSelectedSeasonId(seasonId)}
-                      className={`shrink-0 rounded-full px-3 py-2 text-[13px] font-semibold ${
-                        selected
-                          ? "bg-brand text-on-brand"
-                          : "border border-card-stroke bg-card text-hb-muted"
-                      }`}
+                      className="shrink-0 rounded-full px-3 py-2 font-semibold"
+                      style={{
+                        fontSize: 13,
+                        color: selected ? "var(--on-brand)" : "var(--text-secondary)",
+                        background: selected ? "var(--brand)" : "var(--card)",
+                        boxShadow: selected ? "none" : "inset 0 0 0 1px var(--card-stroke)",
+                      }}
                     >
                       {label}
                     </button>
@@ -253,11 +256,7 @@ export function PlayerDetailScreen({ id }: { id: string }) {
               />
             ) : (
               filteredAppearances.map((item) => (
-                <PlayerMatchRow
-                  key={item.id}
-                  item={item}
-                  focusTeamId={player.teamId}
-                />
+                <PlayerMatchRow key={item.id} item={item} focusTeamId={player.teamId} />
               ))
             )}
           </div>
@@ -269,10 +268,7 @@ export function PlayerDetailScreen({ id }: { id: string }) {
               <SeasonCard key={row.id} row={row} team={teamById(row.clubId)} />
             ))}
             {!history.length && (
-              <EmptyState
-                title="Bez historie"
-                hint="Zatím nemáme sezónní statistiky."
-              />
+              <EmptyState title="Bez historie" hint="Zatím nemáme sezónní statistiky." />
             )}
           </div>
         )}
@@ -287,10 +283,7 @@ function PlayerStatsStrip({ stats }: { stats: PlayerSeasonStat }) {
       ? [
           { label: "Z", value: String(stats.games) },
           { label: "%", value: String(Math.round(stats.savePercentage ?? 0)) },
-          {
-            label: "GAA",
-            value: (stats.goalsAgainstAverage ?? 0).toFixed(2),
-          },
+          { label: "GAA", value: (stats.goalsAgainstAverage ?? 0).toFixed(2) },
           { label: "TM", value: String(stats.penaltyMinutes) },
         ]
       : [
@@ -313,10 +306,16 @@ function PlayerStatsStrip({ stats }: { stats: PlayerSeasonStat }) {
 function HeaderStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex min-w-0 flex-1 flex-col items-center gap-1">
-      <span className="text-[10px] font-bold tracking-[0.3px] text-hb-faint">
+      <span
+        className="font-bold tracking-[0.3px]"
+        style={{ fontSize: 10, color: "var(--text-tertiary)" }}
+      >
         {label}
       </span>
-      <span className="hb-number truncate text-[16px] font-extrabold text-hb-fg">
+      <span
+        className="hb-number truncate font-extrabold"
+        style={{ fontSize: 16, color: "var(--text-primary)" }}
+      >
         {value}
       </span>
     </div>
@@ -326,17 +325,23 @@ function HeaderStat({ label, value }: { label: string; value: string }) {
 function AppearanceStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex min-w-0 flex-1 flex-col items-center gap-0.5">
-      <span className="text-[10px] font-bold tracking-[0.3px] text-hb-faint">
+      <span
+        className="font-bold tracking-[0.3px]"
+        style={{ fontSize: 10, color: "var(--text-tertiary)" }}
+      >
         {label}
       </span>
-      <span className="hb-number truncate text-[14px] font-extrabold text-hb-fg">
+      <span
+        className="hb-number truncate font-extrabold"
+        style={{ fontSize: 14, color: "var(--text-primary)" }}
+      >
         {value}
       </span>
     </div>
   );
 }
 
-/** date · opponent · V/R/P · G A KB TM — ne generický MatchRow */
+/** Port playerMatchRow — MatchRow embedded + G/A/KB/TM + V/R/P */
 function PlayerMatchRow({
   item,
   focusTeamId,
@@ -344,16 +349,15 @@ function PlayerMatchRow({
   item: PlayerMatchAppearance;
   focusTeamId: string;
 }) {
-  const { teamById } = useCatalog();
   const { push } = useNav();
   const match = item.match;
   const focusIsHome =
     match.homeTeamId === focusTeamId || match.homeTeamId === item.clubId;
-  const opponentId = focusIsHome ? match.awayTeamId : match.homeTeamId;
-  const opponent = teamById(opponentId);
-  const focusScore = focusIsHome ? match.homeScore : match.awayScore;
-  const otherScore = focusIsHome ? match.awayScore : match.homeScore;
   const finished = match.status === "finished";
+  const focusWon =
+    finished &&
+    match.homeScore !== match.awayScore &&
+    (focusIsHome ? match.homeScore > match.awayScore : match.awayScore > match.homeScore);
   const outcome = finished ? teamFormOutcome(match, item.clubId) : null;
 
   return (
@@ -363,58 +367,46 @@ function PlayerMatchRow({
       className="block w-full px-4 py-[5px] text-left"
     >
       <div className="hb-card overflow-hidden">
-        <div className="flex items-center gap-2.5 px-3.5 pt-3 pb-2">
-          <span className="w-10 shrink-0 text-[11px] font-medium text-hb-faint">
-            {format(parseDate(match.scheduledAt), "dd.MM.")}
-          </span>
-          <TeamBadge team={opponent} size={22} />
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-[14px] font-semibold text-hb-fg">
-              {opponent?.shortName ?? "—"}
-            </div>
-            {finished || match.status === "live" ? (
-              <div className="mt-0.5 text-[12px] font-medium tabular-nums text-hb-muted">
-                {focusScore}:{otherScore}
-              </div>
-            ) : null}
-          </div>
-          {finished && outcome ? (
-            <span
-              className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded text-[11px] font-bold text-white"
-              style={{ background: teamFormColor(outcome) }}
-            >
-              {outcome === "win" ? "V" : outcome === "draw" ? "R" : "P"}
-            </span>
-          ) : null}
-        </div>
+        <MatchRow match={match} embedded />
 
-        <div className="mx-2.5 mb-2.5 mt-1 flex items-center rounded-[var(--radius-sm)] bg-card-inset px-1.5 py-2.5">
+        <div className="mx-3.5 h-px bg-[var(--card-stroke)]" />
+
+        <div className="mx-2.5 mb-2.5 mt-2 flex items-center rounded-[var(--radius-sm)] bg-card-inset px-1.5 py-2.5">
           <AppearanceStat label="G" value={String(item.goals)} />
           <AppearanceStat label="A" value={String(item.assists)} />
           <AppearanceStat label="KB" value={String(item.points)} />
           <AppearanceStat label="TM" value={String(item.penaltyMinutes)} />
+          {finished && outcome ? (
+            <span
+              className="mr-1 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded font-bold hb-on-brand"
+              style={{
+                fontSize: 11,
+                background:
+                  match.homeScore === match.awayScore
+                    ? "var(--draw)"
+                    : focusWon
+                      ? "var(--win)"
+                      : "var(--loss)",
+              }}
+            >
+              {match.homeScore === match.awayScore ? "R" : focusWon ? "V" : "P"}
+            </span>
+          ) : (
+            <span className="w-[26px] shrink-0" />
+          )}
         </div>
       </div>
     </button>
   );
 }
 
-function SeasonCard({
-  row,
-  team,
-}: {
-  row: PlayerSeasonStat;
-  team?: Team;
-}) {
+function SeasonCard({ row, team }: { row: PlayerSeasonStat; team?: Team }) {
   const cells =
     row.position === "goalie"
       ? [
           { label: "Z", value: String(row.games) },
           { label: "%", value: String(Math.round(row.savePercentage ?? 0)) },
-          {
-            label: "GAA",
-            value: (row.goalsAgainstAverage ?? 0).toFixed(2),
-          },
+          { label: "GAA", value: (row.goalsAgainstAverage ?? 0).toFixed(2) },
           { label: "TM", value: String(row.penaltyMinutes) },
         ]
       : [
@@ -430,10 +422,16 @@ function SeasonCard({
       <div className="flex items-center gap-2.5">
         {team ? <TeamBadge team={team} size={28} /> : null}
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[14px] font-bold text-hb-fg">
+          <div
+            className="truncate font-bold"
+            style={{ fontSize: 14, color: "var(--text-primary)" }}
+          >
             {row.competitionName}
           </div>
-          <div className="truncate text-[12px] font-medium text-hb-muted">
+          <div
+            className="truncate font-medium"
+            style={{ fontSize: 12, color: "var(--text-secondary)" }}
+          >
             {team?.shortName ?? "Tým"} · {row.seasonLabel}
           </div>
         </div>

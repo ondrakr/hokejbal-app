@@ -1,17 +1,20 @@
 "use client";
 
 import type { Match, Team } from "@/lib/types";
-import { format } from "date-fns";
-import { parseDate } from "@/lib/format";
+import { APP_TZ, parseDate } from "@/lib/format";
 import { teamFormColor, teamFormOutcome } from "@/lib/teamForm";
 import { TeamBadge } from "@/components/Badges";
 import { IconTv } from "@/components/Icons";
 import { useCatalog } from "@/stores/catalog";
 import { useNav } from "@/stores/navigation";
 
-/** dd.MM. — port TeamResultRow.shortDate */
+/** dd.MM. — port TeamResultRow.shortDate (Europe/Prague) */
 function resultShortDate(iso: string) {
-  return format(parseDate(iso), "dd.MM.");
+  return new Intl.DateTimeFormat("cs-CZ", {
+    timeZone: APP_TZ,
+    day: "2-digit",
+    month: "2-digit",
+  }).format(parseDate(iso));
 }
 
 /**

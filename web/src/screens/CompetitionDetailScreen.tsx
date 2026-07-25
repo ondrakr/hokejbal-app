@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { fetchStandings } from "@/lib/api";
-import type { StandingRow } from "@/lib/types";
+import type { Match, StandingRow } from "@/lib/types";
 import { CompetitionBadge } from "@/components/Badges";
-import { MatchDayStrip } from "@/components/MatchDayStrip";
+import { CompetitionNavStrip, MatchDayStrip } from "@/components/MatchDayStrip";
 import { MatchRow, UnderlineTabs } from "@/components/MatchRow";
 import { StandingsTable } from "@/components/StandingsTable";
 import { BackButton, EmptyState, LoadingState, ScreenHeader } from "@/components/ui";
@@ -27,6 +27,7 @@ export function CompetitionDetailScreen({ id, day }: { id: string; day?: string 
 
   const allMode = id === "all";
   const competition = competitions.find((c) => c.id === id);
+  const dayMode = allMode || Boolean(day);
 
   const seasonOptions = useMemo(() => {
     if (!competition) return [];
@@ -44,12 +45,23 @@ export function CompetitionDetailScreen({ id, day }: { id: string; day?: string 
   );
 
   const dayList = useMemo(() => {
-    if (!allMode && !day) return listAll;
-    const key = allMode || day ? selectedDay : null;
-    if (!key && day) return listAll.filter((m) => dayKey(m.scheduledAt) === day);
-    if (allMode || day) return listAll.filter((m) => dayKey(m.scheduledAt) === selectedDay);
-    return listAll;
-  }, [listAll, allMode, day, selectedDay]);
+    if (!dayMode) return listAll;
+    return listAll.filter((m) => dayKey(m.scheduledAt) === selectedDay);
+  }, [listAll, dayMode, selectedDay]);
+
+  const groupedDayList = useMemo(() => {
+    if (!allMode) return null;
+    const map = new Map<string, Match[]>();
+    for (const m of dayList) {
+      const list = map.get(m.competitionId) ?? [];
+      list.push(m);
+      map.set(m.competitionId, list);
+    }
+    return [...map.entries()].map(([compId, items]) => ({
+      competition: competitions.find((c) => c.id === compId),
+      matches: items,
+    }));
+  }, [allMode, dayList, competitions]);
 
   const upcoming = useMemo(
     () =>
@@ -83,8 +95,8 @@ export function CompetitionDetailScreen({ id, day }: { id: string; day?: string 
 
   if (!allMode && !competition) return <EmptyState title="Soutěž nenalezena" />;
 
-  // Day matches mode (from Matches tab)
-  if (allMode || day) {
+  // Day matches mode (from Matches / Favorites calendar)
+  if (dayMode) {
     return (
       <div className="flex min-h-0 flex-1 flex-col hb-enter">
         <ScreenHeader
@@ -107,10 +119,30 @@ export function CompetitionDetailScreen({ id, day }: { id: string; day?: string 
           onSelect={setSelectedDay}
           datesWithMatches={datesWithMatches}
         />
+        {!allMode && competition && (
+          <CompetitionNavStrip
+            title={competition.name}
+            badge={<CompetitionBadge competition={competition} size={18} />}
+            onClick={() => push({ name: "competition", id: competition.id })}
+          />
+        )}
         <div className="hb-scroll min-h-0 flex-1 pb-4">
-          {dayList.map((m) => (
-            <MatchRow key={m.id} match={m} />
-          ))}
+          {allMode && groupedDayList
+            ? groupedDayList.map(({ competition: comp, matches: items }) => (
+                <section key={comp?.id ?? items[0]?.id} className="mb-1">
+                  {comp && (
+                    <CompetitionNavStrip
+                      title={comp.name}
+                      badge={<CompetitionBadge competition={comp} size={18} />}
+                      onClick={() => push({ name: "competition", id: comp.id, day: selectedDay })}
+                    />
+                  )}
+                  {items.map((m) => (
+                    <MatchRow key={m.id} match={m} />
+                  ))}
+                </section>
+              ))
+            : dayList.map((m) => <MatchRow key={m.id} match={m} />)}
           {!dayList.length && <EmptyState title="Žádné zápasy" hint="Vyber jiný den." />}
         </div>
       </div>

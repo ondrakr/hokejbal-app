@@ -147,7 +147,7 @@ function EventBadge({
 }) {
   if (event.kind === "goal") {
     return (
-      <span className="inline-flex shrink-0 items-center gap-[5px] rounded-full bg-brand px-[7px] py-1 text-[11px] font-bold text-white tabular-nums">
+      <span className="inline-flex shrink-0 items-center gap-[5px] rounded-full bg-brand px-[7px] py-1 font-bold tabular-nums hb-on-brand" style={{ fontSize: 11 }}>
         <span className="h-[7px] w-[7px] rounded-full bg-white" />
         {running[0]}:{running[1]}
       </span>

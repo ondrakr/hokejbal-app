@@ -55,7 +55,7 @@ export function MatchLineups({
                 <div className="overflow-hidden rounded-full">
                   <PlayerAvatar player={player} size={40} />
                 </div>
-                <span className="absolute -right-0.5 -bottom-0.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-brand text-[9px] font-bold text-white tabular-nums">
+                <span className="absolute -right-0.5 -bottom-0.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-brand font-bold tabular-nums hb-on-brand" style={{ fontSize: 9 }}>
                   {player.number}
                 </span>
               </div>

@@ -127,7 +127,9 @@ export function FavoritesScreen() {
                         <CompetitionNavStrip
                           title={competition.name}
                           badge={<CompetitionBadge competition={competition} size={18} />}
-                          onClick={() => push({ name: "competition", id: competition.id })}
+                          onClick={() =>
+                            push({ name: "competition", id: competition.id, day: selectedDay })
+                          }
                         />
                       )}
                       {list.map((m) => (

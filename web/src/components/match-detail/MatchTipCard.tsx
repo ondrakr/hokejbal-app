@@ -38,7 +38,9 @@ export function MatchTipCard({
   return (
     <div className="hb-card space-y-3 p-3.5">
       <div className="flex items-center gap-2">
-        <span className="text-[11px] font-bold tracking-[0.7px] text-brand">TIPOVAČKA</span>
+        <span className="font-bold tracking-[0.7px]" style={{ fontSize: 11, color: "var(--brand)" }}>
+          TIPOVAČKA
+        </span>
         <span className="ml-auto text-[11px] font-semibold text-hb-faint">
           +{tips.pointsPerTip} b za správný tip
         </span>
@@ -90,20 +92,11 @@ export function MatchTipCard({
                 key={pick}
                 type="button"
                 onClick={() => tips.placeTip(match.id, pick)}
-                className={`flex flex-1 flex-col items-center gap-1 rounded-[12px] py-3 ${
-                  selected
-                    ? "bg-brand text-on-brand"
-                    : "bg-card-inset text-hb-fg ring-1 ring-[var(--card-stroke)]"
-                }`}
+                className="hb-tip-pick"
+                data-selected={selected ? "true" : "false"}
               >
-                <span
-                  className={`text-[10px] font-bold ${
-                    selected ? "text-white opacity-85" : "text-hb-faint"
-                  }`}
-                >
-                  {selected ? "Tvůj tip" : "Tipnout"}
-                </span>
-                <span className="line-clamp-1 text-[14px] font-bold">{title}</span>
+                <span className="hb-tip-pick-caption">{selected ? "Tvůj tip" : "Tipnout"}</span>
+                <span className="hb-tip-pick-title">{title}</span>
               </button>
             );
           })}

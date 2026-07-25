@@ -228,6 +228,15 @@ function mapEvent(e: MatchEventRow): MatchEvent {
   };
 }
 
+/** Sjednotí PostgREST timestamp na ISO, ať dayKey/Program/kalendář berou stejný den. */
+function normalizeScheduledAt(raw: string) {
+  let s = raw.trim();
+  if (!s.includes("T")) s = s.replace(" ", "T");
+  // +00 → +00:00
+  s = s.replace(/([+-]\d{2})$/, "$1:00");
+  return s;
+}
+
 function mapMatch(r: MatchRow): Match {
   const events = [...(r.match_events ?? [])]
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
@@ -237,7 +246,7 @@ function mapMatch(r: MatchRow): Match {
     competitionId: r.competition_id,
     homeTeamId: r.home_club_id,
     awayTeamId: r.away_club_id,
-    scheduledAt: r.scheduled_at,
+    scheduledAt: normalizeScheduledAt(r.scheduled_at),
     status: r.status as Match["status"],
     period: r.period ?? "",
     clock: r.clock,

@@ -251,14 +251,20 @@ export function HomeScreen() {
                   competitions.find((c) => c.id === m.competitionId)?.shortName ??
                   competitions.find((c) => c.id === m.competitionId)?.name;
                 return (
-                  <MatchRow
+                  <button
                     key={m.id}
-                    match={m}
-                    embedded
-                    width={250}
-                    showCompetition
-                    competitionName={short}
-                  />
+                    type="button"
+                    className="hb-card shrink-0 overflow-hidden text-left"
+                    style={{ width: 250 }}
+                    onClick={() => push({ name: "match", id: m.id })}
+                  >
+                    <MatchRow
+                      match={m}
+                      embedded
+                      showCompetition
+                      competitionName={short}
+                    />
+                  </button>
                 );
               })
             )}
@@ -276,9 +282,10 @@ export function HomeScreen() {
             href={trustedOpenUrl(banner.url) ?? "#"}
             target="_blank"
             rel="noreferrer"
-            className="hb-card hb-card-lg relative flex h-[168px] flex-col justify-center overflow-hidden p-[18px] text-white"
+            className="hb-card hb-card-lg relative flex h-[168px] flex-col justify-center overflow-hidden p-[18px]"
             style={{
               background: `linear-gradient(135deg, ${bannerColors[0]}, ${bannerColors[1]})`,
+              color: "#fff",
             }}
             onClick={(e) => {
               if (!trustedOpenUrl(banner.url)) e.preventDefault();
@@ -288,11 +295,20 @@ export function HomeScreen() {
               className="pointer-events-none absolute top-0 right-6 h-full w-[46px] bg-white/12"
               style={{ clipPath: "polygon(18px 0, 100% 0, calc(100% - 18px) 100%, 0 100%)" }}
             />
-            <div className="relative space-y-2 text-white">
-              <div className="text-[11px] font-bold tracking-[0.6px] text-white">{banner.eyebrow}</div>
-              <div className="text-[18px] font-bold text-white">{banner.title}</div>
-              <div className="text-[13px] font-medium text-white/90">{banner.subtitle}</div>
-              <span className="mt-1 inline-flex rounded-full bg-white/20 px-3 py-2 text-[12px] font-bold uppercase text-white">
+            <div className="relative space-y-2">
+              <div className="font-bold tracking-[0.6px]" style={{ fontSize: 11, color: "#fff" }}>
+                {banner.eyebrow}
+              </div>
+              <div className="font-bold" style={{ fontSize: 18, color: "#fff" }}>
+                {banner.title}
+              </div>
+              <div className="font-medium" style={{ fontSize: 13, color: "rgba(255,255,255,0.9)" }}>
+                {banner.subtitle}
+              </div>
+              <span
+                className="mt-1 inline-flex rounded-full bg-white/20 px-3 py-2 font-bold uppercase"
+                style={{ fontSize: 12, color: "#fff" }}
+              >
                 {banner.ctaTitle}
               </span>
             </div>
@@ -313,36 +329,46 @@ export function HomeScreen() {
           )}
         </section>
 
-        {/* Reprezentace / ISBHF */}
+        {/* Reprezentace / ISBHF — 1:1 HomeView.representationSection */}
         <section className="px-4">
           <a
-            href="https://www.isbhf.com"
+            href={trustedOpenUrl("https://www.isbhf.com") ?? "https://www.isbhf.com"}
             target="_blank"
             rel="noreferrer"
-            className="hb-card hb-card-lg relative flex min-h-[148px] items-center overflow-hidden text-white"
+            className="hb-card hb-card-lg relative flex min-h-[148px] items-center overflow-hidden"
             style={{ background: "#00598F" }}
-            onClick={(e) => {
-              if (!trustedOpenUrl("https://www.isbhf.com")) e.preventDefault();
-            }}
+            aria-label="Reprezentace, otevřít aplikaci ISBHF"
           >
             <div
-              className="pointer-events-none absolute top-0 right-[72px] h-full w-[46px] bg-white/10"
-              style={{ clipPath: "polygon(18px 0, 100% 0, calc(100% - 18px) 100%, 0 100%)" }}
+              className="pointer-events-none absolute top-0 right-[72px] h-full w-[46px]"
+              style={{
+                background: "rgba(255,255,255,0.1)",
+                clipPath: "polygon(18px 0, 100% 0, calc(100% - 18px) 100%, 0 100%)",
+              }}
             />
-            <div className="relative flex-1 py-3.5 pl-[18px] pr-2">
-              <div className="hb-display text-[22px]">Reprezentace</div>
-              <div className="mt-2 text-[13px] font-medium text-white/88">
+            <div className="relative flex min-w-0 flex-1 flex-col items-start gap-2 py-3.5 pl-[18px] pr-2">
+              <div className="hb-display" style={{ fontSize: 22, color: "#fff", fontWeight: 800 }}>
+                Reprezentace
+              </div>
+              <div className="font-medium" style={{ fontSize: 13, color: "rgba(255,255,255,0.88)" }}>
                 Výsledky, soupisky a MS v oficiální aplikaci.
               </div>
-              <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/18 px-3 py-2 text-[12px] font-bold">
-                Otevřít aplikaci ↗
+              <span
+                className="mt-1 inline-flex items-center gap-1.5 rounded-full px-3 py-2 font-bold"
+                style={{ fontSize: 12, color: "#fff", background: "rgba(255,255,255,0.18)" }}
+              >
+                Otevřít aplikaci
+                <span aria-hidden style={{ fontSize: 11 }}>
+                  ↗
+                </span>
               </span>
             </div>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/brand/ISBHFLogo.png"
               alt=""
-              className="relative mr-1.5 h-[128px] w-[128px] object-contain"
+              className="relative mr-1.5 h-auto w-[128px] shrink-0 object-contain"
+              style={{ maxHeight: 128 }}
             />
           </a>
         </section>
