@@ -32,26 +32,7 @@ struct HomePartner: Identifiable, Hashable, Sendable {
 }
 
 enum HomeContent {
-    static let banners: [HomeBanner] = [
-        .init(
-            id: "ms2026",
-            eyebrow: "MS V HOKEJBALU 2026",
-            title: "20.–28. června · Ostravar Aréna",
-            subtitle: "Mistrovství světa mužů a žen v Ostravě.",
-            ctaTitle: "Kupuj vstupenky",
-            url: URL(string: "https://www.hokejbal.cz"),
-            gradientIndex: 0
-        ),
-        .init(
-            id: "legends2026",
-            eyebrow: "MS LEGENDS 2026",
-            title: "Praha-Černošice",
-            subtitle: "Legendy se vrací na domácí půdu.",
-            ctaTitle: "Více informací",
-            url: URL(string: "https://www.hokejbal.cz"),
-            gradientIndex: 1
-        )
-    ]
+    static let banners: [HomeBanner] = []
 
     static let delniciChannelURL = URL(string: "https://www.youtube.com/@delnicihokejbalu")!
 
@@ -138,7 +119,6 @@ struct HomeView: View {
     @State private var articles: [NewsArticle] = []
     @State private var matches: [Match] = []
     @State private var isLoading = false
-    @State private var bannerPage = 0
     @State private var newsPage = 0
     @State private var selectedArticle: NewsArticle?
     @State private var selectedMatch: HomeMatchRoute?
@@ -167,7 +147,6 @@ struct HomeView: View {
                     newsSection
                     liveStreamsSection
                     matchSliderSection
-                    bannersSection
                     representationSection
                     worldVideosSection
                     partnersSection
@@ -374,65 +353,6 @@ struct HomeView: View {
         .accessibilityLabel("Reprezentace, otevřít aplikaci ISBHF")
     }
 
-    // MARK: - Banners
-
-    private var bannersSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            TabView(selection: $bannerPage) {
-                ForEach(Array(HomeContent.banners.enumerated()), id: \.element.id) { index, banner in
-                    bannerCard(banner)
-                        .padding(.horizontal, HBTheme.screenPadding)
-                        .tag(index)
-                }
-            }
-            .tabViewStyle(.page(indexDisplayMode: .automatic))
-            .frame(height: 168)
-        }
-    }
-
-    private func bannerCard(_ banner: HomeBanner) -> some View {
-        let colors = HomeContent.gradients[banner.gradientIndex % HomeContent.gradients.count]
-        let content = VStack(alignment: .leading, spacing: 8) {
-            Text(banner.eyebrow)
-                .font(.hbMontserrat(size: 11, weight: .bold))
-                .tracking(0.6)
-            Text(banner.title)
-                .font(.hbMontserrat(size: 18, weight: .bold))
-            Text(banner.subtitle)
-                .font(.hbMontserrat(size: 13, weight: .medium))
-                .opacity(0.9)
-            Text(banner.ctaTitle.uppercased())
-                .font(.hbMontserrat(size: 12, weight: .bold))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(Color.white.opacity(0.2), in: Capsule())
-                .padding(.top, 4)
-        }
-        .foregroundStyle(.white)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        .padding(18)
-        .background(
-            LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing),
-            in: RoundedRectangle(cornerRadius: HBTheme.radiusLg, style: .continuous)
-        )
-        .overlay(alignment: .topTrailing) {
-            HBSkew(dx: 18)
-                .fill(Color.white.opacity(0.12))
-                .frame(width: 46)
-                .padding(.trailing, 24)
-                .allowsHitTesting(false)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: HBTheme.radiusLg, style: .continuous))
-
-        return Group {
-            if let url = banner.url {
-                Link(destination: url) { content }
-            } else {
-                content
-            }
-        }
-    }
-
     // MARK: - News
 
     private var newsSection: some View {
@@ -493,8 +413,12 @@ struct HomeView: View {
             .clipped()
             .overlay(
                 LinearGradient(
-                    colors: [.clear, .black.opacity(0.15), .black.opacity(0.82)],
-                    startPoint: .center,
+                    colors: [
+                        .black.opacity(0.35),
+                        .black.opacity(0.25),
+                        .black.opacity(0.88),
+                    ],
+                    startPoint: .top,
                     endPoint: .bottom
                 )
             )
@@ -507,12 +431,14 @@ struct HomeView: View {
                     Text(article.title)
                         .font(.hbDisplay(size: 19, weight: .heavy))
                         .foregroundStyle(.white)
+                        .shadow(color: .black.opacity(0.55), radius: 2, y: 1)
                         .lineLimit(3)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                     Text(article.publishedAt.hbShortDateTime)
                         .font(.hbMontserrat(size: 12, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.85))
+                        .foregroundStyle(.white.opacity(0.92))
+                        .shadow(color: .black.opacity(0.45), radius: 1.5, y: 1)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(14)

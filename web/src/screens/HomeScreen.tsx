@@ -5,7 +5,6 @@ import { trustedOpenUrl } from "@/lib/supabase";
 import { formatNewsDate } from "@/lib/format";
 import {
   DELNICI_CHANNEL_URL,
-  HOME_BANNERS,
   HOME_GRADIENTS,
   HOME_PARTNERS,
   HOME_VIDEOS,
@@ -37,7 +36,6 @@ export function HomeScreen() {
   const { push, selectLive, setTab } = useNav();
   const feedStore = useHomeFeed();
   const [newsPage, setNewsPage] = useState(0);
-  const [bannerPage, setBannerPage] = useState(0);
 
   useEffect(() => {
     feedStore.seedDefaultsIfNeeded(competitions);
@@ -71,20 +69,10 @@ export function HomeScreen() {
     return () => window.clearInterval(id);
   }, [slides.length]);
 
-  useEffect(() => {
-    if (HOME_BANNERS.length < 2) return;
-    const id = window.setInterval(() => {
-      setBannerPage((p) => (p + 1) % HOME_BANNERS.length);
-    }, 6000);
-    return () => window.clearInterval(id);
-  }, []);
-
   if (loading) return <LoadingState />;
   if (error) return <EmptyState title="Chyba načítání" hint={error} />;
 
   const article = slides[newsPage];
-  const banner = HOME_BANNERS[bannerPage];
-  const bannerColors = HOME_GRADIENTS[banner.gradientIndex % HOME_GRADIENTS.length];
 
   return (
     <div className="hb-scroll hb-enter flex-1">
@@ -143,7 +131,7 @@ export function HomeScreen() {
                     className="absolute inset-0"
                     style={{
                       background:
-                        "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.15) 45%, rgba(0,0,0,0.82) 100%)",
+                        "linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.25) 40%, rgba(0,0,0,0.88) 100%)",
                     }}
                   />
                   <span
@@ -154,11 +142,25 @@ export function HomeScreen() {
                   >
                     {article.category}
                   </span>
-                  <div className="absolute inset-x-0 bottom-0 space-y-1.5 p-3.5 text-left text-white">
-                    <div className="hb-display line-clamp-3 text-[19px] leading-snug text-white">
+                  <div className="absolute inset-x-0 bottom-0 space-y-1.5 p-3.5 text-left">
+                    <div
+                      className="hb-display line-clamp-3 leading-snug"
+                      style={{
+                        fontSize: 19,
+                        color: "#fff",
+                        textShadow: "0 1px 3px rgba(0,0,0,0.55)",
+                      }}
+                    >
                       {article.title}
                     </div>
-                    <div className="text-[12px] font-semibold text-white/85">
+                    <div
+                      className="font-semibold"
+                      style={{
+                        fontSize: 12,
+                        color: "rgba(255,255,255,0.92)",
+                        textShadow: "0 1px 2px rgba(0,0,0,0.45)",
+                      }}
+                    >
                       {formatNewsDate(article.publishedAt)}
                     </div>
                   </div>
@@ -274,59 +276,6 @@ export function HomeScreen() {
               </p>
             )}
           </div>
-        </section>
-
-        {/* Bannery — height 168 */}
-        <section className="px-4">
-          <a
-            href={trustedOpenUrl(banner.url) ?? "#"}
-            target="_blank"
-            rel="noreferrer"
-            className="hb-card hb-card-lg relative flex h-[168px] flex-col justify-center overflow-hidden p-[18px]"
-            style={{
-              background: `linear-gradient(135deg, ${bannerColors[0]}, ${bannerColors[1]})`,
-              color: "#fff",
-            }}
-            onClick={(e) => {
-              if (!trustedOpenUrl(banner.url)) e.preventDefault();
-            }}
-          >
-            <div
-              className="pointer-events-none absolute top-0 right-6 h-full w-[46px] bg-white/12"
-              style={{ clipPath: "polygon(18px 0, 100% 0, calc(100% - 18px) 100%, 0 100%)" }}
-            />
-            <div className="relative space-y-2">
-              <div className="font-bold tracking-[0.6px]" style={{ fontSize: 11, color: "#fff" }}>
-                {banner.eyebrow}
-              </div>
-              <div className="font-bold" style={{ fontSize: 18, color: "#fff" }}>
-                {banner.title}
-              </div>
-              <div className="font-medium" style={{ fontSize: 13, color: "rgba(255,255,255,0.9)" }}>
-                {banner.subtitle}
-              </div>
-              <span
-                className="mt-1 inline-flex rounded-full bg-white/20 px-3 py-2 font-bold uppercase"
-                style={{ fontSize: 12, color: "#fff" }}
-              >
-                {banner.ctaTitle}
-              </span>
-            </div>
-          </a>
-          {HOME_BANNERS.length > 1 && (
-            <div className="mt-2 flex justify-center gap-1.5">
-              {HOME_BANNERS.map((_, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => setBannerPage(i)}
-                  className={`h-[6px] w-[6px] rounded-full ${
-                    i === bannerPage ? "bg-hb-muted" : "bg-hb-faint"
-                  }`}
-                />
-              ))}
-            </div>
-          )}
         </section>
 
         {/* Reprezentace / ISBHF — 1:1 HomeView.representationSection */}

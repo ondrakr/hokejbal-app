@@ -23,47 +23,25 @@ struct MatchDayStrip: View {
         Set(datesWithMatches.map { calendar.startOfDay(for: $0) })
     }
 
-    private var isTodaySelected: Bool {
-        calendar.isDate(selectedDate, inSameDayAs: today)
-    }
-
     var body: some View {
         ScrollViewReader { proxy in
-            VStack(spacing: 4) {
-                if !isTodaySelected {
-                    HStack {
-                        Spacer(minLength: 0)
-                        Button {
-                            selectedDate = today
-                            scrollToSelected(proxy)
-                        } label: {
-                            Text("Dnes")
-                                .font(.hbMontserrat(size: 12, weight: .bold))
-                                .foregroundStyle(HBTheme.brand)
-                        }
-                        .buttonStyle(.plain)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(days, id: \.self) { day in
+                        dayCell(day)
+                            .id(dayKey(day))
                     }
-                    .padding(.horizontal, HBTheme.screenPadding)
                 }
-
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 6) {
-                        ForEach(days, id: \.self) { day in
-                            dayCell(day)
-                                .id(dayKey(day))
-                        }
-                    }
-                    .padding(.horizontal, HBTheme.screenPadding)
-                    .padding(.vertical, 8)
-                }
+                .padding(.horizontal, HBTheme.screenPadding)
+                .padding(.vertical, 8)
             }
             .padding(.top, 4)
             .onAppear {
                 clampSelectionIntoWindowIfNeeded()
-                scrollToSelected(proxy)
+                scrollToSelected(proxy, animated: false)
             }
-            .onChange(of: selectedDate) { _, _ in scrollToSelected(proxy) }
-            .onChange(of: datesWithMatches) { _, _ in scrollToSelected(proxy) }
+            .onChange(of: selectedDate) { _, _ in scrollToSelected(proxy, animated: true) }
+            .onChange(of: datesWithMatches) { _, _ in scrollToSelected(proxy, animated: true) }
         }
         .background(HBTheme.surface)
         .overlay(alignment: .bottom) {
@@ -83,10 +61,16 @@ struct MatchDayStrip: View {
         }
     }
 
-    private func scrollToSelected(_ proxy: ScrollViewProxy) {
+    private func scrollToSelected(_ proxy: ScrollViewProxy, animated: Bool) {
         let key = dayKey(calendar.startOfDay(for: selectedDate))
         DispatchQueue.main.async {
-            proxy.scrollTo(key, anchor: .center)
+            if animated {
+                withAnimation(.easeInOut(duration: 0.35)) {
+                    proxy.scrollTo(key, anchor: .center)
+                }
+            } else {
+                proxy.scrollTo(key, anchor: .center)
+            }
         }
     }
 

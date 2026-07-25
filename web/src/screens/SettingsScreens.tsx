@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CompetitionBadge, TeamBadge } from "@/components/Badges";
 import { IconChevronRight, IconCourt, IconGear, IconNews } from "@/components/Icons";
+import { Pill } from "@/components/MatchRow";
 import { BackButton, ScreenHeader } from "@/components/ui";
 import { useCatalog } from "@/stores/catalog";
 import { useCompetitionOrder } from "@/stores/competitionOrder";
@@ -10,6 +11,7 @@ import { useDataSource } from "@/stores/dataSource";
 import { useHomeFeed } from "@/stores/homeFeed";
 import { useNav } from "@/stores/navigation";
 import { useNotifications } from "@/stores/notifications";
+import type { Competition } from "@/lib/types";
 
 /** Port SettingsView + nested settings */
 export function SettingsScreen() {
@@ -158,11 +160,28 @@ export function HomeFeedSettingsScreen() {
   const { pop } = useNav();
   const { competitions, teams, teamById } = useCatalog();
   const feed = useHomeFeed();
+  const order = useCompetitionOrder();
+  const [pickMode, setPickMode] = useState<"Soutěž" | "Tým">("Soutěž");
   const [teamQuery, setTeamQuery] = useState("");
 
   useEffect(() => {
     feed.seedDefaultsIfNeeded(competitions);
   }, [competitions, feed]);
+
+  useEffect(() => {
+    order.sync(competitions);
+  }, [competitions, order]);
+
+  useEffect(() => {
+    if (!feed.competitionSlugs.length && feed.teamIDs.length) {
+      setPickMode("Tým");
+    }
+  }, [feed.competitionSlugs.length, feed.teamIDs.length]);
+
+  const sortedCompetitions = useMemo(
+    () => order.sortedCompetitions(competitions),
+    [order, competitions]
+  );
 
   const filteredTeams = useMemo(() => {
     const q = teamQuery.trim().toLowerCase();
@@ -175,6 +194,11 @@ export function HomeFeedSettingsScreen() {
         t.city.toLowerCase().includes(q)
     );
   }, [teams, teamQuery]);
+
+  const selectedCompetitions = useMemo(
+    () => sortedCompetitions.filter((c) => feed.competitionSlugs.includes(c.slug)),
+    [sortedCompetitions, feed.competitionSlugs]
+  );
 
   const selectedTeams = useMemo(
     () =>
@@ -194,80 +218,136 @@ export function HomeFeedSettingsScreen() {
       />
       <div className="space-y-5 px-4 py-4 pb-10">
         <p className="text-[13px] leading-relaxed text-hb-muted">
-          Slider Zápasů ukáže jen vybrané soutěže a týmy. {feed.selectionSummary}.
+          Nejdřív zvolte, jestli přidáváte soutěž nebo tým. Slider pak ukáže jejich zápasy.{" "}
+          {feed.selectionSummary}.
         </p>
 
-        <SettingsSection
-          title="Soutěže"
-          trailing={
-            <div className="flex gap-3 text-[12px] font-bold text-brand">
-              <button type="button" onClick={() => feed.selectAllCompetitions(competitions)}>
-                Vše
+        {(selectedCompetitions.length > 0 || selectedTeams.length > 0) && (
+          <SettingsSection
+            title="Aktuální výběr"
+            trailing={
+              <button
+                type="button"
+                className="text-[12px] font-bold text-loss"
+                onClick={() => feed.clearAll()}
+              >
+                Vymazat
               </button>
-              <button type="button" onClick={() => feed.clearCompetitions()}>
-                Nic
-              </button>
+            }
+          >
+            <div className="flex flex-wrap gap-2 p-3">
+              {selectedCompetitions.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => feed.toggleCompetition(c.slug)}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-brand/12 px-2.5 py-1.5 text-[11px] font-bold text-brand"
+                >
+                  <CompetitionBadge competition={c} size={16} />
+                  {c.shortName}
+                  <span className="opacity-70">×</span>
+                </button>
+              ))}
+              {selectedTeams.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => feed.toggleTeam(t.id)}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-brand/12 px-2.5 py-1.5 text-[11px] font-bold text-brand"
+                >
+                  <TeamBadge team={t} size={16} />
+                  {t.shortName}
+                  <span className="opacity-70">×</span>
+                </button>
+              ))}
             </div>
-          }
-        >
-          {competitions.map((c) => (
-            <ToggleRow
-              key={c.id}
-              title={c.name}
-              subtitle={c.season}
-              leading={<CompetitionBadge competition={c} size={28} />}
-              on={feed.isCompetitionSelected(c.slug)}
-              onToggle={() => feed.toggleCompetition(c.slug)}
-            />
-          ))}
-        </SettingsSection>
+          </SettingsSection>
+        )}
 
-        <SettingsSection
-          title="Týmy"
-          trailing={
-            <button type="button" className="text-[12px] font-bold text-brand" onClick={() => feed.clearTeams()}>
-              Vymazat výběr
-            </button>
-          }
-        >
-          <div className="space-y-3 p-3">
-            <input
-              value={teamQuery}
-              onChange={(e) => setTeamQuery(e.target.value)}
-              placeholder="Hledat tým nebo město…"
-              className="w-full rounded-[12px] border border-card-stroke bg-card px-3 py-2.5 text-[14px] outline-none focus:border-brand"
-            />
-            {selectedTeams.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {selectedTeams.map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => feed.toggleTeam(t.id)}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-brand/12 px-2.5 py-1.5 text-[11px] font-bold text-brand"
-                  >
-                    <TeamBadge team={t} size={16} />
-                    {t.shortName}
-                    <span className="opacity-70">×</span>
-                  </button>
-                ))}
+        <div>
+          <div className="mb-1 px-1 text-[12px] font-bold tracking-[0.3px] text-hb-faint uppercase">
+            Přidat
+          </div>
+          <div className="flex gap-[3px] rounded-[12px] bg-card-inset p-1">
+            {(["Soutěž", "Tým"] as const).map((mode) => (
+              <Pill key={mode} active={pickMode === mode} onClick={() => setPickMode(mode)}>
+                {mode}
+              </Pill>
+            ))}
+          </div>
+          <p className="mt-2 px-1 text-[12px] text-hb-muted">
+            {pickMode === "Soutěž"
+              ? "Celá soutěž — všechny její zápasy ve slideru."
+              : "Konkrétní klub — jeho zápasy i napříč soutěžemi."}
+          </p>
+        </div>
+
+        {pickMode === "Soutěž" ? (
+          <SettingsSection
+            title="Soutěže"
+            trailing={
+              <div className="flex gap-3 text-[12px] font-bold text-brand">
+                <button type="button" onClick={() => feed.selectAllCompetitions(sortedCompetitions)}>
+                  Vše
+                </button>
+                <button type="button" onClick={() => feed.clearCompetitions()}>
+                  Nic
+                </button>
+              </div>
+            }
+          >
+            {sortedCompetitions.map((c: Competition) => (
+              <ToggleRow
+                key={c.id}
+                title={c.name}
+                subtitle={c.season}
+                leading={<CompetitionBadge competition={c} size={28} />}
+                on={feed.isCompetitionSelected(c.slug)}
+                onToggle={() => feed.toggleCompetition(c.slug)}
+              />
+            ))}
+            {!sortedCompetitions.length && (
+              <div className="px-4 py-3 text-[13px] text-hb-muted">Soutěže se ještě načítají…</div>
+            )}
+          </SettingsSection>
+        ) : (
+          <SettingsSection
+            title="Týmy"
+            trailing={
+              <button
+                type="button"
+                className="text-[12px] font-bold text-brand"
+                onClick={() => feed.clearTeams()}
+              >
+                Vymazat týmy
+              </button>
+            }
+          >
+            <div className="p-3">
+              <input
+                value={teamQuery}
+                onChange={(e) => setTeamQuery(e.target.value)}
+                placeholder="Hledat tým nebo město…"
+                className="w-full rounded-[12px] border border-card-stroke bg-card px-3 py-2.5 text-[14px] outline-none focus:border-brand"
+              />
+            </div>
+            {filteredTeams.map((t) => (
+              <ToggleRow
+                key={t.id}
+                title={t.name}
+                subtitle={t.city}
+                leading={<TeamBadge team={t} size={28} />}
+                on={feed.isTeamSelected(t.id)}
+                onToggle={() => feed.toggleTeam(t.id)}
+              />
+            ))}
+            {!filteredTeams.length && (
+              <div className="px-4 py-3 text-[13px] text-hb-muted">
+                {teams.length ? "Žádný tým neodpovídá hledání." : "Týmy se ještě načítají…"}
               </div>
             )}
-          </div>
-          {filteredTeams.map((t) => (
-            <ToggleRow
-              key={t.id}
-              title={t.name}
-              subtitle={t.city}
-              leading={<TeamBadge team={t} size={28} />}
-              on={feed.isTeamSelected(t.id)}
-              onToggle={() => feed.toggleTeam(t.id)}
-            />
-          ))}
-          {!filteredTeams.length && (
-            <div className="px-4 py-3 text-[13px] text-hb-muted">Žádný tým neodpovídá hledání.</div>
-          )}
-        </SettingsSection>
+          </SettingsSection>
+        )}
       </div>
     </div>
   );

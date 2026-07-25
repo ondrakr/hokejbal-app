@@ -1,7 +1,7 @@
 "use client";
 
 import type { Match, MatchEvent, Player, Team } from "@/lib/types";
-import { playerShortName } from "@/lib/types";
+import { playerShortName, shortenPersonName } from "@/lib/types";
 import { EmptyState } from "@/components/ui";
 
 function periodTitle(period: number): string {
@@ -51,14 +51,14 @@ function displayName(event: MatchEvent, playerMap: Map<string, Player>): string 
   if (dash >= 0) {
     const after = desc.slice(dash + 1).trim();
     const paren = after.indexOf("(");
-    return (paren >= 0 ? after.slice(0, paren) : after).trim();
+    return shortenPersonName((paren >= 0 ? after.slice(0, paren) : after).trim());
   }
   if (desc.startsWith("Gól ")) {
     const rest = desc.slice(4);
     const paren = rest.indexOf("(");
-    return (paren >= 0 ? rest.slice(0, paren) : rest).trim();
+    return shortenPersonName((paren >= 0 ? rest.slice(0, paren) : rest).trim());
   }
-  return desc;
+  return shortenPersonName(desc);
 }
 
 function assistEntries(
@@ -125,17 +125,17 @@ function PlayerName({
   bold: boolean;
   onPlayer?: (id: string) => void;
 }) {
-  const className = bold
-    ? "text-[13px] font-bold text-hb-fg"
-    : "text-[11px] font-semibold text-hb-muted";
+  const style = bold
+    ? { fontSize: 13, fontWeight: 700 as const, color: "var(--text-primary)", whiteSpace: "nowrap" as const }
+    : { fontSize: 11, fontWeight: 600 as const, color: "var(--text-secondary)", whiteSpace: "nowrap" as const };
   if (id && onPlayer) {
     return (
-      <button type="button" className={className} onClick={() => onPlayer(id)}>
+      <button type="button" style={style} onClick={() => onPlayer(id)}>
         {name}
       </button>
     );
   }
-  return <span className={className}>{name}</span>;
+  return <span style={style}>{name}</span>;
 }
 
 function EventBadge({
@@ -147,7 +147,10 @@ function EventBadge({
 }) {
   if (event.kind === "goal") {
     return (
-      <span className="inline-flex shrink-0 items-center gap-[5px] rounded-full bg-brand px-[7px] py-1 font-bold tabular-nums hb-on-brand" style={{ fontSize: 11 }}>
+      <span
+        className="inline-flex shrink-0 items-center gap-[5px] rounded-full bg-brand px-[7px] py-1 font-bold tabular-nums hb-on-brand"
+        style={{ fontSize: 11 }}
+      >
         <span className="h-[7px] w-[7px] rounded-full bg-white" />
         {running[0]}:{running[1]}
       </span>
@@ -155,41 +158,134 @@ function EventBadge({
   }
   return (
     <span
-      className="inline-flex shrink-0 items-center rounded-full px-[7px] py-1 text-[11px] font-bold tabular-nums"
-      style={{ background: "#FFD626", color: "var(--ink)" }}
+      className="inline-flex shrink-0 items-center rounded-full px-[7px] py-1 font-bold tabular-nums"
+      style={{ fontSize: 11, background: "#FFD626", color: "var(--ink)" }}
     >
       {penaltyMinutes(event.description)}&apos;
     </span>
   );
 }
 
-function GoalPlayerLine({
+/**
+ * Gól: „J. Čejka (T. Novák)“ · Trest: „J. Čejka (hákování)“.
+ * `mirror` = hosté: asistence/trest vlevo od střelce (čtení zprava: čas, skóre, gól, asistence).
+ */
+function GoalPlayerBlock({
   event,
   name,
   assists,
+  penaltyReason,
   onPlayer,
+  mirror,
 }: {
   event: MatchEvent;
   name: string;
   assists: { id: string; name: string }[];
+  penaltyReason?: string;
   onPlayer?: (id: string) => void;
+  mirror?: boolean;
 }) {
+  const showAssists = event.kind === "goal" && assists.length > 0;
+  const showPenalty =
+    event.kind === "penalty" && Boolean(penaltyReason && penaltyReason.trim());
+
+  const scorer = <PlayerName id={event.playerId} name={name} bold onPlayer={onPlayer} />;
+
+  const assistsEl = showAssists ? (
+    <span style={{ fontSize: 11, fontWeight: 500, color: "var(--text-tertiary)" }}>
+      {mirror ? "(" : "\u00A0("}
+      {assists.map((a, i) => (
+        <span key={a.id}>
+          {i > 0 ? ", " : null}
+          <PlayerName id={a.id} name={a.name} bold={false} onPlayer={onPlayer} />
+        </span>
+      ))}
+      {mirror ? ")\u00A0" : ")"}
+    </span>
+  ) : null;
+
+  const penaltyEl = showPenalty ? (
+    <span style={{ fontSize: 11, fontWeight: 500, color: "var(--text-tertiary)" }}>
+      {mirror ? `(${penaltyReason})\u00A0` : `\u00A0(${penaltyReason})`}
+    </span>
+  ) : null;
+
   return (
-    <span className="min-w-0 truncate text-[13px]">
-      <PlayerName id={event.playerId} name={name} bold onPlayer={onPlayer} />
-      {event.kind === "goal" && assists.length > 0 && (
+    <div className="flex shrink-0 flex-nowrap items-baseline" style={{ whiteSpace: "nowrap" }}>
+      {mirror ? (
         <>
-          <span className="text-[11px] font-medium text-hb-faint">&nbsp;(</span>
-          {assists.map((a, i) => (
-            <span key={a.id}>
-              {i > 0 && <span className="text-[11px] font-medium text-hb-faint">, </span>}
-              <PlayerName id={a.id} name={a.name} bold={false} onPlayer={onPlayer} />
-            </span>
-          ))}
-          <span className="text-[11px] font-medium text-hb-faint">)</span>
+          {assistsEl}
+          {penaltyEl}
+          {scorer}
+        </>
+      ) : (
+        <>
+          {scorer}
+          {assistsEl}
+          {penaltyEl}
         </>
       )}
+    </div>
+  );
+}
+
+function EventRow({
+  isHome,
+  time,
+  event,
+  name,
+  assists,
+  reason,
+  running,
+  onPlayer,
+}: {
+  isHome: boolean;
+  time: string;
+  event: MatchEvent;
+  name: string;
+  assists: { id: string; name: string }[];
+  reason: string;
+  running: [number, number];
+  onPlayer?: (id: string) => void;
+}) {
+  const timeEl = (
+    <span
+      className="hb-number shrink-0 font-bold"
+      style={{ fontSize: 12, color: "var(--text-tertiary)" }}
+    >
+      {time}
     </span>
+  );
+  const badge = <EventBadge event={event} running={running} />;
+  const players = (
+    <GoalPlayerBlock
+      event={event}
+      name={name}
+      assists={assists}
+      penaltyReason={reason}
+      onPlayer={onPlayer}
+      mirror={!isHome}
+    />
+  );
+
+  // Domácí L→P: čas, skóre, gól, asistence
+  // Hosté P→L: čas, skóre, gól, asistence (stejně jako iOS: players | badge | time u pravého okraje)
+  if (isHome) {
+    return (
+      <div className="flex w-full items-center gap-1.5">
+        {timeEl}
+        {badge}
+        {players}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex w-full items-center justify-end gap-1.5">
+      {players}
+      {badge}
+      {timeEl}
+    </div>
   );
 }
 
@@ -228,11 +324,17 @@ export function MatchTimeline({
         return (
           <div key={period} className="space-y-2">
             <div className="flex items-center gap-2.5">
-              <span className="shrink-0 text-[11px] font-bold tracking-[0.6px] text-hb-muted">
+              <span
+                className="shrink-0 font-bold tracking-[0.6px]"
+                style={{ fontSize: 11, color: "var(--text-secondary)" }}
+              >
                 {periodTitle(period)}
               </span>
               <div className="h-px flex-1 bg-[var(--card-stroke)]" />
-              <span className="hb-number shrink-0 rounded-full bg-card-inset px-2.5 py-[5px] text-[13px] font-bold text-hb-fg">
+              <span
+                className="hb-number shrink-0 rounded-full bg-card-inset px-2.5 py-[5px] font-bold"
+                style={{ fontSize: 13, color: "var(--text-primary)" }}
+              >
                 {homeP} – {awayP}
               </span>
             </div>
@@ -245,53 +347,36 @@ export function MatchTimeline({
               const reason = penaltyReasonOnly(event.description);
               const running = runningScore(events, match, event);
 
-              const content = (
-                <div className={`flex flex-col gap-[3px] ${isHome ? "items-start" : "items-end"}`}>
-                  <div className="flex w-full items-center gap-1.5">
-                    {isHome ? (
-                      <>
-                        <span className="hb-number shrink-0 text-[12px] font-bold text-hb-faint">
-                          {time}
-                        </span>
-                        <EventBadge event={event} running={running} />
-                        <GoalPlayerLine
-                          event={event}
-                          name={name}
-                          assists={assists}
-                          onPlayer={onPlayer}
-                        />
-                      </>
-                    ) : (
-                      <>
-                        <GoalPlayerLine
-                          event={event}
-                          name={name}
-                          assists={assists}
-                          onPlayer={onPlayer}
-                        />
-                        <EventBadge event={event} running={running} />
-                        <span className="hb-number shrink-0 text-[12px] font-bold text-hb-faint">
-                          {time}
-                        </span>
-                      </>
-                    )}
-                  </div>
-                  {event.kind === "penalty" && reason && (
-                    <span
-                      className={`max-w-full truncate text-[11px] font-medium text-hb-faint ${
-                        isHome ? "text-left" : "text-right"
-                      }`}
-                    >
-                      {reason}
-                    </span>
-                  )}
-                </div>
-              );
-
               return (
                 <div key={event.id} className="flex items-start gap-2 py-2">
-                  <div className="min-w-0 flex-1">{isHome ? content : null}</div>
-                  <div className="min-w-0 flex-1">{!isHome ? content : null}</div>
+                  <div className="min-w-0 flex-1">
+                    {isHome ? (
+                      <EventRow
+                        isHome
+                        time={time}
+                        event={event}
+                        name={name}
+                        assists={assists}
+                        reason={reason}
+                        running={running}
+                        onPlayer={onPlayer}
+                      />
+                    ) : null}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    {!isHome ? (
+                      <EventRow
+                        isHome={false}
+                        time={time}
+                        event={event}
+                        name={name}
+                        assists={assists}
+                        reason={reason}
+                        running={running}
+                        onPlayer={onPlayer}
+                      />
+                    ) : null}
+                  </div>
                 </div>
               );
             })}

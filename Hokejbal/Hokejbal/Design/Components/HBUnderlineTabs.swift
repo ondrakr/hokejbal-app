@@ -18,6 +18,29 @@ struct HBUnderlineTabs<Tab: Hashable & RawRepresentable>: View where Tab.RawValu
     }
 }
 
+/// Page-style swipe mezi taby — stejné chování jako detail zápasu.
+struct HBSwipeTabView<Tab: Hashable, Content: View>: View {
+    let tabs: [Tab]
+    @Binding var selection: Tab
+    @ViewBuilder var content: (Tab) -> Content
+
+    var body: some View {
+        TabView(selection: $selection) {
+            ForEach(tabs, id: \.self) { tab in
+                content(tab)
+                    .tag(tab)
+            }
+        }
+        .tabViewStyle(.page(indexDisplayMode: .never))
+    }
+}
+
+extension HBSwipeTabView where Tab: CaseIterable {
+    init(selection: Binding<Tab>, @ViewBuilder content: @escaping (Tab) -> Content) {
+        self.init(tabs: Array(Tab.allCases), selection: selection, content: content)
+    }
+}
+
 /// Dynamické taby (např. Vše + soutěže na LIVE / detail zápasu).
 struct HBUnderlineTabBar<ID: Hashable>: View {
     struct Item: Hashable {

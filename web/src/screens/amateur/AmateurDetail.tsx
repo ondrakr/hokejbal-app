@@ -5,6 +5,7 @@ import { AmateurBadge } from "@/components/amateur/AmateurBadge";
 import { AmateurMatchRow } from "@/components/amateur/AmateurMatchRow";
 import { IconChevronRight, IconGear } from "@/components/Icons";
 import { UnderlineTabs } from "@/components/MatchRow";
+import { SwipeTabPanels } from "@/components/SwipeTabPanels";
 import { BackButton, EmptyState, ScreenHeader } from "@/components/ui";
 import {
   dateRangeLabel,
@@ -68,9 +69,13 @@ export function AmateurDetail({ tournamentId }: { tournamentId: string }) {
 
       <UnderlineTabs tabs={TABS} value={tab} onChange={setTab} />
 
-      <div className="hb-scroll min-h-0 flex-1 pb-8">
-        {tab === "Program" &&
-          (program.length ? (
+      <SwipeTabPanels
+        tabs={TABS}
+        value={tab}
+        onChange={setTab}
+        panelClassName="pb-8"
+      >
+        program.length ? (
             <div className="space-y-2 px-[var(--screen-pad)] pt-3">
               {program.map((m) => (
                 <AmateurMatchRow
@@ -92,10 +97,9 @@ export function AmateurDetail({ tournamentId }: { tournamentId: string }) {
               title="Žádné zápasy"
               hint="V adminu přidej program turnaje."
             />
-          ))}
+          )
 
-        {tab === "Výsledky" &&
-          (results.length ? (
+        results.length ? (
             <div className="space-y-2 px-[var(--screen-pad)] pt-3">
               {results.map((m) => (
                 <AmateurMatchRow
@@ -117,10 +121,9 @@ export function AmateurDetail({ tournamentId }: { tournamentId: string }) {
               title="Žádné zápasy"
               hint="V adminu přidej program turnaje."
             />
-          ))}
+          )
 
-        {tab === "Tabulka" &&
-          (table.length ? (
+        table.length ? (
             <div className="pt-2">
               <div className="flex px-[var(--screen-pad)] py-2 text-[11px] font-bold text-hb-faint">
                 <span className="w-7">#</span>
@@ -158,10 +161,9 @@ export function AmateurDetail({ tournamentId }: { tournamentId: string }) {
               title="Bez tabulky"
               hint="Tabulka se naplní po odehraných zápasech."
             />
-          ))}
+          )
 
-        {tab === "Týmy" &&
-          (teams.length ? (
+        teams.length ? (
             <div className="space-y-2 px-[var(--screen-pad)] pt-3">
               {teams.map((tm) => (
                 <button
@@ -190,8 +192,8 @@ export function AmateurDetail({ tournamentId }: { tournamentId: string }) {
             </div>
           ) : (
             <EmptyState title="Bez týmů" hint="V adminu přidej týmy a soupisky." />
-          ))}
-      </div>
+          )
+      </SwipeTabPanels>
     </div>
   );
 }

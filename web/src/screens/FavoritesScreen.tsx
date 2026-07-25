@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { CompetitionBadge, TeamBadge } from "@/components/Badges";
 import { CompetitionNavStrip, MatchDayStrip } from "@/components/MatchDayStrip";
 import { MatchRow, UnderlineTabs } from "@/components/MatchRow";
+import { SwipeTabPanels } from "@/components/SwipeTabPanels";
 import { IconPlusSearch, IconStar } from "@/components/Icons";
 import { EmptyState, ScreenHeader } from "@/components/ui";
 import { dayKey, todayKey } from "@/lib/format";
@@ -93,9 +94,13 @@ export function FavoritesScreen() {
       />
       <UnderlineTabs tabs={TABS} value={tab} onChange={setTab} />
 
-      <div className="hb-scroll min-h-0 flex-1 bg-canvas">
-        {tab === "Zápasy" && (
-          <>
+      <SwipeTabPanels
+        tabs={TABS}
+        value={tab}
+        onChange={setTab}
+        panelClassName="bg-canvas"
+      >
+        <>
             {!hasAnyFavorite ? (
               <EmptyState
                 title="Zatím nic v oblíbených"
@@ -141,10 +146,8 @@ export function FavoritesScreen() {
               </>
             )}
           </>
-        )}
 
-        {tab === "Týmy" && (
-          <div className="bg-surface">
+        <div className="bg-surface">
             {favTeams.map((t) => (
               <button
                 key={t.id}
@@ -182,10 +185,8 @@ export function FavoritesScreen() {
               />
             )}
           </div>
-        )}
 
-        {tab === "Hráči" && (
-          <div className="bg-surface">
+        <div className="bg-surface">
             {players.map((p) => (
               <button
                 key={p.id}
@@ -227,10 +228,8 @@ export function FavoritesScreen() {
               />
             )}
           </div>
-        )}
 
-        {tab === "Soutěže" && (
-          <div className="bg-surface">
+        <div className="bg-surface">
             {favComps.map((c) => (
               <button
                 key={c.id}
@@ -267,8 +266,7 @@ export function FavoritesScreen() {
               />
             )}
           </div>
-        )}
-      </div>
+      </SwipeTabPanels>
     </div>
   );
 }

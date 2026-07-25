@@ -124,11 +124,13 @@ struct AmateurAdminTournamentView: View {
             if let tournament {
                 VStack(spacing: 0) {
                     HBUnderlineTabs(selection: $tab)
-                    ScrollView {
-                        switch tab {
-                        case .overview: overview(tournament)
-                        case .teams: teamsAdmin
-                        case .matches: matchesAdmin
+                    HBSwipeTabView(selection: $tab) { selected in
+                        ScrollView {
+                            switch selected {
+                            case .overview: overview(tournament)
+                            case .teams: teamsAdmin
+                            case .matches: matchesAdmin
+                            }
                         }
                     }
                 }

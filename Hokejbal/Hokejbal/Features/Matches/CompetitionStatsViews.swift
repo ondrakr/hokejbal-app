@@ -118,6 +118,62 @@ struct CompetitionStatsPanel: View {
     }
 }
 
+/// Statistiky hráčů týmu — stejné metriky jako soutěž, jen soupiska týmu (bez přepínače Týmy).
+struct TeamStatsPanel: View {
+    let teamId: String
+    let competitionId: String
+    let players: [Player]
+
+    @EnvironmentObject private var catalog: CatalogStore
+
+    private var teamPlayers: [Player] {
+        players.filter { $0.teamId == teamId }
+    }
+
+    private var playerCards: [PlayerStatLeaderCardModel] {
+        CompetitionStats.playerLeaderCards(players: teamPlayers) { catalog.team($0) }
+    }
+
+    private let columns = [
+        GridItem(.flexible(), spacing: 10),
+        GridItem(.flexible(), spacing: 10),
+    ]
+
+    var body: some View {
+        Group {
+            if teamPlayers.isEmpty {
+                EmptyStateView(
+                    icon: "person.3",
+                    title: "Bez statistik hráčů",
+                    message: "Pro tento tým zatím nemáme body hráčů."
+                )
+                .padding(.top, 40)
+            } else {
+                LazyVGrid(columns: columns, spacing: 10) {
+                    ForEach(playerCards) { card in
+                        NavigationLink {
+                            CompetitionStatsLeaderboardView(
+                                competitionId: competitionId,
+                                scope: .players,
+                                metric: .player(card.metric),
+                                matches: [],
+                                standings: [],
+                                players: teamPlayers,
+                                subtitleOverride: catalog.team(teamId)?.name
+                            )
+                        } label: {
+                            PlayerStatLeaderCardView(title: card.title, leader: card.leader)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, HBTheme.screenPadding)
+                .padding(.top, 12)
+            }
+        }
+    }
+}
+
 enum CompetitionStatsLeaderMetric: Hashable {
     case player(PlayerStatMetric)
     case team(TeamStatMetric)
@@ -138,6 +194,7 @@ struct CompetitionStatsLeaderboardView: View {
     let matches: [Match]
     let standings: [StandingRow]
     let players: [Player]
+    var subtitleOverride: String? = nil
 
     @EnvironmentObject private var catalog: CatalogStore
     @EnvironmentObject private var apiClient: APIClient
@@ -159,11 +216,15 @@ struct CompetitionStatsLeaderboardView: View {
         )
     }
 
+    private var subtitle: String? {
+        subtitleOverride ?? competition?.name
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
-                if let competition {
-                    Text(competition.name)
+                if let subtitle {
+                    Text(subtitle)
                         .font(.hbMontserrat(size: 12, weight: .semibold))
                         .foregroundStyle(HBTheme.textSecondary)
                         .padding(.horizontal, HBTheme.screenPadding)

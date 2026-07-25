@@ -4,6 +4,7 @@ enum TeamDetailSection: String, CaseIterable, Hashable {
     case results = "Výsledky"
     case schedule = "Program"
     case table = "Tabulka"
+    case stats = "Statistiky"
     case roster = "Soupiska"
     case history = "Historie"
     case news = "Zprávy"
@@ -15,6 +16,7 @@ struct TeamDetailView: View {
     @EnvironmentObject private var apiClient: APIClient
     @EnvironmentObject private var catalog: CatalogStore
     @EnvironmentObject private var favorites: FavoritesStore
+    @EnvironmentObject private var liveScores: LiveScoreService
 
     @State private var team: Team?
     @State private var players: [Player] = []
@@ -63,24 +65,32 @@ struct TeamDetailView: View {
             header(team)
             HBUnderlineTabs(selection: $section)
 
-            ScrollView {
-                Group {
-                    switch section {
-                    case .results:
-                        resultsSection(team)
-                    case .schedule:
-                        scheduleSection
-                    case .table:
-                        tableSection
-                    case .roster:
-                        rosterSection
-                    case .history:
-                        historySection
-                    case .news:
-                        newsSection
+            HBSwipeTabView(selection: $section) { tab in
+                ScrollView {
+                    Group {
+                        switch tab {
+                        case .results:
+                            resultsSection(team)
+                        case .schedule:
+                            scheduleSection
+                        case .table:
+                            tableSection
+                        case .stats:
+                            TeamStatsPanel(
+                                teamId: team.id,
+                                competitionId: team.competitionId,
+                                players: players
+                            )
+                        case .roster:
+                            rosterSection
+                        case .history:
+                            historySection
+                        case .news:
+                            newsSection
+                        }
                     }
+                    .padding(.bottom, 24)
                 }
-                .padding(.bottom, 24)
             }
             .background(HBTheme.surface)
         }
@@ -316,9 +326,19 @@ struct TeamDetailView: View {
     }
 
     private var tableSection: some View {
-        let slug = catalog.competitions.first { $0.id == team?.competitionId }?.slug
+        let competitionId = team?.competitionId
+        let slug = catalog.competitions.first { $0.id == competitionId }?.slug
+        let liveById = Dictionary(
+            uniqueKeysWithValues: liveScores.liveMatches
+                .filter { competitionId == nil ? false : $0.competitionId == competitionId }
+                .map { ($0.id, $0) }
+        )
+        let merged = matches.map { liveById[$0.id] ?? $0 }
+        let extras = liveById.values.filter { live in !matches.contains(where: { $0.id == live.id }) }
         return StandingsTableView(
             rows: standings,
+            matches: merged + extras,
+            competitionId: competitionId,
             highlightTeamIds: [teamId],
             emptyMessage: "Tabulka pro tuto soutěž není k dispozici.",
             competitionSlug: slug
@@ -338,7 +358,7 @@ struct TeamDetailView: View {
         matches = (try? await apiClient.api.matches(query: MatchesQuery(
             competitionId: team?.competitionId,
             seasonId: nil,
-            teamId: teamId
+            teamId: nil
         ))) ?? []
 
         articles = (try? await apiClient.api.news(limit: 20)) ?? []

@@ -161,6 +161,15 @@ export function playerShortName(p: Player) {
   return `${p.firstName.charAt(0)}. ${p.lastName}`;
 }
 
+/** Zkrátí „Jan Čejka“ → „J. Čejka“ (fallback z description eventu). */
+export function shortenPersonName(raw: string) {
+  const parts = raw.trim().split(/\s+/).filter(Boolean);
+  if (parts.length < 2) return raw.trim();
+  const first = parts[0]!;
+  const last = parts.slice(1).join(" ");
+  return `${first.charAt(0).toUpperCase()}. ${last}`;
+}
+
 export function matchScoreText(m: Match) {
   return `${m.homeScore}:${m.awayScore}`;
 }

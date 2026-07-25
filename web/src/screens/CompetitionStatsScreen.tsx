@@ -148,15 +148,73 @@ export function CompetitionStatsPanel({
   );
 }
 
+/**
+ * Statistiky hráčů týmu — stejné metriky jako soutěž (KB/G/A/TM/PPG/SHG), jen soupiska týmu.
+ */
+export function TeamStatsPanel({
+  teamId,
+  competitionId,
+  players,
+}: {
+  teamId: string;
+  competitionId: string;
+  players: Player[];
+}) {
+  const { teamById } = useCatalog();
+  const { push } = useNav();
+
+  const teamPlayers = useMemo(
+    () => players.filter((p) => p.teamId === teamId),
+    [players, teamId]
+  );
+
+  const playerCards = useMemo(
+    () => playerLeaderCards(teamPlayers, teamById),
+    [teamPlayers, teamById]
+  );
+
+  if (teamPlayers.length === 0) {
+    return (
+      <EmptyState
+        title="Bez statistik hráčů"
+        hint="Pro tento tým zatím nemáme body hráčů."
+      />
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-2 gap-2.5 px-4 pb-6 pt-3">
+      {playerCards.map((card) => (
+        <PlayerStatLeaderCard
+          key={card.metric}
+          title={card.title}
+          leader={card.leader}
+          onClick={() =>
+            push({
+              name: "competitionStats",
+              competitionId,
+              scope: "players",
+              metric: card.metric,
+              teamId,
+            })
+          }
+        />
+      ))}
+    </div>
+  );
+}
+
 /** Plný žebříček jedné metriky — 1:1 s iOS CompetitionStatsLeaderboardView */
 export function CompetitionStatsLeaderboardScreen({
   competitionId,
   scope,
   metric,
+  teamId,
 }: {
   competitionId: string;
   scope: "players" | "teams";
   metric: string;
+  teamId?: string;
 }) {
   const { matches, teamById, competitionById } = useCatalog();
   const { pop, push } = useNav();
@@ -165,6 +223,7 @@ export function CompetitionStatsLeaderboardScreen({
   const [loading, setLoading] = useState(true);
 
   const competition = competitionById(competitionId);
+  const team = teamId ? teamById(teamId) : undefined;
   const competitionMatches = useMemo(
     () => matches.filter((m) => m.competitionId === competitionId),
     [matches, competitionId]
@@ -176,7 +235,11 @@ export function CompetitionStatsLeaderboardScreen({
       setLoading(true);
       try {
         const [pl, st] = await Promise.all([
-          fetchPlayers({ competitionId }),
+          fetchPlayers(
+            teamId
+              ? { teamId, competitionId }
+              : { competitionId }
+          ),
           fetchStandings(competitionId),
         ]);
         if (!cancelled) {
@@ -191,29 +254,38 @@ export function CompetitionStatsLeaderboardScreen({
     return () => {
       cancelled = true;
     };
-  }, [competitionId]);
+  }, [competitionId, teamId]);
 
   const title =
     scope === "players"
       ? playerMetricMeta(metric as PlayerStatMetric).title
       : teamMetricMeta(metric as TeamStatMetric).title;
 
+  const scopedPlayers = useMemo(() => {
+    if (!teamId) return players;
+    return players.filter((p) => p.teamId === teamId);
+  }, [players, teamId]);
+
   const playerRows =
-    scope === "players" ? rankPlayers(players, teamById, metric as PlayerStatMetric) : [];
+    scope === "players"
+      ? rankPlayers(scopedPlayers, teamById, metric as PlayerStatMetric)
+      : [];
   const teamRows =
     scope === "teams"
       ? rankTeams(standings, competitionMatches, teamById, metric as TeamStatMetric)
       : [];
 
+  const subtitle = team?.name ?? competition?.name;
+
   return (
     <div className="flex min-h-0 flex-1 flex-col hb-enter bg-canvas">
       <ScreenHeader title={title} left={<BackButton onClick={pop} />} />
-      {competition ? (
+      {subtitle ? (
         <div
           className="px-4 pb-1 font-semibold"
           style={{ fontSize: 12, color: "var(--text-secondary)" }}
         >
-          {competition.name}
+          {subtitle}
         </div>
       ) : null}
 

@@ -8,6 +8,7 @@ import { playerFullName } from "@/lib/types";
 import { PlayerAvatar, TeamBadge } from "@/components/Badges";
 import { IconChevronRight } from "@/components/Icons";
 import { MatchRow, UnderlineTabs } from "@/components/MatchRow";
+import { SwipeTabPanels } from "@/components/SwipeTabPanels";
 import { BackButton, EmptyState, LoadingState, ScreenHeader } from "@/components/ui";
 import { useCatalog } from "@/stores/catalog";
 import { useFavorites } from "@/stores/favorites";
@@ -220,9 +221,13 @@ export function PlayerDetailScreen({ id }: { id: string }) {
 
       <UnderlineTabs tabs={TABS} value={tab} onChange={setTab} />
 
-      <div className="hb-scroll min-h-0 flex-1 bg-canvas pb-7">
-        {tab === "Zápasy" && (
-          <div>
+      <SwipeTabPanels
+        tabs={TABS}
+        value={tab}
+        onChange={setTab}
+        panelClassName="bg-canvas pb-7"
+      >
+        <div>
             {seasonChips.length > 0 && (
               <div className="flex gap-2 overflow-x-auto px-4 pt-3 pb-2">
                 {seasonChips.map((seasonId) => {
@@ -260,10 +265,8 @@ export function PlayerDetailScreen({ id }: { id: string }) {
               ))
             )}
           </div>
-        )}
 
-        {tab === "Sezóny" && (
-          <div className="space-y-2.5 px-4 pt-3">
+        <div className="space-y-2.5 px-4 pt-3">
             {history.map((row) => (
               <SeasonCard key={row.id} row={row} team={teamById(row.clubId)} />
             ))}
@@ -271,8 +274,7 @@ export function PlayerDetailScreen({ id }: { id: string }) {
               <EmptyState title="Bez historie" hint="Zatím nemáme sezónní statistiky." />
             )}
           </div>
-        )}
-      </div>
+      </SwipeTabPanels>
     </div>
   );
 }

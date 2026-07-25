@@ -165,20 +165,22 @@ struct AmateurTournamentDetailView: View {
         VStack(spacing: 0) {
             header(tournament)
             HBUnderlineTabs(selection: $tab)
-            ScrollView {
-                Group {
-                    switch tab {
-                    case .program:
-                        matchesList(store.matches(in: tournamentId).filter { $0.status != .finished })
-                    case .results:
-                        matchesList(store.matches(in: tournamentId).filter { $0.status == .finished }.reversed())
-                    case .table:
-                        standingsTable
-                    case .teams:
-                        teamsList
+            HBSwipeTabView(selection: $tab) { selected in
+                ScrollView {
+                    Group {
+                        switch selected {
+                        case .program:
+                            matchesList(store.matches(in: tournamentId).filter { $0.status != .finished })
+                        case .results:
+                            matchesList(store.matches(in: tournamentId).filter { $0.status == .finished }.reversed())
+                        case .table:
+                            standingsTable
+                        case .teams:
+                            teamsList
+                        }
                     }
+                    .padding(.bottom, 28)
                 }
-                .padding(.bottom, 28)
             }
         }
     }

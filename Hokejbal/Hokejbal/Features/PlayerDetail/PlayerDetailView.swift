@@ -63,8 +63,8 @@ struct PlayerDetailView: View {
             header(player)
             HBUnderlineTabs(selection: $section)
 
-            Group {
-                switch section {
+            HBSwipeTabView(selection: $section) { tab in
+                switch tab {
                 case .matches:
                     matchesPane(player)
                 case .seasons:

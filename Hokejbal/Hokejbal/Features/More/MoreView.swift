@@ -6,15 +6,24 @@ struct MoreView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 10) {
-                    ForEach(MoreMenuItem.allCases) { item in
-                        moreRow(item)
+            GeometryReader { geo in
+                ScrollView {
+                    VStack(spacing: 0) {
+                        VStack(spacing: 10) {
+                            ForEach(MoreMenuItem.primary) { item in
+                                moreRow(item)
+                            }
+                        }
+
+                        Spacer(minLength: 28)
+
+                        moreRow(.settings)
                     }
+                    .frame(maxWidth: .infinity, minHeight: geo.size.height - 36, alignment: .top)
+                    .padding(.horizontal, HBTheme.screenPadding)
+                    .padding(.top, 12)
+                    .padding(.bottom, 24)
                 }
-                .padding(.horizontal, HBTheme.screenPadding)
-                .padding(.top, 12)
-                .padding(.bottom, 24)
             }
             .background(HBTheme.canvas)
             .hbNavTitle("Více", systemImage: "ellipsis.circle.fill")
@@ -124,13 +133,18 @@ private enum MoreMenuItem: String, CaseIterable, Identifiable {
     case fantasy
     case tips
     case amateur
-    case settings
     case search
     case news
     case liveStreams
     case media
+    case settings
 
     var id: String { rawValue }
+
+    /// Položky hlavního seznamu — Nastavení je odděleně dole.
+    static var primary: [MoreMenuItem] {
+        allCases.filter { $0 != .settings }
+    }
 
     var title: String {
         switch self {

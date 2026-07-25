@@ -9,6 +9,7 @@ import { formatMatchTime, formatShortDate } from "@/lib/format";
 import { CompetitionBadge, TeamBadge } from "@/components/Badges";
 import { IconBell, IconTv } from "@/components/Icons";
 import { LiveBadge, UnderlineTabs } from "@/components/MatchRow";
+import { SwipeTabPanels } from "@/components/SwipeTabPanels";
 import { MatchTimeline } from "@/components/match-detail/MatchTimeline";
 import { MatchOverview } from "@/components/match-detail/MatchOverview";
 import { MatchStatsPanel } from "@/components/match-detail/MatchStatsPanel";
@@ -171,7 +172,7 @@ export function MatchDetailScreen({ id }: { id: string }) {
   const alertOn = alerts.isEnabled(match.id);
 
   return (
-    <div className="hb-scroll hb-enter flex-1 bg-canvas">
+    <div className="hb-enter flex min-h-0 flex-1 flex-col bg-canvas">
       <ScreenHeader
         title={comp?.shortName ?? "Zápas"}
         left={<BackButton onClick={pop} />}
@@ -201,7 +202,7 @@ export function MatchDetailScreen({ id }: { id: string }) {
         }
       />
 
-      <div className="px-4 pt-2.5">
+      <div className="hb-scroll shrink-0 px-4 pt-2.5">
         <div className="hb-card hb-card-lg space-y-4 p-4">
           <button
             type="button"
@@ -285,50 +286,60 @@ export function MatchDetailScreen({ id }: { id: string }) {
         </div>
       </div>
 
-      <div className="mx-4 mt-3.5 mb-3 overflow-hidden hb-card hb-card-lg">
+      <div className="mx-4 mt-3.5 mb-3 flex min-h-0 flex-1 flex-col overflow-hidden hb-card hb-card-lg">
         <UnderlineTabs
           tabs={tabs}
           value={section}
           onChange={(v) => setSection(v as Section)}
         />
 
-        <div className="py-3 pb-4">
-          {section === "Zápas" && (
-            <MatchTimeline
-              match={match}
-              home={home}
-              away={away}
-              playerMap={playerMap}
-              onPlayer={(pid) => push({ name: "player", id: pid })}
-            />
-          )}
-          {section === "Přehled" && (
-            <MatchOverview
-              match={match}
-              home={home}
-              away={away}
-              homeForm={homeForm}
-              awayForm={awayForm}
-            />
-          )}
-          {section === "Statistiky" && <MatchStatsPanel match={match} />}
-          {section === "Sestavy" && (
-            <MatchLineups
-              homePlayers={homePlayers}
-              awayPlayers={awayPlayers}
-              onPlayer={(pid) => push({ name: "player", id: pid })}
-            />
-          )}
-          {section === "Tabulka" && (
-            <MatchStandings
-              rows={standings}
-              highlightTeamIds={[match.homeTeamId, match.awayTeamId]}
-              teamById={teamById}
-              competitionSlug={comp?.slug}
-              onTeam={(tid) => push({ name: "team", id: tid })}
-            />
-          )}
-        </div>
+        <SwipeTabPanels
+          tabs={tabs}
+          value={section}
+          onChange={(v) => setSection(v as Section)}
+          panelClassName="py-3 pb-4"
+        >
+          {tabs.map((tab) => (
+            <div key={tab}>
+              {tab === "Zápas" ? (
+                <MatchTimeline
+                  match={match}
+                  home={home}
+                  away={away}
+                  playerMap={playerMap}
+                  onPlayer={(pid) => push({ name: "player", id: pid })}
+                />
+              ) : null}
+              {tab === "Přehled" ? (
+                <MatchOverview
+                  match={match}
+                  home={home}
+                  away={away}
+                  homeForm={homeForm}
+                  awayForm={awayForm}
+                />
+              ) : null}
+              {tab === "Statistiky" ? <MatchStatsPanel match={match} /> : null}
+              {tab === "Sestavy" ? (
+                <MatchLineups
+                  homePlayers={homePlayers}
+                  awayPlayers={awayPlayers}
+                  onPlayer={(pid) => push({ name: "player", id: pid })}
+                />
+              ) : null}
+              {tab === "Tabulka" ? (
+                <MatchStandings
+                  rows={standings}
+                  highlightTeamIds={[match.homeTeamId, match.awayTeamId]}
+                  teamById={teamById}
+                  competitionSlug={comp?.slug}
+                  competitionId={match.competitionId}
+                  onTeam={(tid) => push({ name: "team", id: tid })}
+                />
+              ) : null}
+            </div>
+          ))}
+        </SwipeTabPanels>
       </div>
     </div>
   );

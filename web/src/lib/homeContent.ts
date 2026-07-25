@@ -24,26 +24,7 @@ export type HomePartner = {
   url: string;
 };
 
-export const HOME_BANNERS: HomeBanner[] = [
-  {
-    id: "ms2026",
-    eyebrow: "MS V HOKEJBALU 2026",
-    title: "20.–28. června · Ostravar Aréna",
-    subtitle: "Mistrovství světa mužů a žen v Ostravě.",
-    ctaTitle: "Kupuj vstupenky",
-    url: "https://www.hokejbal.cz",
-    gradientIndex: 0,
-  },
-  {
-    id: "legends2026",
-    eyebrow: "MS LEGENDS 2026",
-    title: "Praha-Černošice",
-    subtitle: "Legendy se vrací na domácí půdu.",
-    ctaTitle: "Více informací",
-    url: "https://www.hokejbal.cz",
-    gradientIndex: 1,
-  },
-];
+export const HOME_BANNERS: HomeBanner[] = [];
 
 export const DELNICI_CHANNEL_URL = "https://www.youtube.com/@delnicihokejbalu";
 

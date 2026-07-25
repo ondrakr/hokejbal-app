@@ -6,6 +6,7 @@ import type { Match, StandingRow } from "@/lib/types";
 import { CompetitionBadge } from "@/components/Badges";
 import { CompetitionNavStrip, MatchDayStrip } from "@/components/MatchDayStrip";
 import { MatchRow, UnderlineTabs } from "@/components/MatchRow";
+import { SwipeTabPanels } from "@/components/SwipeTabPanels";
 import { StandingsTable } from "@/components/StandingsTable";
 import { CompetitionStatsPanel } from "@/screens/CompetitionStatsScreen";
 import { BackButton, EmptyState, LoadingState, ScreenHeader } from "@/components/ui";
@@ -190,73 +191,72 @@ export function CompetitionDetailScreen({ id, day }: { id: string; day?: string 
 
       <UnderlineTabs tabs={DETAIL_TABS} value={tab} onChange={setTab} />
 
-      <div className="hb-scroll min-h-0 flex-1 bg-canvas pb-6">
-        {tab === "Program" && (
-          <div className="pt-1">
-            {upcoming.map((m) => (
-              <MatchRow key={m.id} match={m} />
-            ))}
-            {!upcoming.length && <EmptyState title="Žádný program" hint="Nejsou naplánované zápasy." />}
-          </div>
-        )}
-        {tab === "Výsledky" && (
-          <div className="pt-1">
-            {finished.map((m) => (
-              <MatchRow key={m.id} match={m} />
-            ))}
-            {!finished.length && <EmptyState title="Žádné výsledky" />}
-          </div>
-        )}
-        {tab === "Tabulka" && (
-          <div>
-            {loadingTable && <LoadingState />}
-            {!loadingTable && (
-              <StandingsTable
-                rows={standings}
-                competitionSlug={competition?.slug}
-                emptyMessage="Tabulka pro tuto soutěž není k dispozici."
-              />
-            )}
-          </div>
-        )}
-        {tab === "Statistiky" && (
+      <SwipeTabPanels
+        tabs={DETAIL_TABS}
+        value={tab}
+        onChange={setTab}
+        panelClassName="bg-canvas pb-6"
+      >
+        <div className="pt-1">
+          {upcoming.map((m) => (
+            <MatchRow key={m.id} match={m} />
+          ))}
+          {!upcoming.length && <EmptyState title="Žádný program" hint="Nejsou naplánované zápasy." />}
+        </div>
+        <div className="pt-1">
+          {finished.map((m) => (
+            <MatchRow key={m.id} match={m} />
+          ))}
+          {!finished.length && <EmptyState title="Žádné výsledky" />}
+        </div>
+        <div>
+          {loadingTable && <LoadingState />}
+          {!loadingTable && (
+            <StandingsTable
+              rows={standings}
+              matches={listAll}
+              competitionId={id}
+              competitionSlug={competition?.slug}
+              emptyMessage="Tabulka pro tuto soutěž není k dispozici."
+            />
+          )}
+        </div>
+        <div>
           <CompetitionStatsPanel
             competitionId={id}
             matches={listAll}
             standings={standings}
           />
-        )}
-        {tab === "Zprávy" && (
-          <div className="space-y-3 px-4 py-3">
-            {competitionNews.map((n) => (
-              <button
-                key={n.id}
-                type="button"
-                onClick={() => push({ name: "article", id: n.id })}
-                className="hb-card w-full overflow-hidden text-left"
-              >
-                <div
-                  className="h-28 bg-gradient-to-br from-ink to-brand-dark"
-                  style={
-                    n.photoURL
-                      ? {
-                          backgroundImage: `url(${n.photoURL})`,
-                          backgroundSize: "cover",
-                          backgroundPosition: "center",
-                        }
-                      : undefined
-                  }
-                />
-                <div className="p-3">
-                  <div className="text-[11px] font-bold text-brand uppercase">{n.category}</div>
-                  <div className="mt-1 text-[14px] font-bold leading-snug">{n.title}</div>
-                </div>
-              </button>
-            ))}
-            {!competitionNews.length && <EmptyState title="Žádné zprávy" />}
-          </div>
-        )}
-      </div>
+        </div>
+        <div className="space-y-3 px-4 py-3">
+          {competitionNews.map((n) => (
+            <button
+              key={n.id}
+              type="button"
+              onClick={() => push({ name: "article", id: n.id })}
+              className="hb-card w-full overflow-hidden text-left"
+            >
+              <div
+                className="h-28 bg-gradient-to-br from-ink to-brand-dark"
+                style={
+                  n.photoURL
+                    ? {
+                        backgroundImage: `url(${n.photoURL})`,
+                        backgroundSize: "cover",
+                        backgroundPosition: "center",
+                      }
+                    : undefined
+                }
+              />
+              <div className="p-3">
+                <div className="text-[11px] font-bold text-brand uppercase">{n.category}</div>
+                <div className="mt-1 text-[14px] font-bold leading-snug">{n.title}</div>
+              </div>
+            </button>
+          ))}
+          {!competitionNews.length && <EmptyState title="Žádné zprávy" />}
+        </div>
+      </SwipeTabPanels>
     </div>
   );
 }

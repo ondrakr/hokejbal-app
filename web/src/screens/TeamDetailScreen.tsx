@@ -8,14 +8,16 @@ import type { ClubSeasonRecord, NewsArticle, Player, StandingRow, Team } from "@
 import { playerFullName } from "@/lib/types";
 import { CompetitionBadge, PlayerAvatar, TeamBadge } from "@/components/Badges";
 import { MatchRow, UnderlineTabs } from "@/components/MatchRow";
+import { SwipeTabPanels } from "@/components/SwipeTabPanels";
 import { StandingsTable } from "@/components/StandingsTable";
 import { TeamResultRow } from "@/components/TeamResultRow";
+import { TeamStatsPanel } from "@/screens/CompetitionStatsScreen";
 import { BackButton, EmptyState, LoadingState, ScreenHeader } from "@/components/ui";
 import { useCatalog } from "@/stores/catalog";
 import { useFavorites } from "@/stores/favorites";
 import { useNav } from "@/stores/navigation";
 
-const TABS = ["Výsledky", "Program", "Tabulka", "Soupiska", "Historie", "Zprávy"];
+const TABS = ["Výsledky", "Program", "Tabulka", "Statistiky", "Soupiska", "Historie", "Zprávy"];
 
 const ROSTER_GROUPS: { title: string; position: Player["position"] }[] = [
   { title: "Brankáři", position: "goalie" },
@@ -165,9 +167,13 @@ export function TeamDetailScreen({ id }: { id: string }) {
 
       <UnderlineTabs tabs={TABS} value={tab} onChange={setTab} />
 
-      <div className="hb-scroll min-h-0 flex-1 bg-canvas pb-6">
-        {tab === "Výsledky" && (
-          <div>
+      <SwipeTabPanels
+        tabs={TABS}
+        value={tab}
+        onChange={setTab}
+        panelClassName="bg-canvas pb-6"
+      >
+        <div>
             <div className="flex items-center gap-2.5 bg-secondary-surface px-4 py-3">
               {comp ? <CompetitionBadge competition={comp} size={28} /> : null}
               <span className="text-[13px] font-semibold text-hb-fg">
@@ -184,10 +190,8 @@ export function TeamDetailScreen({ id }: { id: string }) {
               />
             )}
           </div>
-        )}
 
-        {tab === "Program" && (
-          <div className="pt-1">
+        <div className="pt-1">
             {upcomingMatches.map((m) => (
               <MatchRow key={m.id} match={m} />
             ))}
@@ -195,19 +199,31 @@ export function TeamDetailScreen({ id }: { id: string }) {
               <EmptyState title="Prázdný program" hint="Žádné naplánované zápasy." />
             )}
           </div>
-        )}
 
-        {tab === "Tabulka" && (
+        <div>
           <StandingsTable
             rows={standings}
+            matches={matches.filter((m) => m.competitionId === team.competitionId)}
+            competitionId={team.competitionId}
             highlightTeamIds={[team.id]}
             competitionSlug={comp?.slug}
             emptyMessage="Tabulka pro tuto soutěž není k dispozici."
           />
-        )}
+        </div>
 
-        {tab === "Soupiska" && (
-          <div className="space-y-[18px] pt-3">
+        <div>
+          {team.competitionId ? (
+            <TeamStatsPanel
+              teamId={team.id}
+              competitionId={team.competitionId}
+              players={players}
+            />
+          ) : (
+            <EmptyState title="Bez statistik" hint="Tým nemá přiřazenou soutěž." />
+          )}
+        </div>
+
+        <div className="space-y-[18px] pt-3">
             {rosterGroups.map(({ title, items }) => (
               <div key={title}>
                 <h2 className="px-4 text-[16px] font-bold text-hb-fg">{title}</h2>
@@ -251,10 +267,8 @@ export function TeamDetailScreen({ id }: { id: string }) {
               <EmptyState title="Soupiska není k dispozici" />
             )}
           </div>
-        )}
 
-        {tab === "Historie" && (
-          <div className="pt-2">
+        <div className="pt-2">
             {seasonHistory.map((record) => (
               <div
                 key={record.id}
@@ -292,10 +306,8 @@ export function TeamDetailScreen({ id }: { id: string }) {
               />
             )}
           </div>
-        )}
 
-        {tab === "Zprávy" && (
-          <div className="space-y-3 px-4 pt-3">
+        <div className="space-y-3 px-4 pt-3">
             {teamNews.map((article) => (
               <button
                 key={article.id}
@@ -318,8 +330,7 @@ export function TeamDetailScreen({ id }: { id: string }) {
               <EmptyState title="Bez zpráv" hint="K tomuto týmu zatím nejsou články." />
             )}
           </div>
-        )}
-      </div>
+      </SwipeTabPanels>
     </div>
   );
 }

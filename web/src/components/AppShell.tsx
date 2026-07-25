@@ -70,6 +70,7 @@ function StackRouter() {
             competitionId={top.competitionId}
             scope={top.scope}
             metric={top.metric}
+            teamId={top.teamId}
           />
         );
       case "news":

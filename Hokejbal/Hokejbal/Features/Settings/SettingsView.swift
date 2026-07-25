@@ -342,11 +342,17 @@ struct CompetitionOrderSettingsView: View {
 }
 
 /// Výběr soutěží a týmů pro slider Zápasů na Domů.
+private enum HomeFeedPickMode: String, CaseIterable, Hashable {
+    case competitions = "Soutěž"
+    case teams = "Tým"
+}
+
 struct HomeMatchFeedSettingsView: View {
     @EnvironmentObject private var catalog: CatalogStore
     @EnvironmentObject private var competitionOrder: CompetitionOrderStore
     @EnvironmentObject private var homeMatchFeed: HomeMatchFeedStore
 
+    @State private var pickMode: HomeFeedPickMode = .competitions
     @State private var teamQuery = ""
 
     private var competitions: [Competition] {
@@ -373,7 +379,7 @@ struct HomeMatchFeedSettingsView: View {
                     Text("Slider Zápasů na Domů")
                         .font(.hbMontserrat(size: 16, weight: .bold))
                         .foregroundStyle(HBTheme.textPrimary)
-                    Text("Zvolte soutěže a/nebo konkrétní týmy. Zápas se zobrazí, pokud patří do vybrané soutěže nebo v něm hraje vybraný tým.")
+                    Text("Nejdřív zvolte, jestli přidáváte soutěž nebo tým. Zápas se zobrazí, pokud patří do vybrané soutěže nebo v něm hraje vybraný tým.")
                         .font(.hbMontserrat(size: 13, weight: .medium))
                         .foregroundStyle(HBTheme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -403,73 +409,111 @@ struct HomeMatchFeedSettingsView: View {
             }
 
             Section {
-                if competitions.isEmpty {
-                    Text("Soutěže se ještě načítají…")
+                HBPillSelector(selection: $pickMode, compact: true)
+                    .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
+                    .listRowBackground(Color.clear)
+            } header: {
+                Text("Přidat")
+            } footer: {
+                Text(pickMode == .competitions
+                    ? "Celá soutěž — všechny její zápasy ve slideru."
+                    : "Konkrétní klub — jeho zápasy i napříč soutěžemi.")
+            }
+
+            if pickMode == .competitions {
+                competitionsSection
+            } else {
+                teamsSection
+            }
+        }
+        .listStyle(.insetGrouped)
+        .navigationTitle("Zápasy na Domů")
+        .navigationBarTitleDisplayMode(.inline)
+        .hbNavigationStyle()
+        .onAppear {
+            homeMatchFeed.seedDefaultsIfNeeded(competitions: catalog.competitions)
+            if homeMatchFeed.competitionSlugs.isEmpty, !homeMatchFeed.teamIDs.isEmpty {
+                pickMode = .teams
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var competitionsSection: some View {
+        Section {
+            if competitions.isEmpty {
+                Text("Soutěže se ještě načítají…")
+                    .foregroundStyle(HBTheme.textSecondary)
+            } else {
+                HStack {
+                    Button("Vybrat vše") { homeMatchFeed.selectAllCompetitions(competitions) }
+                        .font(.hbMontserrat(size: 13, weight: .bold))
+                    Spacer()
+                    Button("Zrušit") { homeMatchFeed.clearCompetitions() }
+                        .font(.hbMontserrat(size: 13, weight: .semibold))
                         .foregroundStyle(HBTheme.textSecondary)
-                } else {
-                    HStack {
-                        Button("Vybrat vše") { homeMatchFeed.selectAllCompetitions(competitions) }
-                            .font(.hbMontserrat(size: 13, weight: .bold))
-                        Spacer()
-                        Button("Zrušit") { homeMatchFeed.clearCompetitions() }
-                            .font(.hbMontserrat(size: 13, weight: .semibold))
-                            .foregroundStyle(HBTheme.textSecondary)
+                }
+                .buttonStyle(.plain)
+
+                ForEach(competitions) { competition in
+                    Button {
+                        homeMatchFeed.toggleCompetition(competition)
+                    } label: {
+                        HStack(spacing: 12) {
+                            CompetitionBadge(competition: competition, size: 34)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(competition.name)
+                                    .font(.hbMontserrat(size: 15, weight: .semibold))
+                                    .foregroundStyle(HBTheme.textPrimary)
+                                    .multilineTextAlignment(.leading)
+                                Text(competition.shortName)
+                                    .font(.hbMontserrat(size: 12, weight: .medium))
+                                    .foregroundStyle(HBTheme.textTertiary)
+                            }
+                            Spacer(minLength: 0)
+                            Image(systemName: homeMatchFeed.isCompetitionSelected(competition) ? "checkmark.circle.fill" : "circle")
+                                .font(.system(size: 22, weight: .semibold))
+                                .foregroundStyle(homeMatchFeed.isCompetitionSelected(competition) ? HBTheme.brand : HBTheme.textTertiary)
+                        }
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                }
+            }
+        } header: {
+            Text("Soutěže")
+        }
+    }
 
-                    ForEach(competitions) { competition in
+    @ViewBuilder
+    private var teamsSection: some View {
+        Section {
+            if catalog.teamsById.isEmpty {
+                Text("Týmy se ještě načítají…")
+                    .foregroundStyle(HBTheme.textSecondary)
+            } else {
+                HStack {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(HBTheme.textTertiary)
+                    TextField("Hledat tým", text: $teamQuery)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                    if !teamQuery.isEmpty {
                         Button {
-                            homeMatchFeed.toggleCompetition(competition)
+                            teamQuery = ""
                         } label: {
-                            HStack(spacing: 12) {
-                                CompetitionBadge(competition: competition, size: 34)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(competition.name)
-                                        .font(.hbMontserrat(size: 15, weight: .semibold))
-                                        .foregroundStyle(HBTheme.textPrimary)
-                                        .multilineTextAlignment(.leading)
-                                    Text(competition.shortName)
-                                        .font(.hbMontserrat(size: 12, weight: .medium))
-                                        .foregroundStyle(HBTheme.textTertiary)
-                                }
-                                Spacer(minLength: 0)
-                                Image(systemName: homeMatchFeed.isCompetitionSelected(competition) ? "checkmark.circle.fill" : "circle")
-                                    .font(.system(size: 22, weight: .semibold))
-                                    .foregroundStyle(homeMatchFeed.isCompetitionSelected(competition) ? HBTheme.brand : HBTheme.textTertiary)
-                            }
-                            .contentShape(Rectangle())
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(HBTheme.textTertiary)
                         }
                         .buttonStyle(.plain)
                     }
                 }
-            } header: {
-                Text("Soutěže")
-            } footer: {
-                Text("Celá soutěž ve slideru — všechny její zápasy.")
-            }
 
-            Section {
-                if catalog.teamsById.isEmpty {
-                    Text("Týmy se ještě načítají…")
+                if teams.isEmpty {
+                    Text("Žádný tým neodpovídá hledání.")
+                        .font(.hbMontserrat(size: 13, weight: .medium))
                         .foregroundStyle(HBTheme.textSecondary)
                 } else {
-                    HStack {
-                        Image(systemName: "magnifyingglass")
-                            .foregroundStyle(HBTheme.textTertiary)
-                        TextField("Hledat tým", text: $teamQuery)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                        if !teamQuery.isEmpty {
-                            Button {
-                                teamQuery = ""
-                            } label: {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundStyle(HBTheme.textTertiary)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-
                     ForEach(teams) { team in
                         Button {
                             homeMatchFeed.toggleTeam(team.id)
@@ -495,18 +539,9 @@ struct HomeMatchFeedSettingsView: View {
                         .buttonStyle(.plain)
                     }
                 }
-            } header: {
-                Text("Týmy")
-            } footer: {
-                Text("Konkrétní klub — jeho zápasy i napříč soutěžemi.")
             }
-        }
-        .listStyle(.insetGrouped)
-        .navigationTitle("Zápasy na Domů")
-        .navigationBarTitleDisplayMode(.inline)
-        .hbNavigationStyle()
-        .onAppear {
-            homeMatchFeed.seedDefaultsIfNeeded(competitions: catalog.competitions)
+        } header: {
+            Text("Týmy")
         }
     }
 

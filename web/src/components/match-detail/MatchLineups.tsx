@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { Player } from "@/lib/types";
-import { playerFullName, positionLabel } from "@/lib/types";
+import { playerShortName, positionLabel } from "@/lib/types";
 import { PlayerAvatar } from "@/components/Badges";
 import { Pill, PillTrack } from "@/components/MatchRow";
 import { EmptyState } from "@/components/ui";
@@ -61,8 +61,8 @@ export function MatchLineups({
               </div>
 
               <div className="min-w-0 flex-1">
-                <div className="truncate text-[14px] font-semibold text-hb-fg">
-                  {playerFullName(player)}
+                <div className="truncate font-semibold" style={{ fontSize: 14, color: "var(--text-primary)" }}>
+                  {playerShortName(player)}
                 </div>
                 <div className="text-[11px] font-medium capitalize text-hb-faint">
                   {positionLabel(player.position)}

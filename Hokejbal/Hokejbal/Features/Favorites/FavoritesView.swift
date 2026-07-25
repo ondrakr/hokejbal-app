@@ -83,11 +83,13 @@ struct FavoritesView: View {
             VStack(spacing: 0) {
                 HBUnderlineTabs(selection: $tab)
 
-                switch tab {
-                case .matches: matchesContent
-                case .teams: teamsContent
-                case .players: playersContent
-                case .competitions: competitionsContent
+                HBSwipeTabView(selection: $tab) { selected in
+                    switch selected {
+                    case .matches: matchesContent
+                    case .teams: teamsContent
+                    case .players: playersContent
+                    case .competitions: competitionsContent
+                    }
                 }
             }
             .background(HBTheme.surface)

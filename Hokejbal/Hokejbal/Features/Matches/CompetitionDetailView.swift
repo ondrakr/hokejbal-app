@@ -14,6 +14,7 @@ struct CompetitionDetailView: View {
     @EnvironmentObject private var apiClient: APIClient
     @EnvironmentObject private var catalog: CatalogStore
     @EnvironmentObject private var favorites: FavoritesStore
+    @EnvironmentObject private var liveScores: LiveScoreService
 
     @State private var activeCompetitionId: String
     @State private var competition: Competition?
@@ -56,28 +57,30 @@ struct CompetitionDetailView: View {
                 } else if let error {
                     ContentUnavailableView("Chyba", systemImage: "exclamationmark.triangle", description: Text(error))
                 } else {
-                    switch section {
-                    case .program:
-                        programContent
-                    case .results:
-                        resultsContent
-                    case .table:
-                        ScrollView {
-                            tableContent
-                                .padding(.bottom, 24)
-                        }
-                    case .stats:
-                        CompetitionStatsPanel(
-                            competitionId: activeCompetitionId,
-                            matches: matches,
-                            standings: standings,
-                            players: players,
-                            isLoading: isLoadingStats
-                        )
-                    case .news:
-                        ScrollView {
-                            newsContent
-                                .padding(.bottom, 24)
+                    HBSwipeTabView(selection: $section) { tab in
+                        switch tab {
+                        case .program:
+                            programContent
+                        case .results:
+                            resultsContent
+                        case .table:
+                            ScrollView {
+                                tableContent
+                                    .padding(.bottom, 24)
+                            }
+                        case .stats:
+                            CompetitionStatsPanel(
+                                competitionId: activeCompetitionId,
+                                matches: matches,
+                                standings: standings,
+                                players: players,
+                                isLoading: isLoadingStats
+                            )
+                        case .news:
+                            ScrollView {
+                                newsContent
+                                    .padding(.bottom, 24)
+                            }
                         }
                     }
                 }
@@ -248,10 +251,23 @@ struct CompetitionDetailView: View {
 
     // MARK: - Table
 
+    /// Zápasy s aktuálním live skóre z LiveScoreService.
+    private var tableMatches: [Match] {
+        let liveById = Dictionary(
+            uniqueKeysWithValues: liveScores.liveMatches
+                .filter { $0.competitionId == activeCompetitionId }
+                .map { ($0.id, $0) }
+        )
+        let merged = matches.map { liveById[$0.id] ?? $0 }
+        let extras = liveById.values.filter { live in !matches.contains(where: { $0.id == live.id }) }
+        return merged + extras
+    }
+
     private var tableContent: some View {
         StandingsTableView(
             rows: standings,
-            showsFavoriteStar: true,
+            matches: tableMatches,
+            competitionId: activeCompetitionId,
             emptyMessage: "Tabulka pro tento ročník není k dispozici.",
             competitionSlug: competition?.slug
         )

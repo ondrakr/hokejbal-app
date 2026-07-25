@@ -52,6 +52,7 @@ struct MatchDetailView: View {
     @State private var homePlayers: [Player] = []
     @State private var awayPlayers: [Player] = []
     @State private var standings: [StandingRow] = []
+    @State private var tableMatches: [Match] = []
     @State private var homeForm: [TeamFormItem] = []
     @State private var awayForm: [TeamFormItem] = []
     @State private var section: MatchDetailSection = .overview
@@ -147,18 +148,14 @@ struct MatchDetailView: View {
                     embedded: true
                 )
 
-                TabView(selection: $section) {
-                    ForEach(tabs, id: \.self) { tab in
-                        ScrollView(.vertical, showsIndicators: false) {
-                            sectionBody(tab, match: match, home: home, away: away)
-                                .padding(.vertical, 12)
-                                .padding(.bottom, 16)
-                        }
-                        .scrollBounceBehavior(.basedOnSize, axes: .vertical)
-                        .tag(tab)
+                HBSwipeTabView(tabs: tabs, selection: $section) { tab in
+                    ScrollView(.vertical, showsIndicators: false) {
+                        sectionBody(tab, match: match, home: home, away: away)
+                            .padding(.vertical, 12)
+                            .padding(.bottom, 16)
                     }
+                    .scrollBounceBehavior(.basedOnSize, axes: .vertical)
                 }
-                .tabViewStyle(.page(indexDisplayMode: .never))
                 // Page TabView jen horizontálně — vertikál nechá vnitřnímu ScrollView.
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -416,7 +413,7 @@ struct MatchDetailView: View {
             playerAvatar(player)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(player.fullName)
+                Text(player.shortName)
                     .font(.hbMontserrat(size: 14, weight: .semibold))
                     .foregroundStyle(HBTheme.textPrimary)
                     .lineLimit(1)
@@ -591,8 +588,18 @@ struct MatchDetailView: View {
 
     private func leagueTable(_ match: Match) -> some View {
         let slug = catalog.competitions.first { $0.id == match.competitionId }?.slug
+        // Live zápasy z LiveScoreService mají aktuální skóre.
+        let liveById = Dictionary(
+            uniqueKeysWithValues: liveScores.liveMatches
+                .filter { $0.competitionId == match.competitionId }
+                .map { ($0.id, $0) }
+        )
+        let merged = tableMatches.map { liveById[$0.id] ?? $0 }
+        let extras = liveById.values.filter { live in !tableMatches.contains(where: { $0.id == live.id }) }
         return StandingsTableView(
             rows: standings,
+            matches: merged + extras,
+            competitionId: match.competitionId,
             highlightTeamIds: [match.homeTeamId, match.awayTeamId],
             emptyMessage: "Tabulka pro tuto soutěž není k dispozici.",
             competitionSlug: slug
@@ -611,6 +618,9 @@ struct MatchDetailView: View {
             async let home = apiClient.api.players(teamId: loaded.homeTeamId)
             async let away = apiClient.api.players(teamId: loaded.awayTeamId)
             async let table = apiClient.api.standings(competitionId: loaded.competitionId)
+            async let competitionMatches = apiClient.api.matches(query: MatchesQuery(
+                competitionId: loaded.competitionId
+            ))
             async let homeHistory = apiClient.api.matches(query: MatchesQuery(
                 competitionId: loaded.competitionId,
                 seasonId: nil,
@@ -628,6 +638,7 @@ struct MatchDetailView: View {
             homePlayers = (try? await home) ?? []
             awayPlayers = (try? await away) ?? []
             standings = (try? await table) ?? []
+            tableMatches = (try? await competitionMatches) ?? []
             let homeMatches = (try? await homeHistory) ?? []
             let awayMatches = (try? await awayHistory) ?? []
             homeForm = TeamFormCalculator.items(
@@ -826,14 +837,14 @@ struct MatchTimelineView: View {
         return HStack(alignment: .top, spacing: 8) {
             Group {
                 if isHome {
-                    sideContent(
-                        event: event,
+                    eventSideContent(
+                        isHome: true,
                         time: time,
+                        event: event,
                         playerName: playerName,
                         assists: assists,
-                        reason: reason,
-                        running: running,
-                        alignment: .leading
+                        penaltyReason: reason,
+                        running: running
                     )
                 } else {
                     Color.clear.frame(height: 1)
@@ -843,14 +854,14 @@ struct MatchTimelineView: View {
 
             Group {
                 if !isHome {
-                    sideContent(
-                        event: event,
+                    eventSideContent(
+                        isHome: false,
                         time: time,
+                        event: event,
                         playerName: playerName,
                         assists: assists,
-                        reason: reason,
-                        running: running,
-                        alignment: .trailing
+                        penaltyReason: reason,
+                        running: running
                     )
                 } else {
                     Color.clear.frame(height: 1)
@@ -861,76 +872,101 @@ struct MatchTimelineView: View {
         .padding(.vertical, 8)
     }
 
-    private func sideContent(
-        event: MatchEvent,
+    /// Domácí L→P: čas, skóre, gól, asistence.
+    /// Hosté P→L: čas, skóre, gól, asistence.
+    private func eventSideContent(
+        isHome: Bool,
         time: String,
+        event: MatchEvent,
         playerName: String,
         assists: [(id: String?, name: String)],
-        reason: String,
-        running: (Int, Int),
-        alignment: HorizontalAlignment
+        penaltyReason: String,
+        running: (Int, Int)
     ) -> some View {
-        let isLeading = alignment == .leading
-        return VStack(alignment: alignment, spacing: 3) {
-            HStack(alignment: .center, spacing: 6) {
-                if isLeading {
-                    Text(time)
-                        .font(.hbNumber(size: 12, weight: .bold))
-                        .foregroundStyle(HBTheme.textTertiary)
-                        .fixedSize(horizontal: true, vertical: false)
-                    eventBadge(event, running: running)
-                    goalPlayerLine(event: event, name: playerName, assists: assists)
-                    Spacer(minLength: 0)
-                } else {
-                    Spacer(minLength: 0)
-                    goalPlayerLine(event: event, name: playerName, assists: assists)
-                    eventBadge(event, running: running)
-                    Text(time)
-                        .font(.hbNumber(size: 12, weight: .bold))
-                        .foregroundStyle(HBTheme.textTertiary)
-                        .fixedSize(horizontal: true, vertical: false)
-                }
-            }
+        let timeView = Text(time)
+            .font(.hbNumber(size: 12, weight: .bold))
+            .foregroundStyle(HBTheme.textTertiary)
+            .fixedSize(horizontal: true, vertical: false)
 
-            if event.kind == .penalty, !reason.isEmpty {
-                Text(reason)
-                    .font(.hbMontserrat(size: 11, weight: .medium))
-                    .foregroundStyle(HBTheme.textTertiary)
-                    .multilineTextAlignment(isLeading ? .leading : .trailing)
-                    .lineLimit(1)
+        return HStack(alignment: .center, spacing: 6) {
+            if isHome {
+                timeView
+                eventBadge(event, running: running)
+                goalPlayerBlock(
+                    event: event,
+                    name: playerName,
+                    assists: assists,
+                    penaltyReason: penaltyReason,
+                    mirror: false
+                )
+                Spacer(minLength: 0)
+            } else {
+                Spacer(minLength: 0)
+                goalPlayerBlock(
+                    event: event,
+                    name: playerName,
+                    assists: assists,
+                    penaltyReason: penaltyReason,
+                    mirror: true
+                )
+                eventBadge(event, running: running)
+                timeView
             }
         }
     }
 
-    /// Střelec + asistence vždy na jednom řádku: „Novák (Čejka, Diviš)“
-    private func goalPlayerLine(
+    /// Gól/trest na jednom řádku. `mirror` = hosté: asistence vlevo od střelce.
+    private func goalPlayerBlock(
         event: MatchEvent,
         name: String,
-        assists: [(id: String?, name: String)]
+        assists: [(id: String?, name: String)],
+        penaltyReason: String,
+        mirror: Bool
     ) -> some View {
-        HStack(alignment: .center, spacing: 0) {
-            playerNameLink(id: event.playerId, name: name, bold: true)
+        let scorer = playerNameLink(id: event.playerId, name: name, bold: true)
+
+        let assistsView = Group {
             if event.kind == .goal, !assists.isEmpty {
-                Text("\u{00A0}(")
-                    .font(.hbMontserrat(size: 11, weight: .medium))
-                    .foregroundStyle(HBTheme.textTertiary)
-                ForEach(Array(assists.enumerated()), id: \.offset) { index, assist in
-                    if index > 0 {
-                        Text(", ")
-                            .font(.hbMontserrat(size: 11, weight: .medium))
-                            .foregroundStyle(HBTheme.textTertiary)
+                HStack(alignment: .firstTextBaseline, spacing: 0) {
+                    Text(mirror ? "(" : "\u{00A0}(")
+                        .font(.hbMontserrat(size: 11, weight: .medium))
+                        .foregroundStyle(HBTheme.textTertiary)
+                    ForEach(Array(assists.enumerated()), id: \.offset) { index, assist in
+                        if index > 0 {
+                            Text(", ")
+                                .font(.hbMontserrat(size: 11, weight: .medium))
+                                .foregroundStyle(HBTheme.textTertiary)
+                        }
+                        playerNameLink(id: assist.id, name: assist.name, bold: false)
                     }
-                    playerNameLink(id: assist.id, name: assist.name, bold: false)
+                    Text(mirror ? ")\u{00A0}" : ")")
+                        .font(.hbMontserrat(size: 11, weight: .medium))
+                        .foregroundStyle(HBTheme.textTertiary)
                 }
-                Text(")")
-                    .font(.hbMontserrat(size: 11, weight: .medium))
-                    .foregroundStyle(HBTheme.textTertiary)
             }
         }
-        .lineLimit(1)
-        .truncationMode(.tail)
-        .minimumScaleFactor(0.6)
-        .layoutPriority(-1)
+
+        let penaltyView = Group {
+            if event.kind == .penalty, !penaltyReason.isEmpty {
+                Text(mirror ? "(\(penaltyReason))\u{00A0}" : "\u{00A0}(\(penaltyReason))")
+                    .font(.hbMontserrat(size: 11, weight: .medium))
+                    .foregroundStyle(HBTheme.textTertiary)
+                    .fixedSize(horizontal: true, vertical: false)
+            }
+        }
+
+        return HStack(alignment: .firstTextBaseline, spacing: 0) {
+            if mirror {
+                assistsView
+                penaltyView
+                scorer
+            } else {
+                scorer
+                assistsView
+                penaltyView
+            }
+        }
+        .fixedSize(horizontal: true, vertical: false)
     }
 
     @ViewBuilder
@@ -945,14 +981,14 @@ struct MatchTimelineView: View {
                 Text(name)
                     .font(font)
                     .foregroundStyle(color)
-                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
             }
             .buttonStyle(.plain)
         } else {
             Text(name)
                 .font(font)
                 .foregroundStyle(color)
-                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
         }
     }
 
@@ -1006,18 +1042,27 @@ struct MatchTimelineView: View {
         if let range = desc.range(of: "–") {
             let after = desc[range.upperBound...].trimmingCharacters(in: .whitespaces)
             if let paren = after.firstIndex(of: "(") {
-                return after[..<paren].trimmingCharacters(in: .whitespaces)
+                return Self.shortenPersonName(String(after[..<paren].trimmingCharacters(in: .whitespaces)))
             }
-            return after
+            return Self.shortenPersonName(after)
         }
         if desc.hasPrefix("Gól ") {
             let rest = String(desc.dropFirst(4))
             if let paren = rest.firstIndex(of: "(") {
-                return rest[..<paren].trimmingCharacters(in: .whitespaces)
+                return Self.shortenPersonName(String(rest[..<paren].trimmingCharacters(in: .whitespaces)))
             }
-            return rest
+            return Self.shortenPersonName(rest)
         }
-        return desc
+        return Self.shortenPersonName(desc)
+    }
+
+    /// „Jan Čejka“ → „J. Čejka“
+    private static func shortenPersonName(_ raw: String) -> String {
+        let parts = raw.split(whereSeparator: \.isWhitespace).map(String.init)
+        guard parts.count >= 2, let first = parts.first else { return raw.trimmingCharacters(in: .whitespaces) }
+        let last = parts.dropFirst().joined(separator: " ")
+        let initial = first.prefix(1).uppercased()
+        return "\(initial). \(last)"
     }
 
     private func penaltyReasonOnly(_ description: String) -> String {

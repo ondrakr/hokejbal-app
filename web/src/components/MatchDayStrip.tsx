@@ -9,7 +9,7 @@ import {
   todayKey,
 } from "@/lib/format";
 
-/** Port MatchDayStrip.swift — vybraný den vždy uprostřed stripu. */
+/** Port MatchDayStrip.swift — vybraný den vždy uprostřed stripu (animovaný scroll). */
 export function MatchDayStrip({
   selectedDay,
   onSelect,
@@ -40,7 +40,14 @@ export function MatchDayStrip({
     });
   }, [hasSet, pastDays, futureDays]);
 
-  const isTodaySelected = selectedDay === todayKey();
+  // Clamp výběru do okna stripu (1:1 MatchDayStrip.swift).
+  useEffect(() => {
+    if (!days.length) return;
+    const first = days[0]!.key;
+    const last = days[days.length - 1]!.key;
+    if (selectedDay < first) onSelect(first);
+    else if (selectedDay > last) onSelect(last);
+  }, [days, selectedDay, onSelect]);
 
   useEffect(() => {
     const el = selectedRef.current;
@@ -51,9 +58,7 @@ export function MatchDayStrip({
       const scrollerRect = scroller.getBoundingClientRect();
       const elRect = el.getBoundingClientRect();
       const delta =
-        elRect.left +
-        elRect.width / 2 -
-        (scrollerRect.left + scrollerRect.width / 2);
+        elRect.left + elRect.width / 2 - (scrollerRect.left + scrollerRect.width / 2);
       scroller.scrollTo({
         left: scroller.scrollLeft + delta,
         behavior,
@@ -73,22 +78,7 @@ export function MatchDayStrip({
 
   return (
     <div className="border-b border-separator bg-surface pt-1">
-      {!isTodaySelected && (
-        <div className="flex justify-end px-4">
-          <button
-            type="button"
-            className="font-bold"
-            style={{ fontSize: 12, color: "var(--brand)" }}
-            onClick={() => onSelect(todayKey())}
-          >
-            Dnes
-          </button>
-        </div>
-      )}
-      <div
-        ref={scrollRef}
-        className="hb-day-strip flex gap-1.5 overflow-x-auto px-4 py-2"
-      >
+      <div ref={scrollRef} className="hb-day-strip flex gap-1.5 overflow-x-auto px-4 py-2">
         {days.map((d) => {
           const active = d.key === selectedDay;
           const enabled = d.has || active;
@@ -113,7 +103,7 @@ export function MatchDayStrip({
               type="button"
               disabled={!enabled}
               onClick={() => onSelect(d.key)}
-              className="flex min-h-12 min-w-[42px] shrink-0 flex-col items-center justify-center gap-[3px] rounded-[12px]"
+              className="flex min-h-12 min-w-[42px] shrink-0 flex-col items-center justify-center gap-[3px] rounded-[12px] transition-colors duration-200"
               style={{ background: active ? "var(--brand)" : "transparent" }}
             >
               <span

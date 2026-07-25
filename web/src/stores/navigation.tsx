@@ -23,6 +23,8 @@ export type Route =
       competitionId: string;
       scope: "players" | "teams";
       metric: string;
+      /** Filtr žebříčku na hráče jednoho týmu (detail týmu). */
+      teamId?: string;
     }
   | { name: "news" }
   | { name: "article"; id: string }

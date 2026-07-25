@@ -5,6 +5,7 @@ import { AmateurBadge } from "@/components/amateur/AmateurBadge";
 import { AmateurMatchRow } from "@/components/amateur/AmateurMatchRow";
 import { IconChevronRight, IconSliders } from "@/components/Icons";
 import { UnderlineTabs } from "@/components/MatchRow";
+import { SwipeTabPanels } from "@/components/SwipeTabPanels";
 import { BackButton, EmptyState, ScreenHeader } from "@/components/ui";
 import {
   dateRangeLabel,
@@ -477,9 +478,13 @@ export function AmateurAdminTournament({ tournamentId }: { tournamentId: string 
       />
       <UnderlineTabs tabs={TABS} value={tab} onChange={setTab} />
 
-      <div className="hb-scroll min-h-0 flex-1 px-[var(--screen-pad)] py-3 pb-8">
-        {tab === "Přehled" && (
-          <div className="space-y-2.5">
+      <SwipeTabPanels
+        tabs={TABS}
+        value={tab}
+        onChange={setTab}
+        panelClassName="px-[var(--screen-pad)] py-3 pb-8"
+      >
+        <div className="space-y-2.5">
             <AdminStat title="Stav" value={statusLabel(t.status)} />
             <AdminStat title="Formát" value={formatLabel(t.format)} />
             <AdminStat title="Zápas" value={matchFormatLabel(t.matchFormat)} />
@@ -561,10 +566,8 @@ export function AmateurAdminTournament({ tournamentId }: { tournamentId: string 
               onClick={() => push({ name: "amateur", screen: "detail", id: tournamentId })}
             />
           </div>
-        )}
 
-        {tab === "Týmy" && (
-          <div className="space-y-2.5">
+        <div className="space-y-2.5">
             <button
               type="button"
               className="hb-brand-btn w-full"
@@ -597,10 +600,8 @@ export function AmateurAdminTournament({ tournamentId }: { tournamentId: string 
               </button>
             ))}
           </div>
-        )}
 
-        {tab === "Zápasy" && (
-          <div className="space-y-2.5">
+        <div className="space-y-2.5">
             <button
               type="button"
               className="hb-brand-btn w-full"
@@ -649,8 +650,7 @@ export function AmateurAdminTournament({ tournamentId }: { tournamentId: string 
               </div>
             ))}
           </div>
-        )}
-      </div>
+      </SwipeTabPanels>
 
       {showAddTeam && (
         <AddTeamModal tournamentId={tournamentId} onClose={() => setShowAddTeam(false)} />
