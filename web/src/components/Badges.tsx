@@ -5,7 +5,7 @@ import { playerFullName } from "@/lib/types";
 
 export function TeamBadge({ team, size = 24 }: { team?: Team; size?: number }) {
   if (!team) {
-    return <div style={{ width: size, height: size }} className="rounded-sm bg-[var(--card-inset)]" />;
+    return <div style={{ width: size, height: size }} className="rounded-sm bg-card-inset" />;
   }
   if (team.logoURL) {
     return (
@@ -94,7 +94,7 @@ export function PlayerAvatar({ player, size = 48 }: { player: Player; size?: num
   }
   return (
     <div
-      className="flex items-center justify-center font-bold text-[var(--brand)]"
+      className="flex items-center justify-center font-bold text-brand"
       style={{
         width: size,
         height: size,

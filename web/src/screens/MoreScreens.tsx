@@ -1,9 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { fetchArticleBody } from "@/lib/api";
 import { formatNewsDate } from "@/lib/format";
+import { DELNICI_CHANNEL_URL, HOME_GRADIENTS, HOME_VIDEOS } from "@/lib/homeContent";
 import { trustedOpenUrl } from "@/lib/supabase";
 import { CompetitionBadge, PlayerAvatar, TeamBadge } from "@/components/Badges";
+import { IconNews } from "@/components/Icons";
 import { BackButton, EmptyState, ScreenHeader } from "@/components/ui";
 import { useCatalog } from "@/stores/catalog";
 import { useNav } from "@/stores/navigation";
@@ -13,8 +16,8 @@ export function NewsScreen() {
   const { pop, push } = useNav();
   return (
     <div className="hb-scroll hb-enter flex-1">
-      <ScreenHeader title="Novinky" left={<BackButton onClick={pop} />} />
-      <div className="space-y-3 px-[var(--screen-pad)] py-3">
+      <ScreenHeader title="Novinky" systemIcon={<IconNews size={14} />} left={<BackButton onClick={pop} />} />
+      <div className="space-y-3 px-4 py-3">
         {news.map((n) => (
           <button
             key={n.id}
@@ -23,21 +26,21 @@ export function NewsScreen() {
             className="hb-card w-full overflow-hidden text-left"
           >
             <div
-              className="h-36 bg-gradient-to-br from-[var(--ink)] to-[var(--brand-dark)]"
+              className="h-[168px] bg-gradient-to-br from-ink to-brand-dark"
               style={
                 n.photoURL
                   ? {
-                      backgroundImage: `linear-gradient(180deg,transparent,rgba(0,0,0,.5)),url(${n.photoURL})`,
+                      backgroundImage: `linear-gradient(180deg,transparent 40%,rgba(0,0,0,.55)),url(${n.photoURL})`,
                       backgroundSize: "cover",
                       backgroundPosition: "center",
                     }
                   : undefined
               }
             />
-            <div className="space-y-1 p-3">
-              <div className="text-[11px] font-semibold text-[var(--brand)]">{n.category}</div>
-              <div className="text-[15px] font-bold leading-snug">{n.title}</div>
-              <div className="hb-muted">{formatNewsDate(n.publishedAt)}</div>
+            <div className="space-y-1 p-3.5">
+              <div className="text-[11px] font-bold tracking-[0.3px] text-brand uppercase">{n.category}</div>
+              <div className="text-[15px] font-bold leading-snug text-hb-fg">{n.title}</div>
+              <div className="text-[12px] font-medium text-hb-muted">{formatNewsDate(n.publishedAt)}</div>
             </div>
           </button>
         ))}
@@ -47,24 +50,114 @@ export function NewsScreen() {
   );
 }
 
+function ArticleBodySkeleton() {
+  return (
+    <div className="space-y-3 animate-pulse" aria-hidden>
+      <div className="h-3.5 rounded bg-card-inset" />
+      <div className="h-3.5 w-[92%] rounded bg-card-inset" />
+      <div className="h-3.5 w-[88%] rounded bg-card-inset" />
+      <div className="h-3.5 w-[95%] rounded bg-card-inset" />
+      <div className="h-3.5 w-[70%] rounded bg-card-inset" />
+      <div className="mt-4 h-3.5 rounded bg-card-inset" />
+      <div className="h-3.5 w-[90%] rounded bg-card-inset" />
+      <div className="h-3.5 w-[80%] rounded bg-card-inset" />
+    </div>
+  );
+}
+
 export function ArticleScreen({ id }: { id: string }) {
   const { news } = useCatalog();
   const { pop } = useNav();
   const article = news.find((n) => n.id === id);
+  const [bodyText, setBodyText] = useState<string | null>(null);
+  const [isLoadingBody, setIsLoadingBody] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
+
+  useEffect(() => {
+    if (!article?.articleURL) {
+      setLoadFailed(true);
+      return;
+    }
+    let cancelled = false;
+    setIsLoadingBody(true);
+    setLoadFailed(false);
+    setBodyText(null);
+    void fetchArticleBody(article.articleURL)
+      .then((text) => {
+        if (cancelled) return;
+        setBodyText(text || null);
+        setLoadFailed(!text);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setBodyText(null);
+        setLoadFailed(true);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingBody(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [article?.id, article?.articleURL]);
+
   if (!article) return <EmptyState title="Článek nenalezen" />;
   const url = trustedOpenUrl(article.articleURL);
+
   return (
-    <div className="hb-scroll hb-enter flex-1">
-      <ScreenHeader title={article.category} left={<BackButton onClick={pop} />} />
-      <div className="px-[var(--screen-pad)] py-4">
-        <h1 className="font-[family-name:var(--font-display)] text-[24px] font-extrabold leading-tight">
-          {article.title}
-        </h1>
-        <div className="hb-muted mt-2">{formatNewsDate(article.publishedAt)}</div>
-        <p className="mt-4 text-[15px] leading-relaxed text-[var(--text-secondary)]">{article.summary}</p>
+    <div className="hb-scroll hb-enter flex-1 bg-canvas">
+      <ScreenHeader title="" left={<BackButton onClick={pop} />} />
+      <div
+        className="h-[240px] w-full bg-ink"
+        style={
+          article.photoURL
+            ? {
+                backgroundImage: `url(${article.photoURL})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }
+            : undefined
+        }
+      />
+      <div className="space-y-3.5 px-4 py-4">
+        <div className="flex items-center gap-2">
+          <span className="rounded-full bg-brand px-2.5 py-1 text-[11px] font-bold tracking-[0.6px] text-on-brand uppercase">
+            {article.category}
+          </span>
+          <span className="ml-auto text-[12px] font-medium text-hb-faint">
+            {formatNewsDate(article.publishedAt)}
+          </span>
+        </div>
+
+        <h1 className="hb-display text-[24px] leading-tight text-hb-fg">{article.title}</h1>
+
+        <div className="h-px bg-card-stroke" />
+
+        {bodyText ? (
+          <p className="whitespace-pre-line text-[15px] font-normal leading-[1.55] text-hb-muted">
+            {bodyText}
+          </p>
+        ) : isLoadingBody ? (
+          <ArticleBodySkeleton />
+        ) : (
+          <>
+            <p className="text-[15px] font-normal leading-[1.5] text-hb-muted">{article.summary}</p>
+            {loadFailed && (
+              <p className="pt-1 text-[13px] font-medium text-hb-faint">
+                Text článku se nepodařilo načíst.
+              </p>
+            )}
+          </>
+        )}
+
         {url && (
-          <a href={url} target="_blank" rel="noreferrer" className="hb-brand-btn mt-6">
-            Otevřít článek
+          <a
+            href={url}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-block pt-2 text-[12px] font-semibold text-hb-faint underline"
+          >
+            hokejbal.cz
           </a>
         )}
       </div>
@@ -85,7 +178,10 @@ export function SearchScreen() {
     const uniquePlayers = new Map(players.map((p) => [p.id, p]));
     return {
       teams: teams.filter(
-        (t) => t.name.toLowerCase().includes(query) || t.shortName.toLowerCase().includes(query)
+        (t) =>
+          t.name.toLowerCase().includes(query) ||
+          t.shortName.toLowerCase().includes(query) ||
+          t.city.toLowerCase().includes(query)
       ),
       competitions: competitions.filter((c) => c.name.toLowerCase().includes(query)),
       players: [...uniquePlayers.values()]
@@ -117,7 +213,7 @@ export function SearchScreen() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Tým, hráč, soutěž, zápas…"
-          className="w-full rounded-[14px] border border-[var(--card-stroke)] bg-[var(--card)] px-4 py-3 outline-none focus:border-[var(--brand)]"
+          className="w-full rounded-[14px] border border-card-stroke bg-card px-4 py-3 outline-none focus:border-brand"
           autoFocus
         />
       </div>
@@ -202,115 +298,65 @@ export function SearchScreen() {
 function ResultGroup({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h2 className="mb-2 text-[13px] font-bold text-[var(--text-secondary)]">{title}</h2>
+      <h2 className="mb-2 text-[13px] font-bold text-hb-muted">{title}</h2>
       {children}
     </section>
-  );
-}
-
-export function SettingsScreen() {
-  const { seasons, selectedSeasonId, setSelectedSeasonId } = useCatalog();
-  const { pop } = useNav();
-  const [theme, setTheme] = useState<"system" | "light" | "dark">(() => {
-    if (typeof window === "undefined") return "system";
-    return (localStorage.getItem("hb.appearance") as "system" | "light" | "dark") || "system";
-  });
-
-  function applyTheme(next: "system" | "light" | "dark") {
-    setTheme(next);
-    localStorage.setItem("hb.appearance", next);
-    const root = document.documentElement;
-    if (next === "system") {
-      root.removeAttribute("data-theme");
-      if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-        root.setAttribute("data-theme", "dark");
-      }
-    } else {
-      root.setAttribute("data-theme", next);
-    }
-  }
-
-  return (
-    <div className="hb-scroll hb-enter flex-1">
-      <ScreenHeader title="Nastavení" left={<BackButton onClick={pop} />} />
-      <div className="space-y-4 px-[var(--screen-pad)] py-4">
-        <section className="hb-card p-4">
-          <div className="mb-3 text-[14px] font-bold">Sezóna</div>
-          <div className="space-y-2">
-            {seasons.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => setSelectedSeasonId(s.id)}
-                className={`flex w-full items-center justify-between rounded-[12px] px-3 py-2.5 text-left ${
-                  selectedSeasonId === s.id ? "bg-[var(--brand)] text-white" : "bg-[var(--card-inset)]"
-                }`}
-              >
-                <span className="font-semibold">{s.label}</span>
-                {s.isCurrent && <span className="text-[11px] opacity-80">aktuální</span>}
-              </button>
-            ))}
-          </div>
-        </section>
-        <section className="hb-card p-4">
-          <div className="mb-3 text-[14px] font-bold">Vzhled</div>
-          <div className="grid grid-cols-3 gap-2">
-            {(
-              [
-                ["system", "Systém"],
-                ["light", "Světlý"],
-                ["dark", "Tmavý"],
-              ] as const
-            ).map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => applyTheme(id)}
-                className={`rounded-[12px] py-2.5 text-[13px] font-semibold ${
-                  theme === id ? "bg-[var(--brand)] text-white" : "bg-[var(--card-inset)]"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </section>
-        <section className="hb-card p-4 text-[13px] text-[var(--text-secondary)]">
-          Webová verze Hokejbal sdílí data se stejnou Supabase databází jako iOS aplikace. Fantasy,
-          tipovačka a amatérské turnaje běží lokálně v prohlížeči.
-        </section>
-      </div>
-    </div>
   );
 }
 
 export function MediaScreen() {
   const { pop } = useNav();
   return (
-    <div className="hb-scroll hb-enter flex-1">
+    <div className="hb-scroll hb-enter flex-1 bg-canvas">
       <ScreenHeader title="Dělníci hokejbalu" left={<BackButton onClick={pop} />} />
-      <div className="space-y-3 px-[var(--screen-pad)] py-4">
+      <div className="space-y-4 px-4 py-4 pb-10">
         <a
-          href="https://www.youtube.com/@delnicihokejbalu"
+          href={trustedOpenUrl(DELNICI_CHANNEL_URL) ?? "#"}
           target="_blank"
           rel="noreferrer"
-          className="hb-card block overflow-hidden"
-          onClick={(e) => {
-            if (!trustedOpenUrl("https://www.youtube.com/@delnicihokejbalu")) e.preventDefault();
-          }}
+          className="hb-card hb-card-lg block overflow-hidden"
         >
-          <div className="flex h-40 items-end bg-gradient-to-br from-[var(--ink)] via-[#3a1010] to-[var(--brand)] p-4 text-white">
-            <div>
-              <div className="text-[18px] font-extrabold">YouTube kanál</div>
-              <div className="text-[13px] opacity-80">Rozhovory, reportáže, zákulisí</div>
+          <div
+            className="flex min-h-[148px] flex-col justify-end p-[18px] text-white"
+            style={{ background: "linear-gradient(135deg, #1f4785, #0f2447)" }}
+          >
+            <div className="hb-display text-[22px]">YouTube kanál</div>
+            <div className="mt-2 text-[13px] font-medium text-white/88">
+              Rozhovory, reportáže, zákulisí · @delnicihokejbalu
             </div>
+            <span className="mt-3 inline-flex w-fit rounded-full bg-white/18 px-3 py-2 text-[12px] font-bold">
+              Otevřít kanál ↗
+            </span>
           </div>
         </a>
-        <div className="hb-card p-4">
-          <div className="font-bold">O projektu</div>
-          <p className="hb-muted mt-2 leading-relaxed">
-            Série Dělníci hokejbalu přináší příběhy hráčů, trenérů a lidí kolem českého hokejbalu.
-          </p>
+
+        <div className="space-y-3">
+          {HOME_VIDEOS.map((video) => {
+            const colors = HOME_GRADIENTS[video.gradientIndex % HOME_GRADIENTS.length];
+            return (
+              <a
+                key={video.id}
+                href={trustedOpenUrl(video.url) ?? "#"}
+                target="_blank"
+                rel="noreferrer"
+                className="hb-card flex gap-3 overflow-hidden p-0"
+              >
+                <div
+                  className="relative flex h-16 w-24 shrink-0 items-center justify-center"
+                  style={{ background: `linear-gradient(135deg, ${colors[0]}, ${colors[1]})` }}
+                >
+                  <span className="text-[18px] text-white/95">▶</span>
+                  <span className="absolute bottom-1 left-1 rounded bg-[color-mix(in_srgb,var(--brand)_90%,transparent)] px-1.5 py-0.5 text-[8px] font-bold text-white">
+                    {video.sourceLabel}
+                  </span>
+                </div>
+                <div className="min-w-0 flex-1 py-2.5 pr-3">
+                  <div className="line-clamp-2 text-[13px] font-semibold leading-snug">{video.title}</div>
+                  <div className="mt-1 text-[11px] font-medium text-hb-faint">{video.dateLabel}</div>
+                </div>
+              </a>
+            );
+          })}
         </div>
       </div>
     </div>

@@ -1,6 +1,11 @@
 @import "tailwindcss";
 
-/* HB Arena — tokeny 1:1 z Theme.swift (iOS systemGrouped / label) */
+/*
+  HB Arena tokens — 1:1 z Theme.swift
+  DŮLEŽITÉ: barvy musí být v @theme jako --color-*, jinak Tailwind
+  text-[13px] přebije text-brand (stejný namespace text-).
+*/
+
 :root {
   --brand: #c92a2a;
   --brand-dark: #a92323;
@@ -14,6 +19,7 @@
   --ink-soft: #292b36;
   --ink-mid: #21242e;
 
+  /* systemGroupedBackground / secondarySystemGroupedBackground (light) */
   --canvas: #f2f2f7;
   --card: #ffffff;
   --card-inset: #e5e5ea;
@@ -35,7 +41,8 @@
   --safe-top: 47px;
   --tab-h: 49px;
 
-  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "Segoe UI", system-ui,
+    sans-serif;
   --font-rounded: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 }
 
@@ -54,9 +61,30 @@
 
 @theme inline {
   --color-brand: var(--brand);
+  --color-brand-dark: var(--brand-dark);
+  --color-brand-bright: var(--brand-bright);
+  --color-live: var(--live);
+  --color-win: var(--win);
+  --color-draw: var(--draw);
+  --color-loss: var(--loss);
+  --color-on-brand: var(--on-brand);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-mid: var(--ink-mid);
   --color-canvas: var(--canvas);
   --color-card: var(--card);
+  --color-card-inset: var(--card-inset);
+  --color-surface: var(--surface);
+  --color-secondary-surface: var(--secondary-surface);
+  --color-separator: var(--separator);
+  --color-card-stroke: var(--card-stroke);
+  --color-hb-fg: var(--text-primary);
+  --color-hb-muted: var(--text-secondary);
+  --color-hb-faint: var(--text-tertiary);
   --font-sans: var(--font-ui);
+  --radius-hb-lg: var(--radius-lg);
+  --radius-hb-md: var(--radius-md);
+  --radius-hb-sm: var(--radius-sm);
 }
 
 * {
@@ -71,6 +99,7 @@ body {
   color: var(--text-primary);
   font-family: var(--font-ui);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -106,7 +135,7 @@ a {
   height: 0;
 }
 
-/* hbCard — Theme.swift */
+/* hbCard — Theme.swift continuous-ish */
 .hb-card {
   background: var(--card);
   border-radius: var(--radius-md);
@@ -127,6 +156,7 @@ a {
   font-family: var(--font-rounded);
   font-weight: 800;
   letter-spacing: -0.01em;
+  color: inherit;
 }
 
 .hb-number {
@@ -147,6 +177,7 @@ a {
   padding: 0.65rem 1.1rem;
 }
 
+/* HBAccentBar — HBSkew dx:4, 5×18 */
 .hb-accent-bar {
   width: 5px;
   height: 18px;
@@ -190,4 +221,93 @@ a {
 .hb-nav-bar {
   background: var(--surface);
   border-bottom: 0.5px solid var(--separator);
+}
+
+/* iOS tab bar — 49pt + hairline */
+.hb-tab-bar {
+  height: calc(49px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: var(--surface);
+  border-top: 0.5px solid var(--separator);
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  flex-shrink: 0;
+}
+
+.hb-tab-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding-top: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: -0.08px;
+  color: var(--text-secondary);
+  line-height: 1.1;
+}
+
+.hb-tab-item[data-active="true"] {
+  color: var(--brand);
+}
+
+.hb-tab-item svg {
+  width: 25px;
+  height: 25px;
+}
+
+/* Live badge — CommonViews LiveBadge */
+.hb-live-badge {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 5px;
+  border-radius: 999px;
+  background: var(--live);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  line-height: 1;
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+
+.hb-live-badge[data-compact="false"] {
+  padding: 4px 9px;
+}
+
+/* CategoryTag */
+.hb-category-tag {
+  display: inline-block;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #fff;
+  line-height: 1.2;
+}
+
+/* Section action „Vše >“ */
+.hb-section-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--brand);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.hb-tint-12-live {
+  background: color-mix(in srgb, var(--live) 12%, transparent);
+  color: var(--live);
+}
+
+.hb-tint-12-brand {
+  background: color-mix(in srgb, var(--brand) 12%, transparent);
+  color: var(--brand);
 }

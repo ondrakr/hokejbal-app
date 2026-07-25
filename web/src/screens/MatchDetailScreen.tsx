@@ -1,56 +1,141 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { fetchMatch, fetchPlayers, fetchStandings } from "@/lib/api";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { fetchMatch, fetchMatches, fetchPlayers, fetchStandings } from "@/lib/api";
 import { trustedOpenUrl } from "@/lib/supabase";
-import type { Match, Player, StandingRow } from "@/lib/types";
-import { playerShortName } from "@/lib/types";
-import { formatMatchDay, formatMatchTime } from "@/lib/format";
-import { UnderlineTabs } from "@/components/MatchRow";
+import type { Match, MatchStatus, Player, StandingRow } from "@/lib/types";
+import { teamFormItems, type TeamFormItem } from "@/lib/teamForm";
+import { formatMatchTime, formatShortDate } from "@/lib/format";
+import { CompetitionBadge, TeamBadge } from "@/components/Badges";
+import { IconBell, IconTv } from "@/components/Icons";
+import { LiveBadge, UnderlineTabs } from "@/components/MatchRow";
+import { MatchTimeline } from "@/components/match-detail/MatchTimeline";
+import { MatchOverview } from "@/components/match-detail/MatchOverview";
+import { MatchStatsPanel } from "@/components/match-detail/MatchStatsPanel";
+import { MatchLineups } from "@/components/match-detail/MatchLineups";
+import { MatchStandings } from "@/components/match-detail/MatchStandings";
 import { BackButton, EmptyState, LoadingState, ScreenHeader } from "@/components/ui";
 import { useCatalog } from "@/stores/catalog";
 import { useFavorites } from "@/stores/favorites";
+import { useMatchAlerts } from "@/stores/matchAlerts";
 import { useNav } from "@/stores/navigation";
 import { useTips } from "@/stores/tips";
+
+type Section = "Zápas" | "Přehled" | "Statistiky" | "Sestavy" | "Tabulka";
+
+function tabsFor(status: MatchStatus): Section[] {
+  if (status === "scheduled" || status === "postponed") {
+    return ["Přehled", "Statistiky", "Sestavy", "Tabulka"];
+  }
+  return ["Zápas", "Statistiky", "Sestavy", "Tabulka", "Přehled"];
+}
+
+function defaultSection(status: MatchStatus): Section {
+  return status === "scheduled" || status === "postponed" ? "Přehled" : "Zápas";
+}
+
+function statusLabel(match: Match): string {
+  switch (match.status) {
+    case "live":
+      return match.period?.trim() ? match.period : "LIVE";
+    case "finished": {
+      const p = match.period.toLowerCase();
+      if (p.includes("prodl") || p.includes("overtime")) return "Po prodloužení";
+      if (p.includes("nájez") || p.includes("shoot")) return "Po nájezdech";
+      return "Konec";
+    }
+    case "scheduled":
+      return "Začátek";
+    case "postponed":
+      return "Odloženo";
+  }
+}
 
 export function MatchDetailScreen({ id }: { id: string }) {
   const { teamById, competitionById } = useCatalog();
   const { pop, push } = useNav();
   const fav = useFavorites();
+  const alerts = useMatchAlerts();
   const tips = useTips();
+
   const [match, setMatch] = useState<Match | null>(null);
+  const [homePlayers, setHomePlayers] = useState<Player[]>([]);
+  const [awayPlayers, setAwayPlayers] = useState<Player[]>([]);
   const [standings, setStandings] = useState<StandingRow[]>([]);
-  const [players, setPlayers] = useState<Player[]>([]);
+  const [homeForm, setHomeForm] = useState<TeamFormItem[]>([]);
+  const [awayForm, setAwayForm] = useState<TeamFormItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [section, setSection] = useState<Section>("Přehled");
+  const didApplyInitial = useRef(false);
+  const prevStatus = useRef<MatchStatus | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    didApplyInitial.current = false;
+    prevStatus.current = null;
+
     async function load() {
       setLoading(true);
       try {
         const m = await fetchMatch(id);
         if (cancelled) return;
-        setMatch(m);
-        if (m) {
-          const [st, pl] = await Promise.all([
-            fetchStandings(m.competitionId),
-            fetchPlayers({ competitionId: m.competitionId }),
-          ]);
-          if (!cancelled) {
-            setStandings(st);
-            setPlayers(pl);
-            tips.resolveAgainstMatches([m]);
-          }
+        if (!m) {
+          setMatch(null);
+          return;
         }
+        setMatch(m);
+
+        const [home, away, table, homeHistory, awayHistory] = await Promise.all([
+          fetchPlayers({ teamId: m.homeTeamId }),
+          fetchPlayers({ teamId: m.awayTeamId }),
+          fetchStandings(m.competitionId),
+          fetchMatches({
+            competitionId: m.competitionId,
+            status: "finished",
+            teamId: m.homeTeamId,
+          }),
+          fetchMatches({
+            competitionId: m.competitionId,
+            status: "finished",
+            teamId: m.awayTeamId,
+          }),
+        ]);
+
+        if (cancelled) return;
+        setHomePlayers(home);
+        setAwayPlayers(away);
+        setStandings(table);
+        setHomeForm(teamFormItems(homeHistory, m.homeTeamId, m.id));
+        setAwayForm(teamFormItems(awayHistory, m.awayTeamId, m.id));
+        tips.resolveAgainstMatches([m]);
+
+        if (!didApplyInitial.current) {
+          setSection(defaultSection(m.status));
+          didApplyInitial.current = true;
+        }
+        prevStatus.current = m.status;
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
+
     void load();
+
     const timer = window.setInterval(async () => {
       const m = await fetchMatch(id);
-      if (!cancelled && m) setMatch(m);
+      if (cancelled || !m) return;
+      const was = prevStatus.current;
+      if (
+        was &&
+        (was === "scheduled" || was === "postponed") &&
+        (m.status === "live" || m.status === "finished")
+      ) {
+        setSection("Zápas");
+      }
+      prevStatus.current = m.status;
+      setMatch(m);
     }, 8000);
+
     return () => {
       cancelled = true;
       window.clearInterval(timer);
@@ -58,260 +143,197 @@ export function MatchDetailScreen({ id }: { id: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  const liveOrFinished = match?.status === "live" || match?.status === "finished";
-  const tabs = liveOrFinished
-    ? ["Zápas", "Statistiky", "Sestavy", "Tabulka", "Přehled"]
-    : ["Přehled", "Statistiky", "Sestavy", "Tabulka"];
-  const [section, setSection] = useState(tabs[0]);
-
   useEffect(() => {
-    setSection(tabs[0]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [match?.status]);
+    if (!match) return;
+    const allowed = tabsFor(match.status);
+    if (!allowed.includes(section)) {
+      setSection(defaultSection(match.status));
+    }
+  }, [match, section]);
 
   const home = match ? teamById(match.homeTeamId) : undefined;
   const away = match ? teamById(match.awayTeamId) : undefined;
   const comp = match ? competitionById(match.competitionId) : undefined;
-  const playerMap = useMemo(() => new Map(players.map((p) => [p.id, p])), [players]);
+
+  const playerMap = useMemo(() => {
+    const map = new Map<string, Player>();
+    for (const p of homePlayers) map.set(p.id, p);
+    for (const p of awayPlayers) map.set(p.id, p);
+    return map;
+  }, [homePlayers, awayPlayers]);
 
   if (loading) return <LoadingState />;
   if (!match) return <EmptyState title="Zápas nenalezen" />;
 
+  const tabs = tabsFor(match.status);
   const stream = trustedOpenUrl(match.streamURL);
-  const tip = tips.tipFor(match.id);
-  const votes = tips.votesFor(match.id);
-  const canTip = match.status === "scheduled" && comp?.slug === "extraliga";
+  const isBroadcast = Boolean(match.streamURL);
+  const alertOn = alerts.isEnabled(match.id);
 
   return (
-    <div className="hb-scroll hb-enter flex-1">
+    <div className="hb-scroll hb-enter flex-1 bg-canvas">
       <ScreenHeader
         title={comp?.shortName ?? "Zápas"}
         left={<BackButton onClick={pop} />}
         right={
-          <button
-            type="button"
-            className={fav.isMatch(match.id) ? "text-[var(--brand)]" : "text-[var(--text-secondary)]"}
-            onClick={() => fav.toggleMatch(match.id)}
-          >
-            ★
-          </button>
+          <div className="flex items-center gap-0.5">
+            <button
+              type="button"
+              className={`flex h-9 w-9 items-center justify-center ${
+                alertOn ? "text-brand" : "text-hb-faint"
+              }`}
+              onClick={() => alerts.toggle(match.id)}
+              aria-label={alertOn ? "Oznámení zápasu zapnuta" : "Oznámení zápasu vypnuta"}
+            >
+              <IconBell muted={!alertOn} />
+            </button>
+            <button
+              type="button"
+              className={`flex h-9 w-9 items-center justify-center text-[20px] ${
+                fav.isMatch(match.id) ? "text-brand" : "text-hb-faint"
+              }`}
+              onClick={() => fav.toggleMatch(match.id)}
+              aria-label="Sledovat zápas"
+            >
+              {fav.isMatch(match.id) ? "★" : "☆"}
+            </button>
+          </div>
         }
       />
 
-      <div className="bg-[linear-gradient(135deg,#22252f,#171a21)] px-[var(--screen-pad)] py-5 text-white">
-        <div className="hb-muted mb-3 text-center text-white/70">
-          {formatMatchDay(match.scheduledAt)} · {formatMatchTime(match.scheduledAt)}
-          {match.status === "live" && (
-            <span className="ml-2 inline-flex items-center gap-1 font-bold text-[var(--live)]">
-              <span className="hb-live-dot" /> LIVE {match.clock}
+      <div className="px-4 pt-2.5">
+        <div className="hb-card hb-card-lg space-y-4 p-4">
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 text-left"
+            onClick={() => comp && push({ name: "competition", id: comp.id })}
+          >
+            <span className="hb-accent-bar !h-4" />
+            {comp && <CompetitionBadge competition={comp} size={18} />}
+            <span className="min-w-0 flex-1 truncate text-[11px] font-bold tracking-[0.5px] text-hb-muted uppercase">
+              {(comp?.name ?? match.competitionId).toUpperCase()}
+              {match.round > 0 ? ` · ${match.round}. KOLO` : ""}
             </span>
-          )}
-        </div>
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-          <button type="button" className="text-center" onClick={() => push({ name: "team", id: match.homeTeamId })}>
-            <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-white/10 text-sm font-bold">
-              {home?.logoInitials}
-            </div>
-            <div className="text-[14px] font-bold">{home?.shortName}</div>
+            {comp && <span className="text-[9px] font-bold text-hb-faint">›</span>}
           </button>
-          <div className="font-[family-name:var(--font-display)] text-[36px] font-black tabular-nums">
-            {match.status === "scheduled" || match.status === "postponed"
-              ? "vs"
-              : `${match.homeScore}:${match.awayScore}`}
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="flex min-w-0 flex-1 flex-col items-center gap-2"
+              onClick={() => push({ name: "team", id: match.homeTeamId })}
+            >
+              <TeamBadge team={home} size={48} />
+              <div className="line-clamp-2 text-center text-[13px] font-bold text-hb-fg">
+                {home?.shortName}
+              </div>
+            </button>
+
+            <div className="flex w-[118px] shrink-0 flex-col items-center gap-2">
+              {match.status === "live" ? (
+                <LiveBadge />
+              ) : (
+                <span className="rounded-full bg-card-inset px-2.5 py-1 text-[10px] font-bold tracking-[1px] text-hb-muted uppercase">
+                  {statusLabel(match)}
+                </span>
+              )}
+              <div
+                className="hb-number text-[34px] font-extrabold leading-none"
+                style={{
+                  color:
+                    match.status === "scheduled"
+                      ? "var(--brand)"
+                      : match.status === "live"
+                        ? "var(--live)"
+                        : "var(--text-primary)",
+                }}
+              >
+                {match.status === "scheduled" || match.status === "postponed"
+                  ? formatMatchTime(match.scheduledAt)
+                  : `${match.homeScore} : ${match.awayScore}`}
+              </div>
+              <div className="text-center text-[11px] font-medium text-hb-faint">
+                {formatShortDate(match.scheduledAt)} · {formatMatchTime(match.scheduledAt)}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="flex min-w-0 flex-1 flex-col items-center gap-2"
+              onClick={() => push({ name: "team", id: match.awayTeamId })}
+            >
+              <TeamBadge team={away} size={48} />
+              <div className="line-clamp-2 text-center text-[13px] font-bold text-hb-fg">
+                {away?.shortName}
+              </div>
+            </button>
           </div>
-          <button type="button" className="text-center" onClick={() => push({ name: "team", id: match.awayTeamId })}>
-            <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-white/10 text-sm font-bold">
-              {away?.logoInitials}
-            </div>
-            <div className="text-[14px] font-bold">{away?.shortName}</div>
-          </button>
+
+          {isBroadcast &&
+            (stream ? (
+              <a
+                href={stream}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-2 rounded-[12px] bg-brand px-3.5 py-[11px] text-[13px] font-bold text-white"
+              >
+                <IconTv size={14} filled />
+                <span className="flex-1">ŽIVÝ PŘENOS: Hokejbal TV</span>
+                <span className="text-[11px] font-bold">↗</span>
+              </a>
+            ) : (
+              <div className="flex items-center gap-2 rounded-[12px] bg-card-inset px-3.5 py-[11px] text-[13px] font-bold text-hb-muted">
+                <IconTv size={14} />
+                <span className="flex-1">ŽIVÝ PŘENOS: Hokejbal TV</span>
+              </div>
+            ))}
         </div>
-        {stream && (
-          <a href={stream} target="_blank" rel="noreferrer" className="hb-brand-btn mt-4 w-full">
-            {match.streamLabel || "Sledovat přenos"}
-          </a>
-        )}
       </div>
 
-      <UnderlineTabs tabs={tabs} value={section} onChange={setSection} />
+      <div className="mx-4 mt-3.5 mb-3 overflow-hidden hb-card hb-card-lg">
+        <UnderlineTabs
+          tabs={tabs}
+          value={section}
+          onChange={(v) => setSection(v as Section)}
+        />
 
-      <div className="px-[var(--screen-pad)] py-4">
-        {(section === "Zápas" || (section === "Přehled" && liveOrFinished === false)) && (
-          <div className="space-y-3">
-            {canTip && (
-              <div className="hb-card p-4">
-                <div className="mb-2 text-[14px] font-bold">Tipovačka</div>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    className={`rounded-[12px] py-3 font-bold ${tip?.pick === "home" ? "bg-[var(--brand)] text-white" : "bg-[var(--card-inset)]"}`}
-                    onClick={() => tips.placeTip(match.id, "home")}
-                  >
-                    Domácí
-                  </button>
-                  <button
-                    type="button"
-                    className={`rounded-[12px] py-3 font-bold ${tip?.pick === "away" ? "bg-[var(--brand)] text-white" : "bg-[var(--card-inset)]"}`}
-                    onClick={() => tips.placeTip(match.id, "away")}
-                  >
-                    Hosté
-                  </button>
-                </div>
-                {votes && (
-                  <div className="hb-muted mt-2">
-                    Komunita: {votes.homeCount}:{votes.awayCount}
-                  </div>
-                )}
-              </div>
-            )}
-            <div className="hb-card p-4">
-              <div className="mb-2 text-[14px] font-bold">Info</div>
-              <div className="space-y-1 text-[13px]">
-                <div>Místo: {match.venue || "—"}</div>
-                <div>Kolo: {match.round || "—"}</div>
-                {match.referees && <div>Rozhodčí: {match.referees}</div>}
-                {match.attendance != null && <div>Diváci: {match.attendance}</div>}
-              </div>
-            </div>
-            {section === "Zápas" && (
-              <div className="hb-card divide-y divide-[var(--separator)] overflow-hidden">
-                {match.events
-                  .filter((e) => e.kind === "goal" || e.kind === "penalty")
-                  .map((e) => {
-                    const p = e.playerId ? playerMap.get(e.playerId) : undefined;
-                    const assists = e.assistIds
-                      .map((aid) => playerMap.get(aid))
-                      .filter(Boolean)
-                      .map((x) => playerShortName(x!));
-                    return (
-                      <div key={e.id} className="flex items-start gap-3 px-4 py-3">
-                        <div className="w-10 shrink-0 text-[12px] font-bold text-[var(--text-secondary)]">
-                          {e.minute}&apos;
-                        </div>
-                        <div>
-                          <div className="text-[13px] font-semibold">
-                            {e.kind === "goal" ? "Gól" : "Vyloučení"} ·{" "}
-                            {e.teamId === match.homeTeamId ? home?.shortName : away?.shortName}
-                          </div>
-                          <div className="text-[13px]">
-                            {p ? playerShortName(p) : e.description}
-                            {assists.length > 0 && (
-                              <span className="text-[var(--text-secondary)]">
-                                {" "}
-                                ({assists.join(", ")})
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                {!match.events.filter((e) => e.kind === "goal" || e.kind === "penalty").length && (
-                  <EmptyState title="Zatím žádné události" />
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {section === "Přehled" && liveOrFinished && (
-          <div className="hb-card space-y-1 p-4 text-[13px]">
-            <div>Místo: {match.venue || "—"}</div>
-            <div>Kolo: {match.round || "—"}</div>
-            {match.referees && <div>Rozhodčí: {match.referees}</div>}
-          </div>
-        )}
-
-        {section === "Statistiky" && (
-          <div className="hb-card space-y-3 p-4">
-            {[
-              ["Střely", match.homeShots, match.awayShots],
-              ["Góly v přesilovce", match.homePowerplayGoals, match.awayPowerplayGoals],
-              ["Góly v oslabení", match.homeShorthandedGoals, match.awayShorthandedGoals],
-            ].map(([label, h, a]) => (
-              <div key={String(label)} className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-[13px]">
-                <div className="text-right font-bold tabular-nums">{h ?? "—"}</div>
-                <div className="hb-muted min-w-[120px] text-center">{label as string}</div>
-                <div className="font-bold tabular-nums">{a ?? "—"}</div>
-              </div>
-            ))}
-            {(match.homePeriodScores.length > 0 || match.awayPeriodScores.length > 0) && (
-              <div className="border-t border-[var(--separator)] pt-3">
-                <div className="mb-2 text-[13px] font-bold">Třetiny</div>
-                <div className="flex justify-center gap-3 font-[family-name:var(--font-display)] text-[18px] font-bold">
-                  {match.homePeriodScores.map((s, i) => (
-                    <span key={i}>
-                      {s}:{match.awayPeriodScores[i] ?? 0}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {section === "Sestavy" && (
-          <div className="grid gap-3">
-            {[home, away].map((team) => (
-              <div key={team?.id} className="hb-card p-4">
-                <div className="mb-2 font-bold">{team?.name}</div>
-                <div className="space-y-1">
-                  {players
-                    .filter((p) => p.teamId === team?.id)
-                    .slice(0, 20)
-                    .map((p) => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        className="flex w-full justify-between py-1 text-left text-[13px]"
-                        onClick={() => push({ name: "player", id: p.id })}
-                      >
-                        <span>
-                          #{p.number} {playerShortName(p)}
-                        </span>
-                        <span className="hb-muted">{p.points} b</span>
-                      </button>
-                    ))}
-                  {!players.filter((p) => p.teamId === team?.id).length && (
-                    <div className="hb-muted">Sestava není k dispozici</div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {section === "Tabulka" && (
-          <div className="hb-card overflow-hidden">
-            <div className="grid grid-cols-[28px_1fr_28px_28px_28px_36px] gap-1 border-b border-[var(--separator)] px-3 py-2 text-[11px] font-semibold text-[var(--text-secondary)]">
-              <span>#</span>
-              <span>Tým</span>
-              <span>Z</span>
-              <span>V</span>
-              <span>P</span>
-              <span>B</span>
-            </div>
-            {standings.map((row) => {
-              const t = teamById(row.teamId);
-              return (
-                <button
-                  key={row.id}
-                  type="button"
-                  onClick={() => push({ name: "team", id: row.teamId })}
-                  className="grid w-full grid-cols-[28px_1fr_28px_28px_28px_36px] gap-1 border-b border-[var(--separator)] px-3 py-2 text-left text-[13px]"
-                >
-                  <span className="font-semibold">{row.rank}</span>
-                  <span className="truncate font-semibold">{t?.shortName ?? row.teamId}</span>
-                  <span>{row.played}</span>
-                  <span>{row.wins}</span>
-                  <span>{row.losses}</span>
-                  <span className="font-bold">{row.points}</span>
-                </button>
-              );
-            })}
-            {!standings.length && <EmptyState title="Tabulka není k dispozici" />}
-          </div>
-        )}
+        <div className="py-3 pb-4">
+          {section === "Zápas" && (
+            <MatchTimeline
+              match={match}
+              home={home}
+              away={away}
+              playerMap={playerMap}
+              onPlayer={(pid) => push({ name: "player", id: pid })}
+            />
+          )}
+          {section === "Přehled" && (
+            <MatchOverview
+              match={match}
+              home={home}
+              away={away}
+              homeForm={homeForm}
+              awayForm={awayForm}
+            />
+          )}
+          {section === "Statistiky" && <MatchStatsPanel match={match} />}
+          {section === "Sestavy" && (
+            <MatchLineups
+              homePlayers={homePlayers}
+              awayPlayers={awayPlayers}
+              onPlayer={(pid) => push({ name: "player", id: pid })}
+            />
+          )}
+          {section === "Tabulka" && (
+            <MatchStandings
+              rows={standings}
+              highlightTeamIds={[match.homeTeamId, match.awayTeamId]}
+              teamById={teamById}
+              competitionSlug={comp?.slug}
+              onTeam={(tid) => push({ name: "team", id: tid })}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

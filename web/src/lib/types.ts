@@ -106,6 +106,16 @@ export interface StandingRow {
   points: number;
 }
 
+/** Účast klubu v sezóně — historie týmu (iOS ClubSeasonRecord). */
+export interface ClubSeasonRecord {
+  id: string;
+  seasonId: string;
+  seasonLabel: string;
+  competitionId: string;
+  competitionName: string;
+  standing: StandingRow | null;
+}
+
 export interface NewsArticle {
   id: string;
   title: string;

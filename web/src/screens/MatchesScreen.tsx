@@ -1,33 +1,30 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { addDays, format, startOfDay } from "date-fns";
-import { cs } from "date-fns/locale";
+import { useEffect, useMemo, useState } from "react";
 import { CompetitionBadge } from "@/components/Badges";
-import { IconChevronRight, IconSearch } from "@/components/Icons";
+import { MatchDayStrip } from "@/components/MatchDayStrip";
+import { IconChevronRight, IconCourt, IconSearch, IconStack } from "@/components/Icons";
 import { EmptyState, LoadingState, ScreenHeader, SectionHeader } from "@/components/ui";
-import { dayKey, formatDayNum, todayKey } from "@/lib/format";
+import { dayKey, todayKey } from "@/lib/format";
 import type { Competition } from "@/lib/types";
 import { useCatalog } from "@/stores/catalog";
+import { useCompetitionOrder } from "@/stores/competitionOrder";
 import { useFavorites } from "@/stores/favorites";
 import { useNav } from "@/stores/navigation";
 
-/** Port MatchesByCompetitionView — denní strip + výběr soutěží (ne seznam zápasů). */
+/** Port MatchesByCompetitionView */
 export function MatchesScreen() {
   const { matches, competitions, loading } = useCatalog();
   const fav = useFavorites();
+  const order = useCompetitionOrder();
   const { push } = useNav();
   const [selectedDay, setSelectedDay] = useState(todayKey());
 
-  const days = useMemo(() => {
-    const keys = new Set(matches.map((m) => dayKey(m.scheduledAt)));
-    const base = startOfDay(new Date());
-    return Array.from({ length: 64 }, (_, i) => {
-      const d = addDays(base, i - 21);
-      const key = format(d, "yyyy-MM-dd");
-      return { key, date: d, has: keys.has(key), isToday: key === todayKey() };
-    });
-  }, [matches]);
+  useEffect(() => {
+    order.sync(competitions);
+  }, [competitions, order]);
+
+  const datesWithMatches = useMemo(() => new Set(matches.map((m) => dayKey(m.scheduledAt))), [matches]);
 
   const dayMatches = useMemo(
     () => matches.filter((m) => dayKey(m.scheduledAt) === selectedDay),
@@ -36,14 +33,11 @@ export function MatchesScreen() {
 
   const compsToday = useMemo(() => {
     const ids = new Set(dayMatches.map((m) => m.competitionId));
-    return competitions
-      .filter((c) => ids.has(c.id))
-      .sort((a, b) => a.name.localeCompare(b.name, "cs"));
-  }, [dayMatches, competitions]);
+    return order.sortedCompetitions(competitions.filter((c) => ids.has(c.id)));
+  }, [dayMatches, competitions, order]);
 
   const favoriteComps = compsToday.filter((c) => fav.isCompetition(c.slug));
   const otherComps = compsToday.filter((c) => !fav.isCompetition(c.slug));
-  const isTodaySelected = selectedDay === todayKey();
 
   if (loading) return <LoadingState label="Načítám zápasy…" />;
 
@@ -51,11 +45,11 @@ export function MatchesScreen() {
     <div className="hb-scroll hb-enter flex-1">
       <ScreenHeader
         title="Zápasy"
-        systemImage
+        systemIcon={<IconCourt size={14} />}
         right={
           <button
             type="button"
-            className="flex h-9 w-9 items-center justify-center"
+            className="flex h-9 w-9 items-center justify-center text-hb-fg"
             onClick={() => push({ name: "search" })}
             aria-label="Hledat"
           >
@@ -64,66 +58,11 @@ export function MatchesScreen() {
         }
       />
 
-      {/* MatchDayStrip */}
-      <div className="border-b border-[var(--separator)] bg-[var(--surface)] pt-1">
-        {!isTodaySelected && (
-          <div className="flex justify-end px-4">
-            <button
-              type="button"
-              className="text-[12px] font-bold text-[var(--brand)]"
-              onClick={() => setSelectedDay(todayKey())}
-            >
-              Dnes
-            </button>
-          </div>
-        )}
-        <div className="flex gap-1.5 overflow-x-auto px-4 py-2">
-          {days.map((d) => {
-            const active = d.key === selectedDay;
-            const enabled = d.has || active;
-            const dayColor = active
-              ? "#fff"
-              : !enabled
-                ? "color-mix(in srgb, var(--text-tertiary) 50%, transparent)"
-                : d.isToday
-                  ? "var(--brand)"
-                  : "var(--text-primary)";
-            const dowColor = active
-              ? "rgba(255,255,255,0.9)"
-              : !enabled
-                ? "color-mix(in srgb, var(--text-tertiary) 50%, transparent)"
-                : d.isToday
-                  ? "var(--brand)"
-                  : "var(--text-tertiary)";
-            return (
-              <button
-                key={d.key}
-                type="button"
-                disabled={!enabled}
-                onClick={() => setSelectedDay(d.key)}
-                className="flex min-h-12 min-w-[42px] shrink-0 flex-col items-center justify-center gap-[3px] rounded-[12px]"
-                style={{ background: active ? "var(--brand)" : "transparent" }}
-              >
-                <span
-                  className="text-[10px] font-semibold tracking-[0.3px] uppercase"
-                  style={{ color: dowColor }}
-                >
-                  {format(d.date, "EE", { locale: cs }).slice(0, 2)}
-                </span>
-                <span
-                  className="hb-number text-[17px]"
-                  style={{
-                    color: dayColor,
-                    fontWeight: active || d.isToday ? 700 : 500,
-                  }}
-                >
-                  {formatDayNum(d.date.toISOString())}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <MatchDayStrip
+        selectedDay={selectedDay}
+        onSelect={setSelectedDay}
+        datesWithMatches={datesWithMatches}
+      />
 
       <div className="pb-6 pt-2">
         <CompetitionCard
@@ -183,10 +122,10 @@ function CompetitionCard({
 }) {
   return (
     <button type="button" onClick={onClick} className="block w-full px-4 py-[5px] text-left">
-      <div className="hb-card flex items-center gap-3 px-3.5 py-3">
+      <div className="hb-card flex items-center gap-3 px-3.5 py-[13px]">
         {brandIcon ? (
-          <div className="flex h-[34px] w-[34px] items-center justify-center rounded-[9px] bg-[color-mix(in_srgb,var(--brand)_12%,transparent)] text-[var(--brand)]">
-            ▤
+          <div className="hb-tint-12-brand flex h-[34px] w-[34px] items-center justify-center rounded-[9px]">
+            <IconStack size={15} />
           </div>
         ) : (
           <CompetitionBadge competition={competition} size={30} />
@@ -195,15 +134,11 @@ function CompetitionCard({
           {title ?? competition?.name}
         </span>
         {brandIcon && count > 0 ? (
-          <span className="rounded-full bg-[var(--brand)] px-2 py-[3px] text-[12px] font-bold text-white">
-            {count}
-          </span>
+          <span className="rounded-full bg-brand px-2 py-[3px] text-[12px] font-bold text-white">{count}</span>
         ) : (
-          <span className="hb-number min-w-[22px] text-right text-[14px] font-semibold text-[var(--text-secondary)]">
-            {count}
-          </span>
+          <span className="hb-number min-w-[22px] text-right text-[14px] font-semibold text-hb-muted">{count}</span>
         )}
-        <span className="text-[var(--text-tertiary)]">
+        <span className="text-hb-faint">
           <IconChevronRight size={12} />
         </span>
       </div>

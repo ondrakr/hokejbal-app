@@ -1,5 +1,6 @@
 import { getSupabase, sanitizeFilterId } from "./supabase";
 import type {
+  ClubSeasonRecord,
   Competition,
   Match,
   MatchEvent,
@@ -455,4 +456,74 @@ export async function fetchPlayerHistory(playerId: string): Promise<PlayerSeason
 export async function fetchTeam(id: string): Promise<Team | null> {
   const all = await fetchTeams();
   return all.find((t) => t.id === id) ?? null;
+}
+
+/** Historie klubu napříč sezónami — iOS clubSeasonHistory. */
+export async function fetchClubSeasonHistory(clubId: string): Promise<ClubSeasonRecord[]> {
+  const safe = sanitizeFilterId(clubId);
+  if (!safe) return [];
+  const { data, error } = await getSupabase()
+    .from("standings")
+    .select("*,competitions(id,season_id,name,seasons(label))")
+    .eq("club_id", safe)
+    .order("competition_id", { ascending: false });
+  if (error) throw error;
+
+  type StandingHistoryRow = {
+    id: string;
+    rank: number;
+    club_id: string;
+    played: number;
+    wins: number;
+    draws: number;
+    losses: number;
+    goals_for: number;
+    goals_against: number;
+    points: number;
+    competitions?: {
+      id: string;
+      season_id: string;
+      name: string;
+      seasons?: { label: string } | null;
+    } | null;
+  };
+
+  return ((data ?? []) as StandingHistoryRow[])
+    .map((r) => {
+      const comp = r.competitions;
+      if (!comp) return null;
+      const standing: StandingRow = {
+        id: r.id,
+        teamId: r.club_id,
+        rank: r.rank,
+        played: r.played,
+        wins: r.wins,
+        draws: r.draws,
+        losses: r.losses,
+        goalsFor: r.goals_for,
+        goalsAgainst: r.goals_against,
+        points: r.points,
+      };
+      return {
+        id: comp.id,
+        seasonId: comp.season_id,
+        seasonLabel: comp.seasons?.label ?? comp.season_id,
+        competitionId: comp.id,
+        competitionName: comp.name,
+        standing,
+      } satisfies ClubSeasonRecord;
+    })
+    .filter(Boolean) as ClubSeasonRecord[];
+}
+
+/** Plný text článku z hokejbal.cz — iOS HokejbalCzNewsClient.fetchBody. */
+export async function fetchArticleBody(url: string): Promise<string> {
+  const endpoint =
+    typeof window === "undefined"
+      ? `${process.env.NEXT_PUBLIC_SITE_URL ?? "http://127.0.0.1:3000"}/api/news/body?url=${encodeURIComponent(url)}`
+      : `/api/news/body?url=${encodeURIComponent(url)}`;
+  const res = await fetch(endpoint, { cache: "no-store" });
+  if (!res.ok) throw new Error("body_fetch_failed");
+  const json = (await res.json()) as { body?: string };
+  return json.body ?? "";
 }

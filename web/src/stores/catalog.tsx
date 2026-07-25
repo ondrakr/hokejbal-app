@@ -18,7 +18,20 @@ import {
   fetchTeamsForSeason,
 } from "@/lib/api";
 import type { Competition, Match, NewsArticle, Player, Season, Team } from "@/lib/types";
-import { readString, writeString } from "@/lib/storage";
+import { readJSON, readString, writeJSON, writeString } from "@/lib/storage";
+import { getDataSource } from "@/stores/dataSource";
+
+const CATALOG_SNAPSHOT_KEY = "hb.catalog.snapshot";
+
+type CatalogSnapshot = {
+  seasons: Season[];
+  competitions: Competition[];
+  teams: Team[];
+  players: Player[];
+  matches: Match[];
+  news: NewsArticle[];
+  selectedSeasonId: string | null;
+};
 
 type CatalogState = {
   seasons: Season[];
@@ -40,6 +53,16 @@ type CatalogState = {
 
 const CatalogContext = createContext<CatalogState | null>(null);
 
+function readSnapshot(): CatalogSnapshot | null {
+  const snap = readJSON<CatalogSnapshot | null>(CATALOG_SNAPSHOT_KEY, null);
+  if (!snap || !Array.isArray(snap.seasons)) return null;
+  return snap;
+}
+
+function writeSnapshot(data: CatalogSnapshot) {
+  writeJSON(CATALOG_SNAPSHOT_KEY, data);
+}
+
 export function CatalogProvider({ children }: { children: ReactNode }) {
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [competitions, setCompetitions] = useState<Competition[]>([]);
@@ -51,10 +74,38 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async (seasonId?: string | null) => {
-    setLoading(true);
+  const applyData = useCallback((data: CatalogSnapshot) => {
+    setSeasons(data.seasons);
+    setCompetitions(data.competitions);
+    setTeams(data.teams);
+    setPlayers(data.players);
+    setMatches(data.matches);
+    setNews(data.news);
+    setSelectedSeasonIdState(data.selectedSeasonId);
+  }, []);
+
+  const loadFromSnapshot = useCallback((): boolean => {
+    const snap = readSnapshot();
+    if (!snap) {
+      applyData({
+        seasons: [],
+        competitions: [],
+        teams: [],
+        players: [],
+        matches: [],
+        news: [],
+        selectedSeasonId: null,
+      });
+      setError("Nejdřív načti online data, pak přepni na mock");
+      return false;
+    }
+    applyData(snap);
     setError(null);
-    try {
+    return true;
+  }, [applyData]);
+
+  const loadOnline = useCallback(
+    async (seasonId?: string | null) => {
       const seasonsData = await fetchSeasons();
       const saved = readString("hb.selectedSeason", "");
       const current =
@@ -73,19 +124,40 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
         fetchNews(20),
       ]);
 
-      setSeasons(seasonsData);
-      setCompetitions(comps);
-      setTeams(teamsData);
-      setPlayers(playersData);
-      setMatches(matchesData);
-      setNews(newsData);
-      setSelectedSeasonIdState(current);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Nepodařilo se načíst data");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      const snapshot: CatalogSnapshot = {
+        seasons: seasonsData,
+        competitions: comps,
+        teams: teamsData,
+        players: playersData,
+        matches: matchesData,
+        news: newsData,
+        selectedSeasonId: current,
+      };
+      applyData(snapshot);
+      writeSnapshot(snapshot);
+      setError(null);
+    },
+    [applyData]
+  );
+
+  const load = useCallback(
+    async (seasonId?: string | null) => {
+      setLoading(true);
+      setError(null);
+      try {
+        if (getDataSource() === "mock") {
+          loadFromSnapshot();
+        } else {
+          await loadOnline(seasonId);
+        }
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Nepodařilo se načíst data");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [loadFromSnapshot, loadOnline]
+  );
 
   useEffect(() => {
     void load();
@@ -95,14 +167,31 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     (id: string) => {
       writeString("hb.selectedSeason", id);
       setSelectedSeasonIdState(id);
+      if (getDataSource() === "mock") {
+        // V mock režimu jen přepneme vybranou sezónu ve snapshotu (bez síťového fetch).
+        const snap = readSnapshot();
+        if (snap) {
+          writeSnapshot({ ...snap, selectedSeasonId: id });
+        }
+        return;
+      }
       void load(id);
     },
     [load]
   );
 
   const refreshMatches = useCallback(async () => {
+    if (getDataSource() === "mock") {
+      const snap = readSnapshot();
+      if (snap) setMatches(snap.matches);
+      return;
+    }
     const data = await fetchMatches({ seasonId: selectedSeasonId ?? undefined });
     setMatches(data);
+    const snap = readSnapshot();
+    if (snap) {
+      writeSnapshot({ ...snap, matches: data });
+    }
   }, [selectedSeasonId]);
 
   const teamMap = useMemo(() => new Map(teams.map((t) => [t.id, t])), [teams]);

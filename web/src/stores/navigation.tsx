@@ -22,13 +22,26 @@ export type Route =
   | { name: "article"; id: string }
   | { name: "search" }
   | { name: "settings" }
+  | { name: "settingsHomeFeed" }
+  | { name: "settingsOrder" }
+  | { name: "settingsNotifications" }
   | { name: "media" }
   | { name: "fantasy"; screen?: "hub" | "team" | "market" | "leaderboard" | "rules" }
   | { name: "tips"; screen?: "hub" | "leaderboard" | "rules" }
   | {
       name: "amateur";
-      screen?: "hub" | "create" | "detail" | "admin" | "scorer";
+      screen?:
+        | "hub"
+        | "adminHub"
+        | "create"
+        | "detail"
+        | "admin"
+        | "adminTeam"
+        | "team"
+        | "match"
+        | "scorer";
       id?: string;
+      teamId?: string;
       matchId?: string;
     };
 

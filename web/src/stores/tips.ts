@@ -88,6 +88,31 @@ function persist() {
   emit();
 }
 
+/** Stabilní „komunitní“ základ podle id zápasu (jako iOS MatchTipStore.seedVotes). */
+export function seedVotes(matchId: string): TipVotes {
+  let hash = 5381;
+  for (let i = 0; i < matchId.length; i++) {
+    hash = Math.imul(hash, 33) + matchId.charCodeAt(i);
+    hash >>>= 0;
+  }
+  const total = 80 + (hash % 220);
+  const homeShare = 0.35 + (hash % 30) / 100;
+  const home = Math.max(1, Math.floor(total * homeShare));
+  const away = Math.max(1, total - home);
+  return { matchId, homeCount: home, awayCount: away };
+}
+
+export function votePercents(votes: TipVotes): { homePercent: number; awayPercent: number } {
+  const total = Math.max(1, votes.homeCount + votes.awayCount);
+  const homePercent = Math.round((votes.homeCount / total) * 100);
+  return { homePercent, awayPercent: Math.max(0, 100 - homePercent) };
+}
+
+/** Tipovat lze jen před začátkem naplánovaného zápasu. */
+export function canTip(match: Match): boolean {
+  return match.status === "scheduled" && Date.now() < new Date(match.scheduledAt).getTime();
+}
+
 export function useTips() {
   const snap = useSyncExternalStore(
     (cb) => {
@@ -111,10 +136,20 @@ export function useTips() {
     persist();
   }, []);
 
+  const ensureVotes = useCallback((matchId: string) => {
+    hydrate();
+    if (state.votes[matchId]) return;
+    state = {
+      ...state,
+      votes: { ...state.votes, [matchId]: seedVotes(matchId) },
+    };
+    persist();
+  }, []);
+
   const placeTip = useCallback((matchId: string, pick: TipPick) => {
     const existing = state.tips[matchId];
     if (existing?.resolved) return;
-    const votes = { ...(state.votes[matchId] ?? { matchId, homeCount: 12, awayCount: 9 }) };
+    const votes = { ...(state.votes[matchId] ?? seedVotes(matchId)) };
     if (existing) {
       if (existing.pick === "home") votes.homeCount = Math.max(0, votes.homeCount - 1);
       else votes.awayCount = Math.max(0, votes.awayCount - 1);
@@ -181,6 +216,11 @@ export function useTips() {
     },
   ].sort((a, b) => b.points - a.points || b.correct - a.correct);
 
+  const votesFor = (id: string): TipVotes & { homePercent: number; awayPercent: number } => {
+    const votes = snap.votes[id] ?? seedVotes(id);
+    return { ...votes, ...votePercents(votes) };
+  };
+
   return {
     ...snap,
     pointsPerTip: POINTS,
@@ -188,8 +228,10 @@ export function useTips() {
     leaderboard,
     setDisplayName,
     placeTip,
+    ensureVotes,
     resolveAgainstMatches,
+    canTip,
     tipFor: (id: string) => snap.tips[id],
-    votesFor: (id: string) => snap.votes[id],
+    votesFor,
   };
 }
