@@ -246,9 +246,8 @@ function PenaltySheet({
               key={m}
               type="button"
               onClick={() => setMinutes(m)}
-              className={`flex-1 rounded-full py-2 text-[13px] font-bold ${
-                minutes === m ? "bg-brand text-on-brand" : "bg-card-inset text-hb-fg"
-              }`}
+              className="hb-choice-chip flex-1 !rounded-full text-center"
+              data-active={minutes === m ? "true" : "false"}
             >
               {m} min
             </button>

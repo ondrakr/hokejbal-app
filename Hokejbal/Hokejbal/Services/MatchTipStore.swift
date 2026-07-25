@@ -111,10 +111,52 @@ final class MatchTipStore: ObservableObject {
         if votes[matchId] == nil {
             votes[matchId] = seedVotes(matchId: matchId)
         }
+        Task { await refreshVotesFromRemote(matchId: matchId) }
+    }
+
+    func refreshVotesFromRemote(matchId: String) async {
+        guard let auth = AuthAccess.store else { return }
+        do {
+            let remote = try await auth.authAPI.fetchTipVotes(matchId: matchId)
+            let seed = seedVotes(matchId: matchId)
+            votes[matchId] = MatchTipVotes(
+                matchId: matchId,
+                homeCount: max(seed.homeCount, remote.home),
+                awayCount: max(seed.awayCount, remote.away)
+            )
+        } catch { /* keep local */ }
+    }
+
+    func syncMyTipsFromRemote() async {
+        guard let auth = AuthAccess.store, auth.isAuthenticated, let userId = auth.userId else { return }
+        do {
+            let token = try await auth.validAccessToken()
+            let rows = try await auth.authAPI.fetchMyTips(userId: userId, accessToken: token)
+            for row in rows {
+                guard let pick = MatchTipPick(rawValue: row.pick) else { continue }
+                if tips[row.matchId] == nil {
+                    tips[row.matchId] = MatchTip(
+                        matchId: row.matchId,
+                        pick: pick,
+                        createdAt: row.createdAt ?? Date(),
+                        resolved: false,
+                        isCorrect: nil,
+                        pointsAwarded: 0
+                    )
+                }
+            }
+            if let name = auth.profile?.username, !name.isEmpty {
+                displayName = name
+            }
+        } catch { /* soft */ }
     }
 
     @discardableResult
     func placeTip(match: Match, pick: MatchTipPick, competitions: [Competition]) -> String? {
+        guard AuthAccess.store?.isAuthenticated == true else {
+            AuthAccess.store?.presentLogin()
+            return "Pro tipování se musíš přihlásit."
+        }
         guard isExtraliga(match, competitions: competitions) else {
             return "Tipovat lze jen zápasy Extraligy."
         }
@@ -144,7 +186,23 @@ final class MatchTipStore: ObservableObject {
             isCorrect: nil,
             pointsAwarded: 0
         )
+
+        Task { await pushTipToRemote(matchId: match.id, pick: pick) }
         return nil
+    }
+
+    private func pushTipToRemote(matchId: String, pick: MatchTipPick) async {
+        guard let auth = AuthAccess.store, let userId = auth.userId else { return }
+        do {
+            let token = try await auth.validAccessToken()
+            try await auth.authAPI.upsertTip(
+                userId: userId,
+                matchId: matchId,
+                pick: pick.rawValue,
+                accessToken: token
+            )
+            await refreshVotesFromRemote(matchId: matchId)
+        } catch { /* soft */ }
     }
 
     /// Vyhodnotí tipy pro dokončené zápasy.

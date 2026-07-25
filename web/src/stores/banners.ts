@@ -18,16 +18,21 @@ export type InAppBanner = {
   scoringTeamId?: string | null;
 };
 
+export const BANNER_DISPLAY_MS = 3800;
+
 type BannerState = {
   current: InAppBanner | null;
+  exiting: boolean;
   queue: InAppBanner[];
 };
 
 const listeners = new Set<() => void>();
-let state: BannerState = { current: null, queue: [] };
+let state: BannerState = { current: null, exiting: false, queue: [] };
 const viewingMatchIds = new Set<string>();
 let dismissTimer: ReturnType<typeof setTimeout> | null = null;
 let showNextTimer: ReturnType<typeof setTimeout> | null = null;
+let exitTimer: ReturnType<typeof setTimeout> | null = null;
+const EXIT_MS = 280;
 
 function emit() {
   listeners.forEach((l) => l());
@@ -58,12 +63,12 @@ export function isViewingMatch(matchId: string) {
 }
 
 function showNextIfNeeded() {
-  if (state.current || !state.queue.length) return;
+  if (state.current || state.exiting || !state.queue.length) return;
   const [next, ...rest] = state.queue;
-  state = { current: next, queue: rest };
+  state = { current: next, exiting: false, queue: rest };
   emit();
   if (dismissTimer) clearTimeout(dismissTimer);
-  dismissTimer = setTimeout(() => dismissCurrent(), 3800);
+  dismissTimer = setTimeout(() => dismissCurrent(), BANNER_DISPLAY_MS);
 }
 
 export function presentBanner(opts: {
@@ -91,15 +96,31 @@ export function presentBanner(opts: {
   showNextIfNeeded();
 }
 
-export function dismissCurrent() {
+export function dismissCurrent(opts?: { alreadyAnimated?: boolean }) {
+  if (!state.current || state.exiting) return;
   if (dismissTimer) {
     clearTimeout(dismissTimer);
     dismissTimer = null;
   }
-  state = { ...state, current: null };
+  if (exitTimer) clearTimeout(exitTimer);
+
+  if (opts?.alreadyAnimated) {
+    state = { ...state, current: null, exiting: false };
+    emit();
+    if (showNextTimer) clearTimeout(showNextTimer);
+    showNextTimer = setTimeout(() => showNextIfNeeded(), 80);
+    return;
+  }
+
+  state = { ...state, exiting: true };
   emit();
-  if (showNextTimer) clearTimeout(showNextTimer);
-  showNextTimer = setTimeout(() => showNextIfNeeded(), 200);
+  exitTimer = setTimeout(() => {
+    exitTimer = null;
+    state = { ...state, current: null, exiting: false };
+    emit();
+    if (showNextTimer) clearTimeout(showNextTimer);
+    showNextTimer = setTimeout(() => showNextIfNeeded(), 80);
+  }, EXIT_MS);
 }
 
 export function useBanners() {
@@ -130,6 +151,7 @@ export function useBanners() {
 
   return {
     current: snap.current,
+    exiting: snap.exiting,
     dismiss,
     present,
     beginViewingMatch,

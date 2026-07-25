@@ -127,7 +127,7 @@ export function StandingsTable({
   competitionSlug,
   emptyMessage = "Tabulka pro tuto soutěž není k dispozici.",
   legend,
-  topPadding = true,
+  topPadding = false,
 }: {
   rows: StandingRow[];
   /** Zápasy soutěže — pro Live / Doma / Venku / Forma. */
@@ -161,6 +161,10 @@ export function StandingsTable({
     if (hasLive) setScope("live");
   }, [hasLive]);
 
+  useEffect(() => {
+    if (!hasLive && scope === "live") setScope("total");
+  }, [hasLive, scope]);
+
   const viewRows: StandingViewRow[] = useMemo(() => {
     if (!competitionId || !rows.length) return rows.map((r) => ({ ...r }));
     return buildStandingsView({
@@ -184,11 +188,11 @@ export function StandingsTable({
   }
 
   return (
-    <div className={topPadding ? "pt-1" : undefined}>
+    <div className={topPadding ? "pt-2" : undefined}>
       {competitionId ? (
         <>
-          <PillTrack>
-            {STANDINGS_SCOPES.map((s) => (
+          <PillTrack tightBottom={scope === "form"}>
+            {STANDINGS_SCOPES.filter((s) => hasLive || s.id !== "live").map((s) => (
               <Pill
                 key={s.id}
                 active={scope === s.id}
@@ -202,7 +206,7 @@ export function StandingsTable({
             ))}
           </PillTrack>
           {scope === "form" ? (
-            <PillTrack>
+            <PillTrack stacked>
               {FORM_WINDOWS.map((w) => (
                 <Pill key={w} active={formWindow === w} onClick={() => setFormWindow(w)}>
                   {w} zápasů

@@ -198,33 +198,18 @@ struct PlayerDetailView: View {
     }
 
     private var seasonChipRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(seasonChips, id: \.self) { seasonId in
-                    let label = history.first(where: { $0.seasonId == seasonId })?.seasonLabel ?? seasonId
-                    let selected = selectedSeasonId == seasonId
-                    Button {
-                        selectedSeasonId = seasonId
-                    } label: {
-                        Text(label)
-                            .font(.hbMontserrat(size: 13, weight: .semibold))
-                            .foregroundStyle(selected ? HBTheme.onBrand : HBTheme.textSecondary)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .background(
-                                Capsule(style: .continuous)
-                                    .fill(selected ? HBTheme.brand : HBTheme.card)
-                            )
-                            .overlay {
-                                Capsule(style: .continuous)
-                                    .strokeBorder(selected ? Color.clear : HBTheme.cardStroke, lineWidth: 1)
-                            }
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, HBTheme.screenPadding)
-        }
+        HBChipRow(
+            items: seasonChips.map { seasonId in
+                (
+                    value: seasonId,
+                    label: history.first(where: { $0.seasonId == seasonId })?.seasonLabel ?? seasonId
+                )
+            },
+            selection: Binding(
+                get: { selectedSeasonId ?? seasonChips.first ?? "" },
+                set: { selectedSeasonId = $0 }
+            )
+        )
     }
 
     private func playerMatchRow(_ item: PlayerMatchAppearance, focusTeamId: String) -> some View {

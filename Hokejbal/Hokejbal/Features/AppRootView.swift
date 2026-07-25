@@ -12,6 +12,10 @@ struct AppRootView: View {
     @EnvironmentObject private var matchAlerts: MatchAlertsStore
     @EnvironmentObject private var favorites: FavoritesStore
     @EnvironmentObject private var banners: InAppBannerCenter
+    @EnvironmentObject private var auth: AuthStore
+    @EnvironmentObject private var matchTips: MatchTipStore
+    @EnvironmentObject private var amateurTournaments: AmateurTournamentStore
+    @EnvironmentObject private var brandStore: AppBrandStore
 
     @State private var isReady = false
     @State private var didWireLiveHandlers = false
@@ -19,14 +23,24 @@ struct AppRootView: View {
     var body: some View {
         ZStack {
             if isReady {
-                MainTabView()
-                    .transition(.opacity)
+                Group {
+                    switch brandStore.brand {
+                    case .hokejbal:
+                        MainTabView()
+                    case .cmshb:
+                        CMSHBBrowserShell()
+                    }
+                }
+                .transition(.opacity)
+                .id(brandStore.brand)
             } else {
                 BrandLoadingView()
                     .transition(.opacity)
             }
         }
         .animation(.easeInOut(duration: 0.35), value: isReady)
+        .animation(.easeInOut(duration: 0.25), value: brandStore.brand)
+        .hbAuthSheet(auth, catalog: catalog)
         .task {
             await bootstrap()
         }
@@ -38,11 +52,26 @@ struct AppRootView: View {
         .onChange(of: catalog.competitions) { _, comps in
             competitionOrder.sync(with: comps)
         }
+        .onChange(of: auth.isAuthenticated) { _, loggedIn in
+            Task {
+                if loggedIn {
+                    await favorites.syncFromRemote(using: auth)
+                    await matchTips.syncMyTipsFromRemote()
+                    if let club = auth.profile?.favoriteClubId {
+                        favorites.addTeam(club)
+                    }
+                    await amateurTournaments.pullRemote(using: auth)
+                }
+            }
+        }
     }
 
     @MainActor
     private func bootstrap() async {
         let started = Date()
+
+        AuthAccess.store = auth
+        await auth.bootstrap()
 
         await seasons.load(using: apiClient.api)
         let currentSeasonId = seasons.seasons.first(where: \.isCurrent)?.id
@@ -52,6 +81,15 @@ struct AppRootView: View {
         await catalog.load(using: apiClient.api, seasonId: currentSeasonId)
         competitionOrder.sync(with: catalog.competitions)
         homeMatchFeed.seedDefaultsIfNeeded(competitions: catalog.competitions)
+
+        if auth.isAuthenticated {
+            await favorites.syncFromRemote(using: auth)
+            await matchTips.syncMyTipsFromRemote()
+            if let club = auth.profile?.favoriteClubId {
+                favorites.addTeam(club)
+            }
+        }
+        await amateurTournaments.pullRemote(using: auth)
 
         wireLiveHandlersIfNeeded()
         liveScores.start { apiClient.api }

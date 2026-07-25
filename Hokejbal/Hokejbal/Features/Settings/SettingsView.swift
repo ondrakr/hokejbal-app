@@ -57,7 +57,7 @@ struct SettingsView: View {
                      : "Lokální mock data — offline režim.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Text("Aplikace je volně přístupná – bez registrace a přihlášení.")
+                Text("Účet spravuješ v Profilu (Domů / Více). Bez přihlášení jde aplikace prohlížet.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } header: {
@@ -105,6 +105,8 @@ struct SettingsView: View {
 
 struct NotificationSettingsView: View {
     @EnvironmentObject private var notifications: NotificationSettingsStore
+    @EnvironmentObject private var banners: InAppBannerCenter
+    @EnvironmentObject private var catalog: CatalogStore
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -174,6 +176,18 @@ struct NotificationSettingsView: View {
             } header: {
                 Text("Obsah")
             }
+
+            Section {
+                Button {
+                    presentStylePreview()
+                } label: {
+                    Label("Ukázat náhled banneru", systemImage: "capsule")
+                }
+            } header: {
+                Text("Náhled")
+            } footer: {
+                Text("Mini kapsle — přijíždí shora včetně log.")
+            }
         }
         .listStyle(.insetGrouped)
         .navigationTitle("Notifikace")
@@ -185,6 +199,39 @@ struct NotificationSettingsView: View {
                 Task { await notifications.refreshAuthorization() }
             }
         }
+    }
+
+    private func presentStylePreview() {
+        let teams = Array(catalog.teamsById.values.prefix(2))
+        let homeId = teams.first?.id ?? "hostivar"
+        let awayId = teams.dropFirst().first?.id ?? "plzen"
+        let homeName = teams.first?.shortName ?? "Hostivař"
+        let awayName = teams.dropFirst().first?.shortName ?? "Plzeň"
+        let match = Match(
+            id: "banner-preview",
+            competitionId: "preview",
+            homeTeamId: homeId,
+            awayTeamId: awayId,
+            scheduledAt: Date(),
+            status: .live,
+            period: .first,
+            clock: "12:34",
+            phase: .regular,
+            homeScore: 3,
+            awayScore: 2,
+            homePeriodScores: [2, 1],
+            awayPeriodScores: [1, 1],
+            venue: "Náhled",
+            round: 1,
+            events: []
+        )
+        banners.present(
+            kind: .goal,
+            match: match,
+            homeName: homeName,
+            awayName: awayName,
+            scoringTeamId: homeId
+        )
     }
 
     private var permissionCard: some View {

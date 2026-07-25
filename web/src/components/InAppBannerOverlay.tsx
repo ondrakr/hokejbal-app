@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { TeamBadge } from "@/components/Badges";
 import type { Match } from "@/lib/types";
 import { useCatalog } from "@/stores/catalog";
@@ -27,7 +27,6 @@ function shouldNotifyMatch(
     isFavTeam: (id: string) => boolean;
   }
 ) {
-  // Ztlumený zápas → nikdy.
   if (!opts.isEnabled(match.id)) return false;
   if (opts.onlyFavorites) {
     return (
@@ -39,7 +38,6 @@ function shouldNotifyMatch(
   return true;
 }
 
-/** Sleduje skóre live zápasů a frontu in-app bannerů. */
 function useLiveBannerWatcher() {
   const { matches, teamById, refreshMatches } = useCatalog();
   const fav = useFavorites();
@@ -83,7 +81,6 @@ function useLiveBannerWatcher() {
         isFavTeam: fav.isTeam,
       });
 
-      // Začátek zápasu: scheduled → live
       if (
         prev?.status === "scheduled" &&
         match.status === "live" &&
@@ -165,7 +162,6 @@ function useLiveBannerWatcher() {
   }, [matches, teamById, notif, alerts, fav, push]);
 }
 
-/** Sync viewingMatchIds z navigačního stacku (bez zásahu do MatchDetailScreen). */
 function useViewingMatchFromNav() {
   const { stack } = useNav();
   const top = stack[stack.length - 1];
@@ -179,82 +175,143 @@ function useViewingMatchFromNav() {
 }
 
 export function InAppBannerOverlay() {
-  const { current } = useBanners();
+  const { current, exiting } = useBanners();
   const { teamById } = useCatalog();
   const { push } = useNav();
   useLiveBannerWatcher();
   useViewingMatchFromNav();
 
-  if (!current) return null;
+  const [dragY, setDragY] = useState(0);
+  const [swipingOut, setSwipingOut] = useState(false);
+  const startY = useRef<number | null>(null);
+  const dragging = useRef(false);
 
-  const home = teamById(current.homeTeamId);
-  const away = teamById(current.awayTeamId);
-  const scoring =
-    current.scoringTeamId != null
-      ? teamById(current.scoringTeamId)
-      : current.kind === "goal"
-        ? home
-        : undefined;
-  const title = current.kind === "goal" ? "Gól" : "Konec";
-  const score = `${current.homeScore}:${current.awayScore}`;
+  const home = current ? teamById(current.homeTeamId) : undefined;
+  const away = current ? teamById(current.awayTeamId) : undefined;
+  const isGoal = current?.kind === "goal";
+  const homeScored = Boolean(current && isGoal && current.scoringTeamId === current.homeTeamId);
+  const awayScored = Boolean(current && isGoal && current.scoringTeamId === current.awayTeamId);
+  const accentText = isGoal ? "text-live" : "text-brand";
+  const homeLabel = home?.shortName ?? current?.homeName ?? "";
+  const awayLabel = away?.shortName ?? current?.awayName ?? "";
+
+  useEffect(() => {
+    setDragY(0);
+    setSwipingOut(false);
+    startY.current = null;
+    dragging.current = false;
+  }, [current?.id]);
+
+  const open = () => {
+    if (!current || exiting || swipingOut || dragging.current) return;
+    if (Math.abs(dragY) > 10) return;
+    const id = current.matchId;
+    dismissCurrent();
+    if (id !== "banner-preview") push({ name: "match", id });
+  };
+
+  const onPointerDown = (e: ReactPointerEvent<HTMLButtonElement>) => {
+    if (exiting || swipingOut) return;
+    startY.current = e.clientY;
+    dragging.current = false;
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const onPointerMove = (e: ReactPointerEvent<HTMLButtonElement>) => {
+    if (startY.current == null || exiting || swipingOut) return;
+    const dy = Math.min(0, e.clientY - startY.current);
+    if (Math.abs(dy) > 6) dragging.current = true;
+    setDragY(dy);
+  };
+
+  const onPointerUp = () => {
+    if (startY.current == null) return;
+    const up = -dragY;
+    startY.current = null;
+    if (up > 28) {
+      setSwipingOut(true);
+      setDragY(-88);
+      window.setTimeout(() => {
+        dismissCurrent({ alreadyAnimated: true });
+        setSwipingOut(false);
+        setDragY(0);
+        dragging.current = false;
+      }, 200);
+    } else {
+      setDragY(0);
+      window.setTimeout(() => {
+        dragging.current = false;
+      }, 50);
+    }
+  };
+
+  const offsetY = swipingOut ? dragY : dragY;
+  const opacity = swipingOut
+    ? 0
+    : Math.max(0.15, 1 + dragY / 120);
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-0 z-50 flex justify-center px-3.5 pt-1.5">
-      <button
-        type="button"
-        className="pointer-events-auto flex w-full max-w-[420px] items-center gap-3.5 rounded-[var(--radius-lg)] border border-card-stroke bg-card px-4 py-3.5 text-left shadow-[0_6px_16px_rgba(0,0,0,0.12)] hb-enter"
-        onClick={() => {
-          const id = current.matchId;
-          dismissCurrent();
-          push({ name: "match", id });
-        }}
-        aria-label={`${title}. ${current.homeName} ${score} ${current.awayName}.`}
-      >
-        {current.kind === "goal" && scoring ? (
-          <TeamBadge team={scoring} size={44} />
-        ) : (
-          <div className="flex items-center gap-2">
-            {home && <TeamBadge team={home} size={34} />}
-            {away && <TeamBadge team={away} size={34} />}
-          </div>
-        )}
-        <div className="min-w-0 flex-1">
-          <div
-            className={`text-[12px] font-bold tracking-[0.6px] uppercase ${
-              current.kind === "goal" ? "text-live" : "text-hb-faint"
+    <div className="pointer-events-none absolute inset-0 z-50" aria-hidden={!current}>
+      {current && (
+        <div className="flex justify-center px-4 pt-[calc(var(--safe-top)+6px)]">
+          <button
+            type="button"
+            onClick={open}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
+            className={`pointer-events-auto flex w-full max-w-[420px] items-center gap-2 rounded-full border border-card-stroke bg-card px-3.5 py-2.5 text-left shadow-[0_4px_14px_rgba(0,0,0,0.14)] touch-none ${
+              swipingOut
+                ? ""
+                : exiting
+                  ? "hb-banner-slide-out"
+                  : dragY === 0
+                    ? "hb-banner-slide"
+                    : ""
             }`}
+            style={
+              swipingOut || dragY !== 0
+                ? {
+                    transform: `translateY(${offsetY}px)`,
+                    opacity,
+                    transition: swipingOut
+                      ? "transform 0.2s ease-in, opacity 0.2s ease-in"
+                      : dragging.current
+                        ? "none"
+                        : "transform 0.18s ease-out, opacity 0.18s ease-out",
+                  }
+                : undefined
+            }
+            aria-label={`${isGoal ? "Gól" : "Konec"}. ${current.homeName} ${current.homeScore}:${current.awayScore} ${current.awayName}.`}
           >
-            {title}
-          </div>
-          <div className="mt-1 flex min-w-0 items-center gap-1.5">
+            <span className={`shrink-0 text-[11px] font-bold tracking-[0.8px] ${accentText}`}>
+              {isGoal ? "GÓL" : "KONEC"}
+            </span>
+            {home && <TeamBadge team={home} size={18} />}
             <span
-              className={`truncate text-[16px] ${
-                current.scoringTeamId === current.homeTeamId ? "font-bold" : "font-semibold"
-              } ${
-                current.kind === "goal" && current.scoringTeamId !== current.homeTeamId
-                  ? "text-hb-muted"
-                  : "text-hb-fg"
+              className={`truncate text-[12px] ${
+                homeScored ? "font-bold text-live" : "font-semibold text-hb-fg"
               }`}
             >
-              {current.homeName}
+              {homeLabel}
             </span>
-            <span className="hb-number shrink-0 text-[20px] font-extrabold tabular-nums text-hb-fg">
-              {score}
+            <span className="hb-number flex shrink-0 items-baseline gap-px text-[14px] font-extrabold tabular-nums">
+              <span className={homeScored ? "text-live" : "text-hb-fg"}>{current.homeScore}</span>
+              <span className="text-hb-muted">:</span>
+              <span className={awayScored ? "text-live" : "text-hb-fg"}>{current.awayScore}</span>
             </span>
             <span
-              className={`truncate text-[16px] ${
-                current.scoringTeamId === current.awayTeamId ? "font-bold" : "font-semibold"
-              } ${
-                current.kind === "goal" && current.scoringTeamId !== current.awayTeamId
-                  ? "text-hb-muted"
-                  : "text-hb-fg"
+              className={`truncate text-[12px] ${
+                awayScored ? "font-bold text-live" : "font-semibold text-hb-fg"
               }`}
             >
-              {current.awayName}
+              {awayLabel}
             </span>
-          </div>
+            {away && <TeamBadge team={away} size={18} />}
+          </button>
         </div>
-      </button>
+      )}
     </div>
   );
 }

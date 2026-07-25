@@ -122,6 +122,7 @@ struct HomeView: View {
     @State private var newsPage = 0
     @State private var selectedArticle: NewsArticle?
     @State private var selectedMatch: HomeMatchRoute?
+    @State private var showSiteSwitch = false
 
     private var sliderMatches: [Match] {
         let filtered = matches.filter { homeMatchFeed.includes(match: $0, catalog: catalog) }
@@ -161,11 +162,16 @@ struct HomeView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Image("BrandLogo")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(height: 28)
-                        .accessibilityLabel("Hokejbal")
+                    Button {
+                        showSiteSwitch = true
+                    } label: {
+                        Image("BrandLogo")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(height: 28)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Přepnout web")
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     NavigationLink {
@@ -177,15 +183,11 @@ struct HomeView: View {
                     }
                     .accessibilityLabel("Hledat")
 
-                    NavigationLink {
-                        SettingsView()
-                    } label: {
-                        Image(systemName: "person.crop.circle")
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(HBTheme.textPrimary)
-                    }
-                    .accessibilityLabel("Profil")
+                    ProfileEntryLink()
                 }
+            }
+            .sheet(isPresented: $showSiteSwitch) {
+                SiteSwitchSheet()
             }
             .hbNavigationStyle()
             .allowScreenSleepWhileVisible()

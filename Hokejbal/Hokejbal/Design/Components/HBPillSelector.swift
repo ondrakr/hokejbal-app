@@ -1,45 +1,70 @@
 import SwiftUI
 
-/// Segmentovaný přepínač v tracku (Zápas / 1. třetina / …).
-struct HBPillSelector<Option: Hashable & RawRepresentable>: View where Option.RawValue == String, Option: CaseIterable {
-    @Binding var selection: Option
-    var compact: Bool = false
-
-    private var options: [Option] { Array(Option.allCases) }
+/// Horizontální chipy ve stylu ročníků v detailu hráče (Live / Celkem / Domácí…).
+struct HBChipRow<Value: Hashable>: View {
+    let items: [(value: Value, label: String)]
+    @Binding var selection: Value
+    /// Menší horní mezera (např. druhá řada Forma 5/10/15 pod Live/Celkem).
+    var stacked: Bool = false
+    /// Menší spodní mezera, když hned pod ní následuje další řada chipů.
+    var tightBottom: Bool = false
 
     var body: some View {
-        HStack(spacing: 3) {
-            ForEach(options, id: \.self) { option in
-                let isSelected = selection == option
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        selection = option
-                    }
-                } label: {
-                    Text(option.rawValue)
-                        .font(.hbMontserrat(size: compact ? 11 : 12, weight: .bold))
-                        .foregroundStyle(isSelected ? HBTheme.textPrimary : HBTheme.textSecondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.75)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, compact ? 8 : 9)
-                        .background {
-                            if isSelected {
-                                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    .fill(HBTheme.card)
-                                    .shadow(color: .black.opacity(0.06), radius: 2, y: 1)
-                            }
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(items, id: \.value) { item in
+                    let selected = selection == item.value
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.18)) {
+                            selection = item.value
                         }
+                    } label: {
+                        Text(item.label)
+                            .font(.hbMontserrat(size: 13, weight: .semibold))
+                            .foregroundStyle(selected ? HBTheme.onBrand : HBTheme.textSecondary)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(
+                                Capsule(style: .continuous)
+                                    .fill(selected ? HBTheme.brand : HBTheme.card)
+                            )
+                            .overlay {
+                                Capsule(style: .continuous)
+                                    .strokeBorder(selected ? Color.clear : HBTheme.cardStroke, lineWidth: 1)
+                            }
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
+            .padding(.horizontal, HBTheme.screenPadding)
         }
-        .padding(4)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(HBTheme.cardInset)
+        .padding(.top, stacked ? 2 : 6)
+        .padding(.bottom, tightBottom ? 4 : 14)
+    }
+}
+
+/// Segmentovaný přepínač — stejné chipy jako ročníky v detailu hráče.
+struct HBPillSelector<Option: Hashable & RawRepresentable>: View where Option.RawValue == String, Option: CaseIterable {
+    @Binding var selection: Option
+    /// Zachováno kvůli call-site; font je vždy 13 semibold.
+    var compact: Bool = false
+    /// Volitelný filtr (např. skrýt Live, když není živý zápas).
+    var include: ((Option) -> Bool)? = nil
+    var stacked: Bool = false
+    var tightBottom: Bool = false
+
+    private var items: [(value: Option, label: String)] {
+        Array(Option.allCases)
+            .filter { include?($0) ?? true }
+            .map { ($0, $0.rawValue) }
+    }
+
+    var body: some View {
+        HBChipRow(
+            items: items,
+            selection: $selection,
+            stacked: stacked,
+            tightBottom: tightBottom
         )
-        .padding(.horizontal, HBTheme.screenPadding)
-        .padding(.vertical, 12)
     }
 }

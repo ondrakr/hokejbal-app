@@ -4,6 +4,7 @@ import SwiftUI
 struct MatchTipCard: View {
     @EnvironmentObject private var tips: MatchTipStore
     @EnvironmentObject private var catalog: CatalogStore
+    @EnvironmentObject private var auth: AuthStore
 
     let match: Match
     var home: Team?
@@ -22,7 +23,7 @@ struct MatchTipCard: View {
     }
 
     private var canTip: Bool {
-        tips.canTip(match)
+        auth.isAuthenticated && tips.canTip(match)
     }
 
     var body: some View {
@@ -43,8 +44,20 @@ struct MatchTipCard: View {
 
                 if canTip {
                     tipButtons
-                } else if let myTip {
+                } else if let myTip, auth.isAuthenticated {
                     resultBanner(myTip)
+                } else if !auth.isAuthenticated && tips.canTip(match) {
+                    Button {
+                        auth.presentLogin()
+                    } label: {
+                        Text("Pro tipování se přihlas")
+                            .font(.hbMontserrat(size: 13, weight: .bold))
+                            .foregroundStyle(HBTheme.brand)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(HBTheme.cardInset, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
                 } else {
                     Text(match.status == .scheduled
                          ? "Tipování uzavřeno před začátkem."

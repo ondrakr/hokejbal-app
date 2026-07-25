@@ -83,7 +83,7 @@ struct StandingsTableView: View {
     var competitionId: String? = nil
     var highlightTeamIds: Set<String> = []
     var emptyMessage: String = "Tabulka pro tuto soutěž není k dispozici."
-    var topPadding: CGFloat = 8
+    var topPadding: CGFloat = 0
     var competitionSlug: String? = nil
     var legend: [StandingLegendItem]? = nil
 
@@ -125,12 +125,16 @@ struct StandingsTableView: View {
                     .padding(.top, 32)
             } else {
                 if competitionId != nil {
-                    HBPillSelector(selection: $scope, compact: true)
-                        .onChange(of: scope) { _, _ in
-                            if didInitScope { userPickedScope = true }
-                        }
+                    HBPillSelector(
+                        selection: $scope,
+                        include: { hasLive || $0 != .live },
+                        tightBottom: scope == .form
+                    )
+                    .onChange(of: scope) { _, _ in
+                        if didInitScope { userPickedScope = true }
+                    }
                     if scope == .form {
-                        HBPillSelector(selection: $formWindow, compact: true)
+                        HBPillSelector(selection: $formWindow, stacked: true)
                     }
                 }
                 header
@@ -147,8 +151,12 @@ struct StandingsTableView: View {
             if hasLive { scope = .live }
         }
         .onChange(of: hasLive) { _, live in
-            guard live, !userPickedScope else { return }
-            scope = .live
+            if live {
+                guard !userPickedScope else { return }
+                scope = .live
+            } else if scope == .live {
+                scope = .total
+            }
         }
     }
 

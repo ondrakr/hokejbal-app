@@ -175,7 +175,8 @@ struct AmateurCreateTournamentSheet: View {
             matchFormat: matchFormat,
             homeAndAway: homeAndAway,
             playoffTeamCount: playoffTeamCount,
-            seriesLength: format.usesSeries ? seriesLength : 1
+            seriesLength: format.usesSeries ? seriesLength : 1,
+            ownerId: AuthAccess.store?.userId
         )
         for team in draftTeams {
             _ = store.addTeam(

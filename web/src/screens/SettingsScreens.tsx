@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CompetitionBadge, TeamBadge } from "@/components/Badges";
 import { IconChevronRight, IconCourt, IconGear, IconNews } from "@/components/Icons";
-import { Pill } from "@/components/MatchRow";
+import { Pill, PillTrack } from "@/components/MatchRow";
 import { BackButton, ScreenHeader } from "@/components/ui";
 import { useCatalog } from "@/stores/catalog";
 import { useCompetitionOrder } from "@/stores/competitionOrder";
@@ -11,7 +11,8 @@ import { useDataSource } from "@/stores/dataSource";
 import { useHomeFeed } from "@/stores/homeFeed";
 import { useNav } from "@/stores/navigation";
 import { useNotifications } from "@/stores/notifications";
-import type { Competition } from "@/lib/types";
+import { presentBanner } from "@/stores/banners";
+import type { Competition, Match } from "@/lib/types";
 
 /** Port SettingsView + nested settings */
 export function SettingsScreen() {
@@ -268,13 +269,13 @@ export function HomeFeedSettingsScreen() {
           <div className="mb-1 px-1 text-[12px] font-bold tracking-[0.3px] text-hb-faint uppercase">
             Přidat
           </div>
-          <div className="flex gap-[3px] rounded-[12px] bg-card-inset p-1">
+          <PillTrack inset={false}>
             {(["Soutěž", "Tým"] as const).map((mode) => (
               <Pill key={mode} active={pickMode === mode} onClick={() => setPickMode(mode)}>
                 {mode}
               </Pill>
             ))}
-          </div>
+          </PillTrack>
           <p className="mt-2 px-1 text-[12px] text-hb-muted">
             {pickMode === "Soutěž"
               ? "Celá soutěž — všechny její zápasy ve slideru."
@@ -404,6 +405,7 @@ export function CompetitionOrderSettingsScreen() {
 export function NotificationSettingsScreen() {
   const { pop } = useNav();
   const n = useNotifications();
+  const { teams } = useCatalog();
   const [perm, setPerm] = useState<NotificationPermission | "unsupported">("default");
 
   useEffect(() => {
@@ -413,6 +415,38 @@ export function NotificationSettingsScreen() {
     }
     setPerm(Notification.permission);
   }, []);
+
+  function presentStylePreview() {
+    const home = teams[0];
+    const away = teams[1] ?? teams[0];
+    const homeId = home?.id ?? "hostivar";
+    const awayId = away?.id ?? "plzen";
+    const match: Match = {
+      id: "banner-preview",
+      competitionId: "preview",
+      homeTeamId: homeId,
+      awayTeamId: awayId,
+      scheduledAt: new Date().toISOString(),
+      status: "live",
+      period: "1",
+      clock: "12:34",
+      phase: "regular",
+      homeScore: 3,
+      awayScore: 2,
+      homePeriodScores: [2, 1],
+      awayPeriodScores: [1, 1],
+      venue: "Náhled",
+      round: 1,
+      events: [],
+    };
+    presentBanner({
+      kind: "goal",
+      match,
+      homeName: home?.shortName ?? "Hostivař",
+      awayName: away?.shortName ?? "Plzeň",
+      scoringTeamId: homeId,
+    });
+  }
 
   return (
     <div className="hb-scroll hb-enter flex-1 bg-canvas">
@@ -463,6 +497,18 @@ export function NotificationSettingsScreen() {
 
         <SettingsSection title="Obsah">
           <ToggleRow title="Novinky" subtitle="Články a oznámení" on={n.newsEnabled} onToggle={() => n.set("newsEnabled", !n.newsEnabled)} leading={<IconNews size={18} />} />
+        </SettingsSection>
+
+        <SettingsSection title="Náhled" footer="Mini kapsle — přijíždí shora včetně log.">
+          <button
+            type="button"
+            onClick={presentStylePreview}
+            className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
+          >
+            <span className="min-w-0 flex-1 text-[16px] font-semibold text-hb-fg">
+              Ukázat náhled banneru
+            </span>
+          </button>
         </SettingsSection>
       </div>
     </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { BrandLoading } from "@/components/BrandLoading";
+import { CMSHBBrowserShell } from "@/components/CMSHBBrowserShell";
 import { InAppBannerOverlay } from "@/components/InAppBannerOverlay";
 import { PhoneShell } from "@/components/PhoneShell";
 import { TabBar } from "@/components/ui";
@@ -30,6 +31,8 @@ import {
 import { PlayerDetailScreen } from "@/screens/PlayerDetailScreen";
 import { TeamDetailScreen } from "@/screens/TeamDetailScreen";
 import { TipsScreen } from "@/screens/TipsScreen";
+import { SiteSwitchSheet } from "@/components/SiteSwitchSheet";
+import { AppBrandProvider, useAppBrand } from "@/stores/appBrand";
 import { CatalogProvider, useCatalog } from "@/stores/catalog";
 import { NavigationProvider, useNav } from "@/stores/navigation";
 
@@ -119,8 +122,21 @@ function StackRouter() {
   }
 }
 
+function HokejbalApp() {
+  const { siteSwitchOpen, closeSiteSwitch } = useAppBrand();
+  return (
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      <InAppBannerOverlay />
+      <StackRouter />
+      <TabBar />
+      <SiteSwitchSheet open={siteSwitchOpen} onClose={closeSiteSwitch} />
+    </div>
+  );
+}
+
 function AppInner() {
   const { loading } = useCatalog();
+  const { brand } = useAppBrand();
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -144,10 +160,11 @@ function AppInner() {
 
   return (
     <PhoneShell>
-      <div className="relative flex min-h-0 flex-1 flex-col">
-        <InAppBannerOverlay />
-        <StackRouter />
-        <TabBar />
+      <div
+        key={brand}
+        className="relative flex min-h-0 flex-1 flex-col hb-brand-fade"
+      >
+        {brand === "cmshb" ? <CMSHBBrowserShell /> : <HokejbalApp />}
       </div>
     </PhoneShell>
   );
@@ -157,7 +174,9 @@ export function AppShell() {
   return (
     <CatalogProvider>
       <NavigationProvider>
-        <AppInner />
+        <AppBrandProvider>
+          <AppInner />
+        </AppBrandProvider>
       </NavigationProvider>
     </CatalogProvider>
   );

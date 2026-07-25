@@ -13,6 +13,7 @@ struct FavoritesView: View {
     @EnvironmentObject private var apiClient: APIClient
     @EnvironmentObject private var seasons: SeasonStore
     @EnvironmentObject private var competitionOrder: CompetitionOrderStore
+    @EnvironmentObject private var auth: AuthStore
 
     @State private var tab: FavoritesTab = .matches
     @State private var path = NavigationPath()
@@ -80,28 +81,39 @@ struct FavoritesView: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            VStack(spacing: 0) {
-                HBUnderlineTabs(selection: $tab)
+            Group {
+                if auth.isAuthenticated {
+                    VStack(spacing: 0) {
+                        HBUnderlineTabs(selection: $tab)
 
-                HBSwipeTabView(selection: $tab) { selected in
-                    switch selected {
-                    case .matches: matchesContent
-                    case .teams: teamsContent
-                    case .players: playersContent
-                    case .competitions: competitionsContent
+                        HBSwipeTabView(selection: $tab) { selected in
+                            switch selected {
+                            case .matches: matchesContent
+                            case .teams: teamsContent
+                            case .players: playersContent
+                            case .competitions: competitionsContent
+                            }
+                        }
                     }
+                } else {
+                    AuthLockView(
+                        title: "Oblíbené jsou zamčené",
+                        message: "Přihlas se, abys mohl ukládat týmy, hráče a soutěže do oblíbených."
+                    )
                 }
             }
             .background(HBTheme.surface)
             .hbNavTitle("Oblíbené", systemImage: "star.fill")
             .hbNavigationStyle()
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showSearch = true
-                    } label: {
-                        Image(systemName: "plus.magnifyingglass")
-                            .accessibilityLabel("Přidat přes hledání")
+                if auth.isAuthenticated {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            showSearch = true
+                        } label: {
+                            Image(systemName: "plus.magnifyingglass")
+                                .accessibilityLabel("Přidat přes hledání")
+                        }
                     }
                 }
             }
@@ -117,6 +129,7 @@ struct FavoritesView: View {
                 CatalogSearchView(isPresentedAsSheet: true)
             }
             .task {
+                guard auth.isAuthenticated else { return }
                 await catalog.loadPlayersIfNeeded(using: apiClient.api, seasonId: seasons.selectedSeasonId)
                 await loadMatches()
             }

@@ -321,11 +321,8 @@ export function AmateurCreate() {
                       key={n}
                       type="button"
                       onClick={() => setPlayoffTeamCount(n)}
-                      className={`flex-1 rounded-full py-2.5 text-[13px] font-bold ${
-                        playoffTeamCount === n
-                          ? "bg-brand text-on-brand"
-                          : "bg-card-inset text-hb-fg"
-                      }`}
+                      className="hb-choice-chip flex-1 !rounded-full text-center"
+                      data-active={playoffTeamCount === n ? "true" : "false"}
                     >
                       {n}
                     </button>
@@ -348,11 +345,8 @@ export function AmateurCreate() {
                       key={v}
                       type="button"
                       onClick={() => setSeriesLength(Number(v))}
-                      className={`flex-1 rounded-full py-2.5 text-[13px] font-bold ${
-                        seriesLength === v
-                          ? "bg-brand text-on-brand"
-                          : "bg-card-inset text-hb-fg"
-                      }`}
+                      className="hb-choice-chip flex-1 !rounded-full text-center"
+                      data-active={seriesLength === v ? "true" : "false"}
                     >
                       {label}
                     </button>

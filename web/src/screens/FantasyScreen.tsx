@@ -9,6 +9,7 @@ import {
   IconUser,
 } from "@/components/Icons";
 import { TeamBadge } from "@/components/Badges";
+import { Pill, PillTrack } from "@/components/MatchRow";
 import { BackButton, EmptyState, ScreenHeader } from "@/components/ui";
 import type { Match, Player } from "@/lib/types";
 import { playerFullName, positionLabel } from "@/lib/types";
@@ -477,42 +478,26 @@ function MarketPicker({
         <div className="text-[12px] font-bold text-hb-muted">
           {marketMode ? "Extraliga" : `Rozpočet slotu: ${remaining} kr`}
         </div>
-        <div className="flex gap-2 overflow-x-auto pb-0.5">
+        <PillTrack inset={false} className="!p-0">
           {SORT_PILLS.map((pill) => (
-            <button
-              key={pill.id}
-              type="button"
-              onClick={() => setSort(pill.id)}
-              className={`shrink-0 rounded-full px-2.5 py-1.5 text-[11px] font-bold ${
-                sort === pill.id ? "bg-brand text-on-brand" : "bg-card-inset text-hb-muted"
-              }`}
-            >
+            <Pill key={pill.id} active={sort === pill.id} onClick={() => setSort(pill.id)}>
               {pill.label}
-            </button>
+            </Pill>
           ))}
           <span className="mx-1 w-px shrink-0 self-stretch bg-separator/50" />
-          <button
-            type="button"
-            onClick={() => setClubFilter(null)}
-            className={`shrink-0 rounded-full px-2.5 py-1.5 text-[11px] font-bold ${
-              clubFilter == null ? "bg-brand text-on-brand" : "bg-card-inset text-hb-muted"
-            }`}
-          >
+          <Pill active={clubFilter == null} onClick={() => setClubFilter(null)}>
             Všechny kluby
-          </button>
+          </Pill>
           {clubs.map((t) => (
-            <button
+            <Pill
               key={t.id}
-              type="button"
+              active={clubFilter === t.id}
               onClick={() => setClubFilter(t.id)}
-              className={`shrink-0 rounded-full px-2.5 py-1.5 text-[11px] font-bold ${
-                clubFilter === t.id ? "bg-brand text-on-brand" : "bg-card-inset text-hb-muted"
-              }`}
             >
               {t.shortName}
-            </button>
+            </Pill>
           ))}
-        </div>
+        </PillTrack>
       </div>
       <div className="hb-scroll min-h-0 flex-1 space-y-2.5 px-[var(--screen-pad)] py-3 pb-7">
         {market.map((p) => {

@@ -7,6 +7,7 @@ struct FantasyView: View {
     @EnvironmentObject private var apiClient: APIClient
     @EnvironmentObject private var catalog: CatalogStore
     @EnvironmentObject private var fantasy: FantasySquadStore
+    @EnvironmentObject private var auth: AuthStore
 
     @State private var players: [Player] = []
     @State private var matches: [Match] = []
@@ -29,10 +30,27 @@ struct FantasyView: View {
     }
 
     var body: some View {
+        Group {
+            if auth.isAuthenticated {
+                fantasyContent
+            } else {
+                AuthLockView(
+                    title: "Fantasy je zamčené",
+                    message: "Fantasy sestavu a trh odemkneš po přihlášení.",
+                    systemImage: "trophy.fill"
+                )
+            }
+        }
+        .navigationTitle("Fantasy")
+        .navigationBarTitleDisplayMode(.inline)
+        .hbNavigationStyle()
+    }
+
+    private var fantasyContent: some View {
         ZStack(alignment: .bottom) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    Text("Lokální demo — body a žebříček zatím jen na tomto zařízení.")
+                    Text("Fantasy Extraliga — sestava a trh pro přihlášené hráče.")
                         .font(.hbMontserrat(size: 12, weight: .medium))
                         .foregroundStyle(HBTheme.textSecondary)
                         .padding(12)

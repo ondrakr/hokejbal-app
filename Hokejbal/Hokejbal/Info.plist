@@ -4,6 +4,8 @@
 <dict>
 	<key>UIDesignRequiresCompatibility</key>
 	<true/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Vyber fotku pro svou profilovku.</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>isbhf</string>

@@ -105,6 +105,8 @@ struct AmateurTournament: Identifiable, Codable, Hashable, Sendable {
     /// Délka série: 1, 3, 5, 7 (best-of).
     var seriesLength: Int
     var scheduleGenerated: Bool
+    /// ID vlastníka (auth.users) — nil u starších lokálních turnajů.
+    var ownerId: String?
 
     var dateRangeLabel: String {
         let df = DateFormatter()
@@ -132,7 +134,8 @@ struct AmateurTournament: Identifiable, Codable, Hashable, Sendable {
         homeAndAway: Bool = false,
         playoffTeamCount: Int = 4,
         seriesLength: Int = 1,
-        scheduleGenerated: Bool = false
+        scheduleGenerated: Bool = false,
+        ownerId: String? = nil
     ) {
         self.id = id
         self.name = name
@@ -148,6 +151,7 @@ struct AmateurTournament: Identifiable, Codable, Hashable, Sendable {
         self.playoffTeamCount = playoffTeamCount
         self.seriesLength = seriesLength
         self.scheduleGenerated = scheduleGenerated
+        self.ownerId = ownerId
     }
 
     init(from decoder: Decoder) throws {
@@ -166,6 +170,7 @@ struct AmateurTournament: Identifiable, Codable, Hashable, Sendable {
         playoffTeamCount = try c.decodeIfPresent(Int.self, forKey: .playoffTeamCount) ?? 4
         seriesLength = try c.decodeIfPresent(Int.self, forKey: .seriesLength) ?? 1
         scheduleGenerated = try c.decodeIfPresent(Bool.self, forKey: .scheduleGenerated) ?? false
+        ownerId = try c.decodeIfPresent(String.self, forKey: .ownerId)
     }
 }
 
@@ -412,7 +417,8 @@ final class AmateurTournamentStore: ObservableObject {
         matchFormat: AmateurMatchFormat = .standard,
         homeAndAway: Bool = false,
         playoffTeamCount: Int = 4,
-        seriesLength: Int = 1
+        seriesLength: Int = 1,
+        ownerId: String? = nil
     ) -> AmateurTournament {
         let t = AmateurTournament(
             id: UUID().uuidString,
@@ -428,10 +434,12 @@ final class AmateurTournamentStore: ObservableObject {
             homeAndAway: homeAndAway,
             playoffTeamCount: Self.normalizedPlayoffCount(playoffTeamCount),
             seriesLength: Self.normalizedSeriesLength(seriesLength),
-            scheduleGenerated: false
+            scheduleGenerated: false,
+            ownerId: ownerId
         )
         tournaments.insert(t, at: 0)
         persist()
+        Task { await pushTournament(t.id) }
         return t
     }
 
@@ -439,6 +447,7 @@ final class AmateurTournamentStore: ObservableObject {
         guard let i = tournaments.firstIndex(where: { $0.id == tournament.id }) else { return }
         tournaments[i] = tournament
         persist()
+        Task { await pushTournament(tournament.id) }
     }
 
     func deleteTournament(_ id: String) {
@@ -448,6 +457,94 @@ final class AmateurTournamentStore: ObservableObject {
         players.removeAll { teamIds.contains($0.teamId) }
         matches.removeAll { $0.tournamentId == id }
         persist()
+        Task { await deleteRemoteTournament(id) }
+    }
+
+    func pullRemote(using auth: AuthStore) async {
+        do {
+            let token = try? await auth.validAccessToken()
+            let rows = try await auth.authAPI.fetchAmateurTournaments(accessToken: token)
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .deferredToDate
+            for row in rows {
+                guard let data = row.payload.data,
+                      let snap = try? decoder.decode(RemoteSnapshot.self, from: data) else { continue }
+                mergeRemoteSnapshot(snap, ownerId: row.ownerId)
+            }
+            persist()
+        } catch { /* soft */ }
+    }
+
+    func pushTournament(_ id: String) async {
+        guard let auth = AuthAccess.store,
+              auth.isAuthenticated,
+              let userId = auth.userId,
+              var tournament = tournament(id) else { return }
+        if tournament.ownerId == nil {
+            tournament.ownerId = userId
+            if let i = tournaments.firstIndex(where: { $0.id == id }) {
+                tournaments[i].ownerId = userId
+            }
+        }
+        guard tournament.ownerId == userId else { return }
+        do {
+            let token = try await auth.validAccessToken()
+            let snap = RemoteSnapshot(
+                tournament: tournament,
+                teams: teams(in: id),
+                players: players.filter { teamIds(in: id).contains($0.teamId) },
+                matches: matches(in: id)
+            )
+            let encoder = JSONEncoder()
+            let data = try encoder.encode(snap)
+            try await auth.authAPI.upsertAmateurTournament(
+                id: id,
+                ownerId: userId,
+                name: tournament.name,
+                status: tournament.status.rawValue,
+                payload: data,
+                accessToken: token
+            )
+            persist()
+        } catch { /* soft */ }
+    }
+
+    private func deleteRemoteTournament(_ id: String) async {
+        guard let auth = AuthAccess.store, auth.isAuthenticated else { return }
+        do {
+            let token = try await auth.validAccessToken()
+            try await auth.authAPI.deleteAmateurTournament(id: id, accessToken: token)
+        } catch { /* soft */ }
+    }
+
+    private func teamIds(in tournamentId: String) -> Set<String> {
+        Set(teams(in: tournamentId).map(\.id))
+    }
+
+    private func mergeRemoteSnapshot(_ snap: RemoteSnapshot, ownerId: String) {
+        var t = snap.tournament
+        t.ownerId = ownerId
+        let tid = t.id
+        if let i = tournaments.firstIndex(where: { $0.id == tid }) {
+            tournaments[i] = t
+        } else {
+            tournaments.append(t)
+        }
+        let oldTeamIds = Set(teams.filter { $0.tournamentId == tid }.map(\.id))
+        teams.removeAll { $0.tournamentId == tid }
+        players.removeAll { oldTeamIds.contains($0.teamId) }
+        matches.removeAll { $0.tournamentId == tid }
+        teams.append(contentsOf: snap.teams)
+        players.append(contentsOf: snap.players)
+        matches.append(contentsOf: snap.matches)
+        tournaments.sort { $0.createdAt > $1.createdAt }
+    }
+
+    private struct RemoteSnapshot: Codable {
+        var tournament: AmateurTournament
+        var teams: [AmateurTeam]
+        var players: [AmateurPlayer]
+        var matches: [AmateurMatch]
     }
 
     // MARK: Teams / players

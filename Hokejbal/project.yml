@@ -41,6 +41,7 @@ targets:
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
         INFOPLIST_KEY_NSUserNotificationsUsageDescription: "Volitelné upozornění na góly a výsledky oblíbených týmů."
+        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "Vyber fotku pro svou profilovku."
         # Opt-out z iOS 26 Liquid Glass — pevný design (bílá / červená) bez glass chrome.
         INFOPLIST_FILE: Hokejbal/Info.plist
         GENERATE_INFOPLIST_FILE: YES

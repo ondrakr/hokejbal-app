@@ -18,6 +18,7 @@ import {
   IconUser,
 } from "@/components/Icons";
 import { EmptyState, LoadingState, SectionHeader } from "@/components/ui";
+import { useAppBrand } from "@/stores/appBrand";
 import { useCatalog } from "@/stores/catalog";
 import { useHomeFeed } from "@/stores/homeFeed";
 import { useNav } from "@/stores/navigation";
@@ -35,6 +36,7 @@ export function HomeScreen() {
   const { matches, news, competitions, loading, error } = useCatalog();
   const { push, selectLive, setTab } = useNav();
   const feedStore = useHomeFeed();
+  const { openSiteSwitch } = useAppBrand();
   const [newsPage, setNewsPage] = useState(0);
 
   useEffect(() => {
@@ -78,8 +80,15 @@ export function HomeScreen() {
     <div className="hb-scroll hb-enter flex-1">
       {/* Toolbar = BrandLogo 28 + search/profile — HomeView */}
       <header className="hb-nav-bar sticky top-0 z-20 flex h-11 items-center justify-between px-4">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/brand/BrandLogo.png" alt="Hokejbal" className="h-7 w-auto object-contain" />
+        <button
+          type="button"
+          onClick={openSiteSwitch}
+          className="flex h-9 items-center"
+          aria-label="Přepnout web"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/BrandLogo.png" alt="Hokejbal" className="h-7 w-auto object-contain" />
+        </button>
         <div className="flex items-center gap-0.5">
           <button
             type="button"

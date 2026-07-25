@@ -211,37 +211,54 @@ export function MatchRow({
   );
 }
 
+/** Chip jako ročníky v detailu hráče (Live / Celkem / Domácí…) — 1:1 s HBChipRow. */
 export function Pill({
   active,
   children,
   onClick,
+  className = "",
 }: {
   active?: boolean;
   children: ReactNode;
   onClick?: () => void;
+  className?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex-1 rounded-[10px] py-2 font-bold transition ${
-        active ? "bg-card shadow-[0_1px_2px_rgba(0,0,0,0.06)]" : ""
-      }`}
-      style={{
-        fontSize: 12,
-        color: active ? "var(--text-primary)" : "var(--text-secondary)",
-      }}
+      className={`hb-choice-chip shrink-0 rounded-full transition ${className}`}
+      data-active={active ? "true" : "false"}
     >
       {children}
     </button>
   );
 }
 
-/** HBPillSelector track */
-export function PillTrack({ children }: { children: ReactNode }) {
+/** Horizontální řada chipů — 1:1 s HBChipRow / HBPillSelector. */
+export function PillTrack({
+  children,
+  stacked,
+  tightBottom,
+  inset = true,
+  className = "",
+}: {
+  children: ReactNode;
+  /** Menší horní mezera (druhá řada pod jinými chipy). */
+  stacked?: boolean;
+  /** Menší spodní mezera, když hned pod ní je další řada chipů. */
+  tightBottom?: boolean;
+  /** Horizontální screen padding (vypnout uvnitř už odsazeného kontejneru). */
+  inset?: boolean;
+  className?: string;
+}) {
   return (
-    <div className="px-4 py-3">
-      <div className="flex gap-[3px] rounded-[12px] bg-card-inset p-1">{children}</div>
+    <div
+      className={`hb-choice-chip-track flex gap-2 overflow-x-auto ${inset ? "hb-choice-chip-track--inset" : ""} ${className}`}
+      data-stacked={stacked ? "true" : undefined}
+      data-tight-bottom={tightBottom ? "true" : undefined}
+    >
+      {children}
     </div>
   );
 }

@@ -23,13 +23,19 @@ struct HBCachedAsyncImage<Content: View, Placeholder: View>: View {
 
     var body: some View {
         Group {
-            if let uiImage {
-                content(Image(uiImage: uiImage))
+            if let resolved = uiImage ?? cachedImage {
+                content(Image(uiImage: resolved))
             } else {
                 placeholder()
                     .task(id: url?.absoluteString) { await load() }
             }
         }
+    }
+
+    /// Synchronní cache hit — první frame už může mít logo (bez „pop“ po načtení).
+    private var cachedImage: UIImage? {
+        guard let url else { return nil }
+        return HBImageMemoryCache.image(for: url)
     }
 
     private func load() async {

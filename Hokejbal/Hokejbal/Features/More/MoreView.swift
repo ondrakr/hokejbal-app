@@ -3,6 +3,7 @@ import SwiftUI
 /// Záložka Více.
 struct MoreView: View {
     @EnvironmentObject private var tabRouter: AppTabRouter
+    @EnvironmentObject private var auth: AuthStore
 
     var body: some View {
         NavigationStack {
@@ -17,7 +18,10 @@ struct MoreView: View {
 
                         Spacer(minLength: 28)
 
-                        moreRow(.settings)
+                        VStack(spacing: 10) {
+                            moreRow(.profile)
+                            moreRow(.settings)
+                        }
                     }
                     .frame(maxWidth: .infinity, minHeight: geo.size.height - 36, alignment: .top)
                     .padding(.horizontal, HBTheme.screenPadding)
@@ -41,6 +45,23 @@ struct MoreView: View {
                 MoreMenuRowLabel(item: item)
             }
             .buttonStyle(.plain)
+
+        case .profile:
+            if auth.isAuthenticated {
+                NavigationLink {
+                    ProfileView()
+                } label: {
+                    MoreMenuRowLabel(item: item)
+                }
+                .buttonStyle(.plain)
+            } else {
+                Button {
+                    auth.presentLogin()
+                } label: {
+                    MoreMenuRowLabel(item: item)
+                }
+                .buttonStyle(.plain)
+            }
 
         case .search:
             NavigationLink {
@@ -102,14 +123,19 @@ struct MoreView: View {
 }
 
 private struct MoreMenuRowLabel: View {
+    @EnvironmentObject private var auth: AuthStore
     let item: MoreMenuItem
 
     var body: some View {
         HStack(spacing: 14) {
-            Image(systemName: item.systemImage)
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(HBTheme.brand)
-                .frame(width: 28, height: 28)
+            if item == .profile, auth.isAuthenticated {
+                UserAvatarView(profile: auth.profile, size: 28)
+            } else {
+                Image(systemName: item.systemImage)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(HBTheme.brand)
+                    .frame(width: 28, height: 28)
+            }
 
             Text(item.title)
                 .font(.hbMontserrat(size: 16, weight: .semibold))
@@ -137,13 +163,14 @@ private enum MoreMenuItem: String, CaseIterable, Identifiable {
     case news
     case liveStreams
     case media
+    case profile
     case settings
 
     var id: String { rawValue }
 
-    /// Položky hlavního seznamu — Nastavení je odděleně dole.
+    /// Položky hlavního seznamu — Profil a Nastavení jsou odděleně dole.
     static var primary: [MoreMenuItem] {
-        allCases.filter { $0 != .settings }
+        allCases.filter { $0 != .settings && $0 != .profile }
     }
 
     var title: String {
@@ -152,6 +179,7 @@ private enum MoreMenuItem: String, CaseIterable, Identifiable {
         case .tips: return "Tipovačka"
         case .amateur: return "Amatérské turnaje"
         case .settings: return "Nastavení"
+        case .profile: return "Profil"
         case .search: return "Vyhledávání"
         case .news: return "Novinky"
         case .liveStreams: return "Živé přenosy"
@@ -165,6 +193,7 @@ private enum MoreMenuItem: String, CaseIterable, Identifiable {
         case .tips: return "target"
         case .amateur: return "flag.checkered"
         case .settings: return "gearshape.fill"
+        case .profile: return "person.crop.circle.fill"
         case .search: return "magnifyingglass"
         case .news: return "newspaper.fill"
         case .liveStreams: return "tv.fill"
@@ -177,6 +206,7 @@ private enum MoreMenuItem: String, CaseIterable, Identifiable {
         case tips
         case amateur
         case settings
+        case profile
         case search
         case news
         case liveStreams
@@ -189,6 +219,7 @@ private enum MoreMenuItem: String, CaseIterable, Identifiable {
         case .tips: return .tips
         case .amateur: return .amateur
         case .settings: return .settings
+        case .profile: return .profile
         case .search: return .search
         case .news: return .news
         case .liveStreams: return .liveStreams

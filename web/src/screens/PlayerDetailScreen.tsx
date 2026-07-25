@@ -7,7 +7,7 @@ import type { Match, Player, PlayerSeasonStat, Team } from "@/lib/types";
 import { playerFullName } from "@/lib/types";
 import { PlayerAvatar, TeamBadge } from "@/components/Badges";
 import { IconChevronRight } from "@/components/Icons";
-import { MatchRow, UnderlineTabs } from "@/components/MatchRow";
+import { MatchRow, Pill, PillTrack, UnderlineTabs } from "@/components/MatchRow";
 import { SwipeTabPanels } from "@/components/SwipeTabPanels";
 import { BackButton, EmptyState, LoadingState, ScreenHeader } from "@/components/ui";
 import { useCatalog } from "@/stores/catalog";
@@ -228,30 +228,22 @@ export function PlayerDetailScreen({ id }: { id: string }) {
         panelClassName="bg-canvas pb-7"
       >
         <div>
-            {seasonChips.length > 0 && (
-              <div className="flex gap-2 overflow-x-auto px-4 pt-3 pb-2">
+            {seasonChips.length > 0 && selectedSeasonId && (
+              <PillTrack>
                 {seasonChips.map((seasonId) => {
                   const label =
                     history.find((h) => h.seasonId === seasonId)?.seasonLabel ?? seasonId;
-                  const selected = selectedSeasonId === seasonId;
                   return (
-                    <button
+                    <Pill
                       key={seasonId}
-                      type="button"
+                      active={selectedSeasonId === seasonId}
                       onClick={() => setSelectedSeasonId(seasonId)}
-                      className="shrink-0 rounded-full px-3 py-2 font-semibold"
-                      style={{
-                        fontSize: 13,
-                        color: selected ? "var(--on-brand)" : "var(--text-secondary)",
-                        background: selected ? "var(--brand)" : "var(--card)",
-                        boxShadow: selected ? "none" : "inset 0 0 0 1px var(--card-stroke)",
-                      }}
                     >
                       {label}
-                    </button>
+                    </Pill>
                   );
                 })}
-              </div>
+              </PillTrack>
             )}
 
             {filteredAppearances.length === 0 ? (

@@ -3,6 +3,7 @@ import SwiftUI
 /// Veřejný přehled amatérských turnajů (Více → Amatérské turnaje).
 struct AmateurTournamentsView: View {
     @EnvironmentObject private var store: AmateurTournamentStore
+    @EnvironmentObject private var auth: AuthStore
 
     var body: some View {
         Group {
@@ -10,7 +11,9 @@ struct AmateurTournamentsView: View {
                 EmptyStateView(
                     icon: "flag.checkered",
                     title: "Zatím žádné turnaje",
-                    message: "V adminu (ikona nastavení) můžeš vytvořit první amatérský turnaj."
+                    message: auth.isAuthenticated
+                        ? "Vytvoř turnaj přes ikonu správy vpravo nahoře."
+                        : "Přihlášení pořadatelé tu zveřejní turnaje. Můžeš je prohlížet jako běžnou soutěž."
                 )
             } else {
                 ScrollView {
@@ -33,7 +36,9 @@ struct AmateurTournamentsView: View {
         .navigationTitle("Amatérské turnaje")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .top, spacing: 0) {
-            Text("Lokální demo — turnaje zůstávají jen na tomto zařízení.")
+            Text(auth.isAuthenticated
+                  ? "Pořadatel zakládá a spravuje turnaje. Ostatní je prohlížejí jako soutěž."
+                  : "Prohlížení je otevřené. Zakládání a správa vyžaduje přihlášení.")
                 .font(.hbMontserrat(size: 12, weight: .medium))
                 .foregroundStyle(HBTheme.textSecondary)
                 .padding(.horizontal, HBTheme.screenPadding)
@@ -43,17 +48,29 @@ struct AmateurTournamentsView: View {
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                NavigationLink {
-                    AmateurAdminHubView()
-                } label: {
-                    Image(systemName: "gearshape.fill")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(HBTheme.textPrimary)
+                if auth.isAuthenticated {
+                    NavigationLink {
+                        AmateurAdminHubView()
+                    } label: {
+                        Image(systemName: "gearshape.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(HBTheme.textPrimary)
+                    }
+                    .accessibilityLabel("Správa turnajů")
+                } else {
+                    Button {
+                        auth.presentLogin()
+                    } label: {
+                        Image(systemName: "plus.circle")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(HBTheme.textPrimary)
+                    }
+                    .accessibilityLabel("Přihlásit se pro vytvoření")
                 }
-                .accessibilityLabel("Správa turnajů")
             }
         }
         .hbNavigationStyle()
+        .task { await store.pullRemote(using: auth) }
     }
 }
 
@@ -132,10 +149,17 @@ private enum AmateurTournamentTab: String, CaseIterable, Hashable {
 
 struct AmateurTournamentDetailView: View {
     @EnvironmentObject private var store: AmateurTournamentStore
+    @EnvironmentObject private var auth: AuthStore
     let tournamentId: String
     @State private var tab: AmateurTournamentTab = .program
 
     private var tournament: AmateurTournament? { store.tournament(tournamentId) }
+    private var canManage: Bool {
+        guard auth.isAuthenticated, let userId = auth.userId else { return false }
+        if let owner = tournament?.ownerId { return owner == userId }
+        // Starší lokální turnaje bez ownerId — správa jen když jsi přihlášený (legacy).
+        return tournament?.ownerId == nil
+    }
 
     var body: some View {
         Group {
@@ -149,16 +173,21 @@ struct AmateurTournamentDetailView: View {
         .navigationTitle(tournament?.name ?? "Turnaj")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                NavigationLink {
-                    AmateurAdminTournamentView(tournamentId: tournamentId)
-                } label: {
-                    Image(systemName: "gearshape.fill")
+            if canManage {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink {
+                        AmateurAdminTournamentView(tournamentId: tournamentId)
+                    } label: {
+                        Image(systemName: "gearshape.fill")
+                    }
+                    .accessibilityLabel("Spravovat turnaj")
                 }
-                .accessibilityLabel("Spravovat turnaj")
             }
         }
         .hbNavigationStyle()
+        .task {
+            await store.pullRemote(using: auth)
+        }
     }
 
     private func content(_ tournament: AmateurTournament) -> some View {
@@ -186,28 +215,39 @@ struct AmateurTournamentDetailView: View {
     }
 
     private func header(_ tournament: AmateurTournament) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(tournament.status.label)
-                    .font(.hbMontserrat(size: 11, weight: .bold))
+        HStack(alignment: .center, spacing: 14) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(HBTheme.brand.opacity(0.12))
+                Image(systemName: "flag.checkered")
+                    .font(.system(size: 28, weight: .bold))
                     .foregroundStyle(HBTheme.brand)
-                Spacer()
-                Text(tournament.dateRangeLabel)
-                    .font(.hbMontserrat(size: 12, weight: .semibold))
-                    .foregroundStyle(HBTheme.textSecondary)
             }
-            if !tournament.location.isEmpty {
-                Text(tournament.location)
-                    .font(.hbMontserrat(size: 14, weight: .medium))
-                    .foregroundStyle(HBTheme.textSecondary)
+            .frame(width: 64, height: 64)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(tournament.name)
+                    .font(.hbDisplay(size: 22, weight: .bold))
+                    .foregroundStyle(HBTheme.textPrimary)
+                    .lineLimit(2)
+                Text(tournament.status.label)
+                    .font(.hbMontserrat(size: 13, weight: .semibold))
+                    .foregroundStyle(HBTheme.brand)
+                HStack(spacing: 8) {
+                    Text(tournament.dateRangeLabel)
+                    if !tournament.location.isEmpty {
+                        Text("·")
+                        Text(tournament.location)
+                    }
+                }
+                .font(.hbMontserrat(size: 13, weight: .medium))
+                .foregroundStyle(HBTheme.textSecondary)
+                .lineLimit(1)
             }
-            if !tournament.notes.isEmpty {
-                Text(tournament.notes)
-                    .font(.hbMontserrat(size: 13, weight: .medium))
-                    .foregroundStyle(HBTheme.textTertiary)
-            }
+            Spacer(minLength: 0)
         }
-        .padding(HBTheme.screenPadding)
+        .padding(.horizontal, HBTheme.screenPadding)
+        .padding(.vertical, 14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(HBTheme.surface)
     }

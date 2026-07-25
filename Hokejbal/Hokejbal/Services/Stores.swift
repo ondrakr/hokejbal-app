@@ -40,25 +40,94 @@ final class FavoritesStore: ObservableObject {
     func toggleTeam(_ id: String) {
         if teamIDs.contains(id) { teamIDs.remove(id) } else { teamIDs.insert(id) }
         persist()
+        Task { await syncFavoriteChange(kind: "team", targetId: id, isFavorite: teamIDs.contains(id)) }
+    }
+
+    func addTeam(_ id: String) {
+        guard !teamIDs.contains(id) else { return }
+        teamIDs.insert(id)
+        persist()
+        Task { await syncFavoriteChange(kind: "team", targetId: id, isFavorite: true) }
     }
 
     func togglePlayer(_ id: String) {
         if playerIDs.contains(id) { playerIDs.remove(id) } else { playerIDs.insert(id) }
         persist()
+        Task { await syncFavoriteChange(kind: "player", targetId: id, isFavorite: playerIDs.contains(id)) }
     }
 
     func toggleMatch(_ id: String) {
         if matchIDs.contains(id) { matchIDs.remove(id) } else { matchIDs.insert(id) }
         persist()
+        Task { await syncFavoriteChange(kind: "match", targetId: id, isFavorite: matchIDs.contains(id)) }
     }
 
     func toggleCompetition(slug: String) {
         if competitionSlugs.contains(slug) { competitionSlugs.remove(slug) } else { competitionSlugs.insert(slug) }
         persist()
+        Task { await syncFavoriteChange(kind: "competition", targetId: slug, isFavorite: competitionSlugs.contains(slug)) }
     }
 
     func toggleCompetition(_ competition: Competition) {
         toggleCompetition(slug: competition.slug)
+    }
+
+    /// Načte oblíbené z DB po přihlášení a sloučí s lokálními.
+    func syncFromRemote(using auth: AuthStore) async {
+        guard auth.isAuthenticated, let userId = auth.userId else { return }
+        do {
+            let token = try await auth.validAccessToken()
+            let rows = try await auth.authAPI.fetchFavorites(accessToken: token)
+            var teams = teamIDs
+            var players = playerIDs
+            var matches = matchIDs
+            var comps = competitionSlugs
+            for row in rows {
+                switch row.kind {
+                case "team": teams.insert(row.targetId)
+                case "player": players.insert(row.targetId)
+                case "match": matches.insert(row.targetId)
+                case "competition": comps.insert(row.targetId)
+                default: break
+                }
+            }
+            // Push local-only items up.
+            for id in teamIDs where !rows.contains(where: { $0.kind == "team" && $0.targetId == id }) {
+                try? await auth.authAPI.upsertFavorite(kind: "team", targetId: id, userId: userId, accessToken: token)
+            }
+            for id in playerIDs where !rows.contains(where: { $0.kind == "player" && $0.targetId == id }) {
+                try? await auth.authAPI.upsertFavorite(kind: "player", targetId: id, userId: userId, accessToken: token)
+            }
+            for id in matchIDs where !rows.contains(where: { $0.kind == "match" && $0.targetId == id }) {
+                try? await auth.authAPI.upsertFavorite(kind: "match", targetId: id, userId: userId, accessToken: token)
+            }
+            for id in competitionSlugs where !rows.contains(where: { $0.kind == "competition" && $0.targetId == id }) {
+                try? await auth.authAPI.upsertFavorite(kind: "competition", targetId: id, userId: userId, accessToken: token)
+            }
+            teamIDs = teams
+            playerIDs = players
+            matchIDs = matches
+            competitionSlugs = comps
+            persist()
+        } catch {
+            // Soft-fail — lokální oblíbené zůstanou.
+        }
+    }
+
+    func clearLocalOnLogout() {
+        // Po odhlášení necháme lokální cache — uživatel může zůstat guest bez sync.
+    }
+
+    private func syncFavoriteChange(kind: String, targetId: String, isFavorite: Bool) async {
+        guard let auth = AuthAccess.store, auth.isAuthenticated, let userId = auth.userId else { return }
+        do {
+            let token = try await auth.validAccessToken()
+            if isFavorite {
+                try await auth.authAPI.upsertFavorite(kind: kind, targetId: targetId, userId: userId, accessToken: token)
+            } else {
+                try await auth.authAPI.deleteFavorite(kind: kind, targetId: targetId, accessToken: token)
+            }
+        } catch { /* soft */ }
     }
 
     private func persist() {
@@ -67,6 +136,11 @@ final class FavoritesStore: ObservableObject {
         defaults.set(Array(matchIDs), forKey: matchesKey)
         defaults.set(Array(competitionSlugs), forKey: competitionsKey)
     }
+}
+
+/// Slabá vazba na AuthStore pro sync z FavoritesStore.
+enum AuthAccess {
+    @MainActor static weak var store: AuthStore?
 }
 
 /// Notifikace na úrovni jednoho zápasu — výchozí zapnuto, lze vypnout celé.

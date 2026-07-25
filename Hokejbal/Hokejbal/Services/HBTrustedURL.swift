@@ -6,6 +6,8 @@ enum HBTrustedURL {
     private static let openHosts: Set<String> = [
         "hokejbal.cz",
         "www.hokejbal.cz",
+        "cmshb.cz",
+        "www.cmshb.cz",
         "youtube.com",
         "www.youtube.com",
         "m.youtube.com",

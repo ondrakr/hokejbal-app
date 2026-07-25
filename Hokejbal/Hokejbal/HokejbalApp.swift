@@ -18,6 +18,8 @@ struct HokejbalApp: App {
     @StateObject private var amateurTournaments = AmateurTournamentStore()
     @StateObject private var matchTips = MatchTipStore()
     @StateObject private var inAppBanners = InAppBannerCenter()
+    @StateObject private var auth = AuthStore()
+    @StateObject private var brandStore = AppBrandStore()
 
     init() {
         HBAppearance.apply()
@@ -43,11 +45,14 @@ struct HokejbalApp: App {
                 .environmentObject(amateurTournaments)
                 .environmentObject(matchTips)
                 .environmentObject(inAppBanners)
+                .environmentObject(auth)
+                .environmentObject(brandStore)
                 .tint(HBTheme.brand)
                 .preferredColorScheme(appearanceStore.appearance.colorScheme)
                 .background(HBTheme.canvas)
                 .onAppear {
                     IdleTimerAccess.controller = idleTimer
+                    AuthAccess.store = auth
                     idleTimer.allowSleep()
                 }
         }

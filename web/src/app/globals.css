@@ -238,6 +238,43 @@ a {
   font-size: 0.8125rem;
 }
 
+/* Choice chips — 1:1 s HBChipRow (Live / Celkem / Domácí / ročníky) */
+.hb-choice-chip {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0;
+  padding: 8px 12px;
+  color: var(--text-secondary);
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--card-stroke);
+}
+
+.hb-choice-chip[data-active="true"] {
+  color: var(--on-brand);
+  background: var(--brand);
+  box-shadow: none;
+}
+
+.hb-choice-chip-track {
+  padding-top: 6px;
+  padding-bottom: 14px;
+}
+
+.hb-choice-chip-track--inset {
+  padding-left: var(--screen-pad);
+  padding-right: var(--screen-pad);
+}
+
+.hb-choice-chip-track[data-stacked="true"] {
+  padding-top: 2px;
+}
+
+.hb-choice-chip-track[data-tight-bottom="true"] {
+  padding-bottom: 4px;
+}
+
 .hb-display {
   font-family: var(--font-rounded);
   font-weight: 800;
@@ -366,6 +403,97 @@ a {
 
 .hb-enter {
   animation: hb-fade-up 0.22s ease-out both;
+}
+
+@keyframes hb-banner-in {
+  from {
+    opacity: 0;
+    transform: translateY(-18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes hb-banner-slide {
+  from {
+    opacity: 0;
+    transform: translateY(-72px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes hb-banner-slide-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-72px);
+  }
+}
+
+.hb-banner-slide {
+  animation: hb-banner-slide 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.hb-banner-slide-out {
+  animation: hb-banner-slide-out 0.28s ease-in both;
+}
+
+@keyframes hb-site-sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.hb-site-sheet {
+  animation: hb-site-sheet-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.hb-brand-fade {
+  animation: hb-brand-fade 0.25s ease-in-out both;
+}
+
+@keyframes hb-brand-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.hb-banner-enter {
+  animation: hb-banner-in 0.28s ease-out both;
+}
+
+.hb-banner-pulse {
+  animation: hb-pulse-opacity 0.7s ease-in-out infinite alternate;
+}
+
+@keyframes hb-banner-progress {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+.hb-banner-progress {
+  width: 0%;
+  animation-name: hb-banner-progress;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
 }
 
 .hb-nav-bar {

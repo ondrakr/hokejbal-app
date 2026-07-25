@@ -39,7 +39,7 @@ export function CompetitionStatsPanel({
 }) {
   const { matches: catalogMatches, teamById } = useCatalog();
   const { push } = useNav();
-  const [scope, setScope] = useState<"Hráči" | "Týmy">("Hráči");
+  const [scope, setScope] = useState<"HRÁČI" | "TÝMY">("HRÁČI");
   const [players, setPlayers] = useState<Player[]>([]);
   const [standingsLocal, setStandingsLocal] = useState<StandingRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,14 +88,14 @@ export function CompetitionStatsPanel({
   return (
     <div className="pb-6">
       <PillTrack>
-        {(["Hráči", "Týmy"] as const).map((s) => (
+        {(["HRÁČI", "TÝMY"] as const).map((s) => (
           <Pill key={s} active={scope === s} onClick={() => setScope(s)}>
-            {s.toUpperCase()}
+            {s}
           </Pill>
         ))}
       </PillTrack>
 
-      {scope === "Hráči" ? (
+      {scope === "HRÁČI" ? (
         players.length === 0 ? (
           <EmptyState
             title="Bez statistik hráčů"
