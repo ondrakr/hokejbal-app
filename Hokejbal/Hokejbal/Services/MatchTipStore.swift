@@ -22,6 +22,16 @@ struct MatchTip: Codable, Hashable, Sendable {
     var pointsAwarded: Int
 }
 
+/// Tip přesného skóre (SOUKROMÝ) — jen do žebříčku za body. Bodování `FantasyScoring`.
+struct MatchScoreTip: Codable, Hashable, Sendable {
+    var matchId: String
+    var homeScore: Int
+    var awayScore: Int
+    var predictedOvertime: Bool
+    var resolved: Bool
+    var pointsAwarded: Int
+}
+
 struct MatchTipVotes: Codable, Hashable, Sendable {
     var matchId: String
     var homeCount: Int
@@ -63,7 +73,15 @@ final class MatchTipStore: ObservableObject {
         didSet { persistVotes() }
     }
 
+    /// Tipy přesného skóre (soukromé) — klíč = matchId.
+    @Published private(set) var scoreTips: [String: MatchScoreTip] = [:] {
+        didSet { persistScoreTips() }
+    }
+
     @Published private(set) var botEntries: [TipLeaderboardEntry] = []
+
+    /// Reálný žebříček ze serveru (tip_leaderboard). Prázdný = fallback na boty.
+    @Published private(set) var remoteLeaderboard: [TipLeaderboardEntry] = []
 
     private let defaults = UserDefaults.standard
     private let userId = "local-user"
@@ -73,12 +91,14 @@ final class MatchTipStore: ObservableObject {
         static let tips = "hb.tips.v1.tips"
         static let votes = "hb.tips.v1.votes"
         static let bots = "hb.tips.v1.bots"
+        static let scoreTips = "hb.tips.v1.scoreTips"
     }
 
     init() {
         displayName = defaults.string(forKey: Keys.displayName) ?? "Tipér"
         tips = Self.loadTips(from: defaults)
         votes = Self.loadVotes(from: defaults)
+        scoreTips = Self.loadScoreTips(from: defaults)
         botEntries = Self.loadBots(from: defaults)
         if botEntries.isEmpty {
             botEntries = Self.makeBots()
@@ -153,7 +173,7 @@ final class MatchTipStore: ObservableObject {
 
     @discardableResult
     func placeTip(match: Match, pick: MatchTipPick, competitions: [Competition]) -> String? {
-        guard AuthAccess.store?.isAuthenticated == true else {
+        guard FantasyMock.enabled || AuthAccess.store?.isAuthenticated == true else {
             AuthAccess.store?.presentLogin()
             return "Pro tipování se musíš přihlásit."
         }
@@ -205,6 +225,115 @@ final class MatchTipStore: ObservableObject {
         } catch { /* soft */ }
     }
 
+    // MARK: - Tip skóre (soukromý)
+
+    func scoreTip(for matchId: String) -> MatchScoreTip? { scoreTips[matchId] }
+
+    @discardableResult
+    func placeScoreTip(match: Match, home: Int, away: Int, overtime: Bool, competitions: [Competition]) -> String? {
+        guard FantasyMock.enabled || AuthAccess.store?.isAuthenticated == true else {
+            AuthAccess.store?.presentLogin()
+            return "Pro tipování se musíš přihlásit."
+        }
+        guard isExtraliga(match, competitions: competitions) else {
+            return "Tipovat lze jen zápasy Extraligy."
+        }
+        guard canTip(match) else {
+            return "Tipování je uzavřené (zápas už začal)."
+        }
+        let h = max(0, min(30, home))
+        let a = max(0, min(30, away))
+        let ot = overtime && FantasyScoring.canPredictOvertime(predHome: h, predAway: a)
+        scoreTips[match.id] = MatchScoreTip(
+            matchId: match.id, homeScore: h, awayScore: a,
+            predictedOvertime: ot, resolved: false, pointsAwarded: 0
+        )
+        Task { await pushScoreTip(matchId: match.id) }
+        return nil
+    }
+
+    /// Vyhodnotí tipy skóre pro dokončené zápasy (body dle `FantasyScoring`).
+    func resolveScoreTips(matches: [Match]) {
+        var changed = false
+        for match in matches where match.status == .finished {
+            guard var tip = scoreTips[match.id], !tip.resolved else { continue }
+            tip.pointsAwarded = FantasyScoring.scorePoints(
+                predHome: tip.homeScore, predAway: tip.awayScore,
+                resHome: match.homeScore, resAway: match.awayScore,
+                predictedOvertime: tip.predictedOvertime,
+                decidedInOvertime: match.decidedInOvertime
+            )
+            tip.resolved = true
+            scoreTips[match.id] = tip
+            changed = true
+            Task { await pushScoreTip(matchId: match.id) }
+        }
+        if changed { objectWillChange.send() }
+    }
+
+    private func pushScoreTip(matchId: String) async {
+        guard let auth = AuthAccess.store, let userId = auth.userId, let tip = scoreTips[matchId] else { return }
+        do {
+            let token = try await auth.validAccessToken()
+            try await auth.authAPI.upsertScoreTip(
+                userId: userId, matchId: matchId,
+                homeScore: tip.homeScore, awayScore: tip.awayScore,
+                predictedOvertime: tip.predictedOvertime,
+                pointsAwarded: tip.resolved ? tip.pointsAwarded : nil,
+                accessToken: token
+            )
+        } catch { /* soft */ }
+    }
+
+    func syncScoreTipsFromRemote() async {
+        guard !FantasyMock.enabled else { return }
+        guard let auth = AuthAccess.store, auth.isAuthenticated, let userId = auth.userId else { return }
+        do {
+            let token = try await auth.validAccessToken()
+            let rows = try await auth.authAPI.fetchMyScoreTips(userId: userId, accessToken: token)
+            for row in rows where scoreTips[row.matchId] == nil {
+                scoreTips[row.matchId] = MatchScoreTip(
+                    matchId: row.matchId, homeScore: row.homeScore, awayScore: row.awayScore,
+                    predictedOvertime: row.predictedOvertime,
+                    resolved: row.pointsAwarded != nil,
+                    pointsAwarded: row.pointsAwarded ?? 0
+                )
+            }
+        } catch { /* soft */ }
+    }
+
+    // MARK: - Reálný žebříček
+
+    func loadLeaderboard() async {
+        guard !FantasyMock.enabled else { return }
+        guard let api = AuthAccess.store?.authAPI else { return }
+        do {
+            let rows = try await api.fetchTipLeaderboard()
+            let myId = AuthAccess.store?.userId
+            remoteLeaderboard = rows.map { row in
+                TipLeaderboardEntry(
+                    id: row.userId,
+                    name: row.displayName ?? row.username ?? "Tipér",
+                    points: row.totalPoints,
+                    correct: 0,
+                    total: row.tipsCount ?? 0,
+                    isCurrentUser: row.userId == myId
+                )
+            }
+        } catch { /* soft */ }
+    }
+
+    private func pushWinnerPoints(matchId: String) async {
+        guard let auth = AuthAccess.store, auth.isAuthenticated, let userId = auth.userId,
+              let tip = tips[matchId], tip.resolved else { return }
+        do {
+            let token = try await auth.validAccessToken()
+            try await auth.authAPI.setWinnerTipPoints(
+                userId: userId, matchId: matchId, points: tip.pointsAwarded, accessToken: token
+            )
+        } catch { /* soft */ }
+    }
+
     /// Vyhodnotí tipy pro dokončené zápasy.
     func resolve(matches: [Match]) {
         var changed = false
@@ -216,6 +345,7 @@ final class MatchTipStore: ObservableObject {
                 tip.pointsAwarded = 0
                 tips[match.id] = tip
                 changed = true
+                Task { await pushWinnerPoints(matchId: match.id) }
                 continue
             }
             let winner: MatchTipPick = match.homeScore > match.awayScore ? .home : .away
@@ -225,6 +355,7 @@ final class MatchTipStore: ObservableObject {
             tip.pointsAwarded = correct ? Self.pointsPerCorrectTip : 0
             tips[match.id] = tip
             changed = true
+            Task { await pushWinnerPoints(matchId: match.id) }
         }
         if changed { objectWillChange.send() }
     }
@@ -239,6 +370,11 @@ final class MatchTipStore: ObservableObject {
     var openTips: Int { tips.values.filter { !$0.resolved }.count }
     var seasonPoints: Int { tips.values.reduce(0) { $0 + $1.pointsAwarded } }
 
+    /// Body z tipů skóre (soukromé) a celkové body do žebříčku.
+    var scoreTipPoints: Int { scoreTips.values.reduce(0) { $0 + $1.pointsAwarded } }
+    var combinedPoints: Int { seasonPoints + scoreTipPoints }
+    var openScoreTips: Int { scoreTips.values.filter { !$0.resolved }.count }
+
     var accuracy: Double {
         guard resolvedTips > 0 else { return 0 }
         return Double(correctTips) / Double(resolvedTips) * 100
@@ -246,9 +382,9 @@ final class MatchTipStore: ObservableObject {
 
     var myLeaderboardEntry: TipLeaderboardEntry {
         TipLeaderboardEntry(
-            id: userId,
+            id: AuthAccess.store?.userId ?? userId,
             name: displayName,
-            points: seasonPoints,
+            points: combinedPoints,
             correct: correctTips,
             total: resolvedTips,
             isCurrentUser: true
@@ -256,12 +392,20 @@ final class MatchTipStore: ObservableObject {
     }
 
     var leaderboard: [TipLeaderboardEntry] {
-        (botEntries + [myLeaderboardEntry])
-            .sorted {
-                if $0.points != $1.points { return $0.points > $1.points }
-                if $0.correct != $1.correct { return $0.correct > $1.correct }
-                return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+        let sortRule: (TipLeaderboardEntry, TipLeaderboardEntry) -> Bool = {
+            if $0.points != $1.points { return $0.points > $1.points }
+            if $0.correct != $1.correct { return $0.correct > $1.correct }
+            return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+        }
+        // Reálný žebříček ze serveru má přednost; jinak lokální demo s boty.
+        if !remoteLeaderboard.isEmpty {
+            var rows = remoteLeaderboard
+            if AuthAccess.store?.isAuthenticated == true, !rows.contains(where: \.isCurrentUser) {
+                rows.append(myLeaderboardEntry)
             }
+            return rows.sorted(by: sortRule)
+        }
+        return (botEntries + [myLeaderboardEntry]).sorted(by: sortRule)
     }
 
     var myRank: Int {
@@ -291,6 +435,18 @@ final class MatchTipStore: ObservableObject {
         if let data = try? JSONEncoder().encode(votes) {
             defaults.set(data, forKey: Keys.votes)
         }
+    }
+
+    private func persistScoreTips() {
+        if let data = try? JSONEncoder().encode(scoreTips) {
+            defaults.set(data, forKey: Keys.scoreTips)
+        }
+    }
+
+    private static func loadScoreTips(from defaults: UserDefaults) -> [String: MatchScoreTip] {
+        guard let data = defaults.data(forKey: Keys.scoreTips),
+              let decoded = try? JSONDecoder().decode([String: MatchScoreTip].self, from: data) else { return [:] }
+        return decoded
     }
 
     private func persistBots() {

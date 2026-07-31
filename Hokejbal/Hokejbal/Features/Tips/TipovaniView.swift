@@ -10,6 +10,11 @@ struct MatchTipCard: View {
     var home: Team?
     var away: Team?
 
+    @State private var scoreHome: Int = 0
+    @State private var scoreAway: Int = 0
+    @State private var scoreOvertime: Bool = false
+    @State private var didSeedScore = false
+
     private var isExtraliga: Bool {
         tips.isExtraliga(match, competitions: catalog.competitions)
     }
@@ -22,8 +27,12 @@ struct MatchTipCard: View {
         tips.tip(for: match.id)
     }
 
+    private var myScoreTip: MatchScoreTip? {
+        tips.scoreTip(for: match.id)
+    }
+
     private var canTip: Bool {
-        auth.isAuthenticated && tips.canTip(match)
+        (FantasyMock.enabled || auth.isAuthenticated) && tips.canTip(match)
     }
 
     var body: some View {
@@ -44,9 +53,9 @@ struct MatchTipCard: View {
 
                 if canTip {
                     tipButtons
-                } else if let myTip, auth.isAuthenticated {
+                } else if let myTip, (FantasyMock.enabled || auth.isAuthenticated) {
                     resultBanner(myTip)
-                } else if !auth.isAuthenticated && tips.canTip(match) {
+                } else if !FantasyMock.enabled && !auth.isAuthenticated && tips.canTip(match) {
                     Button {
                         auth.presentLogin()
                     } label: {
@@ -65,16 +74,154 @@ struct MatchTipCard: View {
                         .font(.hbMontserrat(size: 12, weight: .medium))
                         .foregroundStyle(HBTheme.textSecondary)
                 }
+
+                if canTip || myScoreTip != nil {
+                    Rectangle()
+                        .fill(HBTheme.separator.opacity(0.5))
+                        .frame(height: 0.5)
+                        .padding(.vertical, 2)
+                    scoreSection
+                }
             }
             .padding(14)
             .hbCard(cornerRadius: HBTheme.radiusMd)
             .onAppear {
                 tips.ensureVotes(matchId: match.id)
+                if !didSeedScore {
+                    if let existing = myScoreTip {
+                        scoreHome = existing.homeScore
+                        scoreAway = existing.awayScore
+                        scoreOvertime = existing.predictedOvertime
+                    }
+                    didSeedScore = true
+                }
                 if match.status == .finished {
                     tips.resolve(matches: [match])
+                    tips.resolveScoreTips(matches: [match])
                 }
             }
         }
+    }
+
+    // MARK: - Tip skóre (soukromý)
+
+    @ViewBuilder
+    private var scoreSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("TIP SKÓRE")
+                    .font(.hbMontserrat(size: 11, weight: .bold))
+                    .tracking(0.7)
+                    .foregroundStyle(HBTheme.brand)
+                Spacer()
+                Text("soukromé · +5 / 3 / 2 b")
+                    .font(.hbMontserrat(size: 11, weight: .semibold))
+                    .foregroundStyle(HBTheme.textTertiary)
+            }
+
+            if canTip {
+                HStack(spacing: 12) {
+                    scoreCounter(title: home?.shortName ?? "DOM", value: $scoreHome)
+                    Text(":")
+                        .font(.hbNumber(size: 22, weight: .heavy))
+                        .foregroundStyle(HBTheme.textSecondary)
+                    scoreCounter(title: away?.shortName ?? "HOS", value: $scoreAway)
+                }
+
+                if FantasyScoring.canPredictOvertime(predHome: scoreHome, predAway: scoreAway) {
+                    Toggle(isOn: $scoreOvertime) {
+                        Text("Rozhodnuto v prodloužení / nájezdech")
+                            .font(.hbMontserrat(size: 12, weight: .semibold))
+                            .foregroundStyle(HBTheme.textPrimary)
+                    }
+                    .tint(HBTheme.brand)
+                }
+
+                Button {
+                    _ = tips.placeScoreTip(
+                        match: match, home: scoreHome, away: scoreAway,
+                        overtime: scoreOvertime, competitions: catalog.competitions
+                    )
+                } label: {
+                    Text(myScoreTip == nil ? "Uložit tip skóre" : "Aktualizovat tip skóre")
+                        .font(.hbMontserrat(size: 13, weight: .bold))
+                        .foregroundStyle(HBTheme.onBrand)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(HBTheme.brandGradient, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .buttonStyle(.plain)
+
+                Text("Tvůj tip skóre nikdo nevidí — počítá se jen do žebříčku.")
+                    .font(.hbMontserrat(size: 11, weight: .medium))
+                    .foregroundStyle(HBTheme.textTertiary)
+            } else if let scoreTip = myScoreTip {
+                scoreResultBanner(scoreTip)
+            }
+        }
+    }
+
+    private func scoreCounter(title: String, value: Binding<Int>) -> some View {
+        VStack(spacing: 6) {
+            Text(title)
+                .font(.hbMontserrat(size: 11, weight: .bold))
+                .foregroundStyle(HBTheme.textSecondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            HStack(spacing: 10) {
+                scoreStep("minus") {
+                    if value.wrappedValue > 0 { value.wrappedValue -= 1; clampOvertime() }
+                }
+                Text("\(value.wrappedValue)")
+                    .font(.hbNumber(size: 24, weight: .heavy))
+                    .foregroundStyle(HBTheme.textPrimary)
+                    .frame(minWidth: 28)
+                scoreStep("plus") {
+                    if value.wrappedValue < 30 { value.wrappedValue += 1; clampOvertime() }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func scoreStep(_ system: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: system)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(HBTheme.brand)
+                .frame(width: 34, height: 34)
+                .background(HBTheme.cardInset, in: Circle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func clampOvertime() {
+        if !FantasyScoring.canPredictOvertime(predHome: scoreHome, predAway: scoreAway) {
+            scoreOvertime = false
+        }
+    }
+
+    @ViewBuilder
+    private func scoreResultBanner(_ tip: MatchScoreTip) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: tip.resolved
+                  ? (tip.pointsAwarded > 0 ? "checkmark.circle.fill" : "xmark.circle.fill")
+                  : "lock.fill")
+                .foregroundStyle(tip.resolved
+                                 ? (tip.pointsAwarded > 0 ? HBTheme.win : HBTheme.loss)
+                                 : HBTheme.brand)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Tip skóre: \(tip.homeScore):\(tip.awayScore)\(tip.predictedOvertime ? " (P)" : "")")
+                    .font(.hbMontserrat(size: 13, weight: .bold))
+                    .foregroundStyle(HBTheme.textPrimary)
+                Text(tip.resolved ? "+\(tip.pointsAwarded) b" : "Soukromé · čeká na výsledek")
+                    .font(.hbMontserrat(size: 12, weight: .medium))
+                    .foregroundStyle(HBTheme.textSecondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(10)
+        .background(HBTheme.cardInset, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
     private var percentBar: some View {
@@ -233,10 +380,10 @@ struct TipovaniView: View {
                 .font(.hbMontserrat(size: 11, weight: .bold))
                 .tracking(1)
                 .foregroundStyle(Color(red: 1.0, green: 0.84, blue: 0.28))
-            Text("Tipuj vítěze zápasu")
+            Text("Tipuj vítěze i skóre")
                 .font(.hbDisplay(size: 24, weight: .heavy))
                 .foregroundStyle(.white)
-            Text("Tipni domácí nebo hosty před začátkem. Správný tip = \(MatchTipStore.pointsPerCorrectTip) body. Lokální demo na tomto zařízení.")
+            Text("Tip vítěze = \(MatchTipStore.pointsPerCorrectTip) body a ukáže favorita komunity. K tomu přesné skóre (soukromé) až za 5 bodů do žebříčku.")
                 .font(.hbMontserrat(size: 13, weight: .medium))
                 .foregroundStyle(Color.white.opacity(0.88))
         }
@@ -262,7 +409,7 @@ struct TipovaniView: View {
             tipStat("Pořadí", "#\(tips.myRank)", featured: true)
 
             HStack(spacing: 8) {
-                tipStat("Body", "\(tips.seasonPoints)")
+                tipStat("Body", "\(tips.combinedPoints)")
                 tipStat("Úspěšnost", String(format: "%.0f %%", tips.accuracy))
             }
         }
@@ -342,7 +489,10 @@ struct TipovaniView: View {
                 .filter { $0.competitionId.contains("extraliga") }
         }
         recentMatches = all
+        await tips.syncScoreTipsFromRemote()
         tips.resolve(matches: all)
+        tips.resolveScoreTips(matches: all)
+        await tips.loadLeaderboard()
     }
 }
 
@@ -361,7 +511,7 @@ struct TipLeaderboardView: View {
                         Text(row.name)
                             .font(.hbMontserrat(size: 15, weight: row.isCurrentUser ? .bold : .semibold))
                             .foregroundStyle(HBTheme.textPrimary)
-                        Text(String(format: "%.0f %% · %d/%d", row.accuracy, row.correct, row.total))
+                        Text("\(row.total) tipů")
                             .font(.hbMontserrat(size: 11, weight: .medium))
                             .foregroundStyle(HBTheme.textTertiary)
                     }
@@ -375,6 +525,7 @@ struct TipLeaderboardView: View {
         }
         .navigationTitle("Žebříček")
         .hbNavigationStyle()
+        .task { await tips.loadLeaderboard() }
     }
 }
 
@@ -382,11 +533,13 @@ struct TipRulesScreen: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                rule("Soutěž", "Tipovačka platí pro zápasy Extraligy hokejbalu.")
-                rule("Tip", "Před začátkem zápasu tipni vítěze — domácí nebo hosty. Remíza se netipuje.")
-                rule("Uzávěrka", "Tipování se uzavírá se začátkem zápasu. Po startu tip už nejde změnit.")
-                rule("Body", "Správný tip = \(MatchTipStore.pointsPerCorrectTip) body. Špatný tip = 0.")
-                rule("Žebříček", "Pořadí podle bodů za sezónu. Při shodě rozhoduje úspěšnost.")
+                rule("Soutěž", "Tipovačka platí pro zápasy Extraligy hokejbalu. Pro tipování se přihlas.")
+                rule("Tip vítěze", "Před začátkem tipni vítěze — domácí nebo hosty. Ukáže se favorit komunity v procentech.")
+                rule("Tip skóre", "K tomu můžeš tipnout přesné skóre. Tvůj tip skóre je soukromý — nikdo ho nevidí, počítá se jen do žebříčku.")
+                rule("Uzávěrka", "Oba tipy se uzavírají se začátkem zápasu. Po startu je už nejde změnit.")
+                rule("Body vítěz", "Správný vítěz = \(MatchTipStore.pointsPerCorrectTip) body.")
+                rule("Body skóre", "Přesné skóre 5 · správný vítěz + rozdíl 3 · správný vítěz 2 · trefa gólů jednoho týmu 1. Bonus +2 za správně tipnuté prodloužení / nájezdy.")
+                rule("Žebříček", "Pořadí podle součtu všech bodů. Porovnáváš se se všemi hráči.")
                 rule("Profil", "Přezdívku v žebříčku nastavíš v profilu tipéra (ikona vpravo nahoře).")
             }
             .padding(HBTheme.screenPadding)
@@ -421,7 +574,7 @@ struct TipProfileEditView: View {
                 TextField("Přezdívka", text: $name)
             }
             Section {
-                Text("Účty přijdou později — zatím je tipovačka lokální na tomto zařízení.")
+                Text("Přezdívka se ukazuje v žebříčku vedle tvých bodů.")
                     .font(.hbMontserrat(size: 12, weight: .medium))
                     .foregroundStyle(HBTheme.textSecondary)
             }
