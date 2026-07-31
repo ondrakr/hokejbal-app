@@ -472,6 +472,184 @@ actor SupabaseAuthAPI {
         )
     }
 
+    // MARK: - Fantasy: atributy hráčů (public SELECT)
+
+    func fetchPlayerAttributes() async throws -> [PlayerAttributesRow] {
+        try await get(
+            "player_attributes",
+            query: [URLQueryItem(name: "select", value: "*")],
+            accessToken: nil
+        )
+    }
+
+    // MARK: - Fantasy: sestavy (vlastník) + skóre (public)
+
+    func fetchFantasySquads(userId: String, accessToken: String) async throws -> [FantasySquadRow] {
+        try await get(
+            "fantasy_squads",
+            query: [
+                URLQueryItem(name: "select", value: "gameweek,team_name,slots,updated_at"),
+                URLQueryItem(name: "user_id", value: "eq.\(userId)"),
+            ],
+            accessToken: accessToken
+        )
+    }
+
+    func upsertFantasySquad(
+        userId: String,
+        gameweek: Int,
+        teamName: String,
+        slots: [String: String],
+        accessToken: String
+    ) async throws {
+        struct Body: Encodable {
+            let userId: String
+            let gameweek: Int
+            let teamName: String
+            let slots: [String: String]
+            let updatedAt: String
+        }
+        _ = try await postREST(
+            "fantasy_squads",
+            body: Body(
+                userId: userId,
+                gameweek: gameweek,
+                teamName: teamName,
+                slots: slots,
+                updatedAt: ISO8601DateFormatter.full.string(from: Date())
+            ),
+            accessToken: accessToken,
+            prefer: "resolution=merge-duplicates,return=minimal"
+        )
+    }
+
+    func fetchFantasyScores(userId: String, accessToken: String) async throws -> [FantasyScoreRow] {
+        try await get(
+            "fantasy_scores",
+            query: [
+                URLQueryItem(name: "select", value: "gameweek,points,credits"),
+                URLQueryItem(name: "user_id", value: "eq.\(userId)"),
+            ],
+            accessToken: accessToken
+        )
+    }
+
+    func upsertFantasyScore(
+        userId: String,
+        gameweek: Int,
+        points: Int,
+        credits: Int,
+        accessToken: String
+    ) async throws {
+        struct Body: Encodable {
+            let userId: String
+            let gameweek: Int
+            let points: Int
+            let credits: Int
+            let updatedAt: String
+        }
+        _ = try await postREST(
+            "fantasy_scores",
+            body: Body(
+                userId: userId,
+                gameweek: gameweek,
+                points: points,
+                credits: credits,
+                updatedAt: ISO8601DateFormatter.full.string(from: Date())
+            ),
+            accessToken: accessToken,
+            prefer: "resolution=merge-duplicates,return=minimal"
+        )
+    }
+
+    func fetchFantasyLeaderboard(limit: Int = 100) async throws -> [FantasyLeaderRow] {
+        try await get(
+            "fantasy_leaderboard",
+            query: [
+                URLQueryItem(name: "select", value: "*"),
+                URLQueryItem(name: "order", value: "total_points.desc"),
+                URLQueryItem(name: "limit", value: "\(limit)"),
+            ],
+            accessToken: nil
+        )
+    }
+
+    // MARK: - Tipovačka: tip skóre (soukromý) + žebříček
+
+    func fetchMyScoreTips(userId: String, accessToken: String) async throws -> [ScoreTipRow] {
+        try await get(
+            "match_score_tips",
+            query: [
+                URLQueryItem(name: "select", value: "match_id,home_score,away_score,predicted_overtime,points_awarded"),
+                URLQueryItem(name: "user_id", value: "eq.\(userId)"),
+            ],
+            accessToken: accessToken
+        )
+    }
+
+    func upsertScoreTip(
+        userId: String,
+        matchId: String,
+        homeScore: Int,
+        awayScore: Int,
+        predictedOvertime: Bool,
+        pointsAwarded: Int?,
+        accessToken: String
+    ) async throws {
+        struct Body: Encodable {
+            let userId: String
+            let matchId: String
+            let homeScore: Int
+            let awayScore: Int
+            let predictedOvertime: Bool
+            let pointsAwarded: Int?
+            let updatedAt: String
+        }
+        _ = try await postREST(
+            "match_score_tips",
+            body: Body(
+                userId: userId,
+                matchId: matchId,
+                homeScore: homeScore,
+                awayScore: awayScore,
+                predictedOvertime: predictedOvertime,
+                pointsAwarded: pointsAwarded,
+                updatedAt: ISO8601DateFormatter.full.string(from: Date())
+            ),
+            accessToken: accessToken,
+            prefer: "resolution=merge-duplicates,return=minimal"
+        )
+    }
+
+    /// Zapíše body k tipu vítěze (match_tips) — jen update existujícího řádku.
+    func setWinnerTipPoints(userId: String, matchId: String, points: Int, accessToken: String) async throws {
+        struct Body: Encodable {
+            let pointsAwarded: Int
+        }
+        struct Ignore: Decodable {}
+        let _: [Ignore] = try await patch(
+            "match_tips",
+            query: [
+                URLQueryItem(name: "user_id", value: "eq.\(userId)"),
+                URLQueryItem(name: "match_id", value: "eq.\(matchId)"),
+            ],
+            body: Body(pointsAwarded: points),
+            accessToken: accessToken
+        )
+    }
+
+    func fetchTipLeaderboard(limit: Int = 100) async throws -> [TipLeaderRow] {
+        try await get(
+            "tip_leaderboard",
+            query: [
+                URLQueryItem(name: "select", value: "*"),
+                URLQueryItem(name: "order", value: "total_points.desc"),
+                URLQueryItem(name: "limit", value: "\(limit)"),
+            ],
+            accessToken: nil
+        )
+    }
+
     // MARK: - HTTP
 
     private func postAuth<Body: Encodable>(
@@ -705,6 +883,47 @@ struct AmateurRemoteRow: Decodable {
     let status: String
     let payload: AnyJSON
     let updatedAt: Date?
+}
+
+// MARK: - Fantasy / tip DTOs
+
+struct FantasySquadRow: Decodable {
+    let gameweek: Int
+    let teamName: String
+    let slots: [String: String]
+}
+
+struct FantasyScoreRow: Decodable {
+    let gameweek: Int
+    let points: Int
+    let credits: Int
+}
+
+struct FantasyLeaderRow: Decodable {
+    let userId: String
+    let displayName: String?
+    let username: String?
+    let avatarUrl: String?
+    let totalPoints: Int
+    let totalCredits: Int?
+    let scoredGameweeks: Int?
+}
+
+struct ScoreTipRow: Decodable {
+    let matchId: String
+    let homeScore: Int
+    let awayScore: Int
+    let predictedOvertime: Bool
+    let pointsAwarded: Int?
+}
+
+struct TipLeaderRow: Decodable {
+    let userId: String
+    let displayName: String?
+    let username: String?
+    let avatarUrl: String?
+    let totalPoints: Int
+    let tipsCount: Int?
 }
 
 struct AnyJSON: Codable {
