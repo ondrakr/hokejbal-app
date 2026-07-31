@@ -187,8 +187,21 @@ enum FantasyRules {
         return competition.slug == competitionSlug
     }
 
-    /// FIFA-like rating 55…94.
+    /// Snapshot FIFA parametrů podle playerId (plní `FantasyAttributesStore` na main threadu).
+    /// Když hráč parametry má, OVR se počítá z nich; jinak fallback ze statistik.
+    static var attributesByPlayerId: [String: PlayerAttributes] = [:]
+
+    /// FIFA-like OVR. Z parametrů (až 99), jinak fallback ze sezónních statistik (55…94).
     static func rating(for player: Player) -> Int {
+        if let attrs = attributesByPlayerId[player.id],
+           let ovr = attrs.computedOverall(position: player.position) {
+            return ovr
+        }
+        return statRating(for: player)
+    }
+
+    /// OVR jen ze sezónních statistik (fallback, když nejsou parametry).
+    static func statRating(for player: Player) -> Int {
         let value: Double
         switch player.position {
         case .goalie:
@@ -248,6 +261,45 @@ enum FantasyRules {
             .filter { $0.scheduledAt >= date.addingTimeInterval(-3 * 3600) }
             .sorted { $0.scheduledAt < $1.scheduledAt }
             .first
+    }
+
+    /// Zápasy patřící do daného kola (víkend po deadlinu sobota 10:00).
+    static func matches(inGameweek gameweek: Int, from matches: [Match]) -> [Match] {
+        let start = FantasyDeadline.deadline(forGameweek: gameweek)
+        let end = FantasyDeadline.deadline(forGameweek: gameweek + 1)
+        return matches.filter { $0.scheduledAt >= start && $0.scheduledAt < end }
+    }
+
+    /// Body hráče za KOLO z reálného výkonu (odehrané zápasy kola).
+    /// Hráči do pole: gól 3 · asistence 2. Brankáři: výhra 3 · čisté konto 5 · jinak dle inkasovaných.
+    static func weeklyFantasyPoints(for player: Player, in gameweekMatches: [Match]) -> Int {
+        let played = gameweekMatches.filter {
+            $0.isFinished && ($0.homeTeamId == player.teamId || $0.awayTeamId == player.teamId)
+        }
+        guard !played.isEmpty else { return 0 }
+
+        switch player.position {
+        case .forward, .defenseman:
+            var pts = 0
+            for match in played {
+                for event in match.events where event.kind == .goal {
+                    if event.playerId == player.id { pts += 3 }
+                    if event.assistIds.contains(player.id) { pts += 2 }
+                }
+            }
+            return pts
+        case .goalie:
+            // Bez rozpisu brankářů heuristika podle výsledku týmu (drž 1 brankáře v sestavě).
+            var pts = 0
+            for match in played {
+                let isHome = match.homeTeamId == player.teamId
+                let goalsFor = isHome ? match.homeScore : match.awayScore
+                let goalsAgainst = isHome ? match.awayScore : match.homeScore
+                if goalsFor > goalsAgainst { pts += 3 }
+                pts += goalsAgainst == 0 ? 5 : max(0, 4 - goalsAgainst)
+            }
+            return pts
+        }
     }
 }
 
@@ -370,7 +422,7 @@ final class FantasySquadStore: ObservableObject {
         viewingGameweek = activeGameweek
 
         migrateLegacyIfNeeded()
-        _ = syncGameweekIfNeeded()
+        syncGameweekIfNeeded()
         viewingGameweek = activeGameweek
     }
 
@@ -442,7 +494,10 @@ final class FantasySquadStore: ObservableObject {
         viewingGameweek = max(1, viewingGameweek + delta)
     }
 
-    /// Uloží draft aktivního kola (jako „ULOŽIT SESTAVU“).
+    /// Reálný žebříček fantasy ze serveru (fallback: lokální demo v UI).
+    @Published private(set) var remoteLeaderboard: [FantasyLeaderRow] = []
+
+    /// Uloží draft aktivního kola (jako „ULOŽIT SESTAVU“). Po přihlášení pushne na server.
     @discardableResult
     func saveLineup() -> String? {
         guard !isLocked else { return "Deadline prošlo — sestavu už nelze uložit." }
@@ -451,29 +506,18 @@ final class FantasySquadStore: ObservableObject {
         saved[activeGameweek] = lineupsByGameweek[activeGameweek] ?? [:]
         savedLineupsByGameweek = saved
         lastSaveMessage = "Sestava GW \(activeGameweek) uložena"
+        let gw = activeGameweek
+        Task { await pushSquad(gameweek: gw) }
         return nil
     }
 
-    /// Posune aktivní kolo podle kalendáře, vyhodnotí uplynulé a připraví draft.
-    @discardableResult
-    func syncGameweekIfNeeded(playersById: [String: Player] = [:], now: Date = Date()) -> (points: Int, credits: Int)? {
+    /// Posune aktivní kolo podle kalendáře a připraví draft (bez bodování).
+    /// Uzavřená kola vyhodnocuje `scorePendingGameweeks` (potřebuje odehrané zápasy).
+    func syncGameweekIfNeeded(now: Date = Date()) {
         let gw = FantasyDeadline.gameweek(from: now)
-        var reward: (points: Int, credits: Int)?
 
         if gw > activeGameweek {
             let old = activeGameweek
-            if !scoredGameweeks.contains(old) {
-                let oldSlots = savedLineupsByGameweek[old] ?? lineupsByGameweek[old] ?? [:]
-                let complete = oldSlots.count == FantasyRules.squadSize
-                let points = complete
-                    ? oldSlots.values.compactMap { playersById[$0] }.reduce(0) { $0 + FantasyRules.fantasyPoints(for: $1) }
-                    : 0
-                let credits = complete ? FantasyRules.roundRewardCredits(squadPoints: points) : 0
-                seasonPoints += points
-                wallet += credits
-                scoredGameweeks.insert(old)
-                reward = (points, credits)
-            }
             if lineupsByGameweek[gw] == nil {
                 var copy = lineupsByGameweek
                 copy[gw] = savedLineupsByGameweek[old] ?? lineupsByGameweek[old] ?? [:]
@@ -494,7 +538,98 @@ final class FantasySquadStore: ObservableObject {
         }
 
         if viewingGameweek < 1 { viewingGameweek = activeGameweek }
-        return reward
+    }
+
+    /// Vyhodnotí uzavřená kola z reálného víkendového výkonu. Vrací přírůstek bodů (0 = nic nového).
+    @discardableResult
+    func scorePendingGameweeks(playersById: [String: Player], matches allMatches: [Match]) -> Int {
+        guard !allMatches.isEmpty, activeGameweek > 1 else { return 0 }
+        var gained = 0
+        for gw in 1..<activeGameweek where !scoredGameweeks.contains(gw) {
+            let slots = savedLineupsByGameweek[gw] ?? lineupsByGameweek[gw] ?? [:]
+            guard slots.count == FantasyRules.squadSize else { continue }
+            let gwMatches = FantasyRules.matches(inGameweek: gw, from: allMatches)
+            guard gwMatches.contains(where: { $0.isFinished }) else { continue }
+            let points = slots.values
+                .compactMap { playersById[$0] }
+                .reduce(0) { $0 + FantasyRules.weeklyFantasyPoints(for: $1, in: gwMatches) }
+            let credits = FantasyRules.roundRewardCredits(squadPoints: points)
+            seasonPoints += points
+            wallet += credits
+            scoredGameweeks.insert(gw)
+            gained += points
+            Task { await pushScore(gameweek: gw, points: points, credits: credits) }
+        }
+        return gained
+    }
+
+    // MARK: - Server sync (Supabase)
+
+    /// Po přihlášení natáhne sestavy + skóre ze serveru (server je zdroj pravdy).
+    func loadRemote() async {
+        guard !FantasyMock.enabled else { return }
+        guard let auth = AuthAccess.store, auth.isAuthenticated, let userId = auth.userId else { return }
+        do {
+            let token = try await auth.validAccessToken()
+            let squads = try await auth.authAPI.fetchFantasySquads(userId: userId, accessToken: token)
+            let scores = try await auth.authAPI.fetchFantasyScores(userId: userId, accessToken: token)
+            applyRemote(squads: squads, scores: scores)
+        } catch { /* soft */ }
+    }
+
+    /// Reálný žebříček (veřejný, i pro nepřihlášené).
+    func loadLeaderboard() async {
+        guard !FantasyMock.enabled else { return }
+        guard let api = AuthAccess.store?.authAPI else { return }
+        do { remoteLeaderboard = try await api.fetchFantasyLeaderboard() }
+        catch { /* soft */ }
+    }
+
+    private func applyRemote(squads: [FantasySquadRow], scores: [FantasyScoreRow]) {
+        if !squads.isEmpty {
+            var lineups = lineupsByGameweek
+            var saved = savedLineupsByGameweek
+            for row in squads {
+                var map: [FantasySlot: String] = [:]
+                for slot in FantasySlot.allCases where row.slots[slot.rawValue] != nil {
+                    map[slot] = row.slots[slot.rawValue]
+                }
+                lineups[row.gameweek] = map
+                saved[row.gameweek] = map
+                if row.gameweek == activeGameweek, !row.teamName.isEmpty {
+                    teamName = row.teamName
+                }
+            }
+            lineupsByGameweek = lineups
+            savedLineupsByGameweek = saved
+        }
+        if !scores.isEmpty {
+            seasonPoints = scores.reduce(0) { $0 + $1.points }
+            wallet = scores.reduce(FantasyRules.startingWallet) { $0 + $1.credits }
+            scoredGameweeks = Set(scores.map(\.gameweek))
+        }
+    }
+
+    private func pushSquad(gameweek: Int) async {
+        guard let auth = AuthAccess.store, auth.isAuthenticated, let userId = auth.userId else { return }
+        let slots = (savedLineupsByGameweek[gameweek] ?? [:])
+            .reduce(into: [String: String]()) { $0[$1.key.rawValue] = $1.value }
+        do {
+            let token = try await auth.validAccessToken()
+            try await auth.authAPI.upsertFantasySquad(
+                userId: userId, gameweek: gameweek, teamName: teamName, slots: slots, accessToken: token
+            )
+        } catch { /* soft */ }
+    }
+
+    private func pushScore(gameweek: Int, points: Int, credits: Int) async {
+        guard let auth = AuthAccess.store, auth.isAuthenticated, let userId = auth.userId else { return }
+        do {
+            let token = try await auth.validAccessToken()
+            try await auth.authAPI.upsertFantasyScore(
+                userId: userId, gameweek: gameweek, points: points, credits: credits, accessToken: token
+            )
+        } catch { /* soft */ }
     }
 
     @discardableResult
@@ -549,10 +684,10 @@ final class FantasySquadStore: ObservableObject {
         lineupsByGameweek = all
     }
 
-    /// Manuální sync / vyhodnocení (např. po sobotě 10:00).
+    /// Manuální vyhodnocení uzavřených kol (např. po sobotě 10:00). Vrací přírůstek bodů.
     @discardableResult
-    func claimRoundReward(playersById: [String: Player]) -> (points: Int, credits: Int)? {
-        syncGameweekIfNeeded(playersById: playersById)
+    func claimRoundReward(playersById: [String: Player], matches: [Match]) -> Int {
+        scorePendingGameweeks(playersById: playersById, matches: matches)
     }
 
     // MARK: Persistence

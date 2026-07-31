@@ -7,6 +7,7 @@ struct FantasyView: View {
     @EnvironmentObject private var apiClient: APIClient
     @EnvironmentObject private var catalog: CatalogStore
     @EnvironmentObject private var fantasy: FantasySquadStore
+    @EnvironmentObject private var attributes: FantasyAttributesStore
     @EnvironmentObject private var auth: AuthStore
 
     @State private var players: [Player] = []
@@ -31,7 +32,7 @@ struct FantasyView: View {
 
     var body: some View {
         Group {
-            if auth.isAuthenticated {
+            if FantasyMock.enabled || auth.isAuthenticated {
                 fantasyContent
             } else {
                 AuthLockView(
@@ -50,7 +51,7 @@ struct FantasyView: View {
         ZStack(alignment: .bottom) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    Text("Fantasy Extraliga — sestava a trh pro přihlášené hráče.")
+                    Text("Fantasy Extraliga — sestav tým z hráčů podle jejich karet a sbírej body za jejich výkony.")
                         .font(.hbMontserrat(size: 12, weight: .medium))
                         .foregroundStyle(HBTheme.textSecondary)
                         .padding(12)
@@ -254,6 +255,11 @@ struct FantasyView: View {
     }
 
     private func loadData() async {
+        // Parametry hráčů (OVR z nich). Na mock datech je vygenerujeme, jinak ze serveru.
+        if !FantasyMock.enabled {
+            await attributes.loadIfNeeded()
+        }
+
         let all = (try? await apiClient.api.players(teamId: nil)) ?? []
         for teamId in Set(all.map(\.teamId)) where catalog.team(teamId) == nil {
             if let team = try? await apiClient.api.team(id: teamId) {
@@ -262,8 +268,12 @@ struct FantasyView: View {
         }
         let teams = catalog.teamsById
         let comps = Dictionary(uniqueKeysWithValues: catalog.competitions.map { ($0.id, $0) })
-        players = all.filter { FantasyRules.isExtraligaPlayer($0, teamsById: teams, competitionsById: comps) }
-            .sorted { FantasyRules.rating(for: $0) > FantasyRules.rating(for: $1) }
+        let filtered = all.filter { FantasyRules.isExtraligaPlayer($0, teamsById: teams, competitionsById: comps) }
+        // Mock parametry nasadit před řazením, aby OVR odpovídalo kartám.
+        if FantasyMock.enabled {
+            attributes.seedMock(for: filtered)
+        }
+        players = filtered.sorted { FantasyRules.rating(for: $0) > FantasyRules.rating(for: $1) }
 
         let extraligaIds = Set(catalog.competitions.filter { $0.slug == FantasyRules.competitionSlug }.map(\.id))
         if let firstId = extraligaIds.first {
@@ -273,9 +283,14 @@ struct FantasyView: View {
                 .filter { $0.competitionId.contains("extraliga") }
         }
 
-        if let reward = fantasy.syncGameweekIfNeeded(playersById: playersById) {
-            showToast("Nové kolo · +\(reward.points) b · +\(reward.credits) kr")
+        // Kalendář kol → server sestavy/skóre → vyhodnocení uzavřených kol → žebříček.
+        fantasy.syncGameweekIfNeeded()
+        await fantasy.loadRemote()
+        let gained = fantasy.scorePendingGameweeks(playersById: playersById, matches: matches)
+        if gained > 0 {
+            showToast("Vyhodnoceno kolo · +\(gained) b")
         }
+        await fantasy.loadLeaderboard()
     }
 }
 
@@ -767,23 +782,50 @@ struct FantasyMarketView: View {
 struct FantasyLeaderboardView: View {
     @EnvironmentObject private var fantasy: FantasySquadStore
 
-    private var rows: [(rank: Int, name: String, points: Int, isMe: Bool)] {
-        let me = (1, fantasy.teamName, fantasy.seasonPoints, true)
-        let bots: [(Int, String, Int, Bool)] = [
-            (2, "Hostivař Ultra", max(0, fantasy.seasonPoints + 12), false),
-            (3, "Lední žraloci", max(0, fantasy.seasonPoints + 4), false),
-            (4, "Pardubický sen", max(0, fantasy.seasonPoints - 3), false),
-            (5, "Plzeňský expres", max(0, fantasy.seasonPoints - 9), false)
+    private struct Row: Identifiable {
+        let id: String
+        let rank: Int
+        let name: String
+        let points: Int
+        let isMe: Bool
+    }
+
+    private var rows: [Row] {
+        // Reálný žebříček ze serveru; jinak lokální demo s boty.
+        if !fantasy.remoteLeaderboard.isEmpty {
+            let myId = AuthAccess.store?.userId
+            return fantasy.remoteLeaderboard.enumerated().map { index, entry in
+                Row(
+                    id: entry.userId,
+                    rank: index + 1,
+                    name: entry.displayName ?? entry.username ?? "Hráč",
+                    points: entry.totalPoints,
+                    isMe: entry.userId == myId
+                )
+            }
+        }
+        let me = (fantasy.teamName, fantasy.seasonPoints, true)
+        let bots: [(String, Int, Bool)] = [
+            ("Hostivař Ultra", max(0, fantasy.seasonPoints + 12), false),
+            ("Lední žraloci", max(0, fantasy.seasonPoints + 4), false),
+            ("Pardubický sen", max(0, fantasy.seasonPoints - 3), false),
+            ("Plzeňský expres", max(0, fantasy.seasonPoints - 9), false),
         ]
         return ([me] + bots)
-            .sorted { $0.2 > $1.2 }
+            .sorted { $0.1 > $1.1 }
             .enumerated()
-            .map { (i, row) in (i + 1, row.1, row.2, row.3) }
+            .map { index, row in Row(id: "\(row.0)-\(index)", rank: index + 1, name: row.0, points: row.1, isMe: row.2) }
     }
 
     var body: some View {
         List {
-            ForEach(rows, id: \.rank) { row in
+            if fantasy.remoteLeaderboard.isEmpty {
+                Text("Zatím jen lokální demo — po prvním vyhodnocení kola se objeví reálné pořadí všech hráčů.")
+                    .font(.hbMontserrat(size: 12, weight: .medium))
+                    .foregroundStyle(HBTheme.textSecondary)
+                    .listRowBackground(HBTheme.card)
+            }
+            ForEach(rows) { row in
                 HStack {
                     Text("\(row.rank)")
                         .font(.hbNumber(size: 16, weight: .heavy))
@@ -802,6 +844,7 @@ struct FantasyLeaderboardView: View {
         }
         .navigationTitle("Žebříček")
         .hbNavigationStyle()
+        .task { await fantasy.loadLeaderboard() }
     }
 }
 
@@ -813,8 +856,10 @@ struct FantasyRulesScreen: View {
                 rule("Deadline", "Uzávěrka vždy v sobotu v 10:00 (Praha). Poté je sestava zamčená.")
                 rule("Rozpočet", "\(FantasyRules.budgetCredits) kreditů. Cena hráče 4–15 podle ratingu (OVR).")
                 rule("Kluby", "Max. \(FantasyRules.maxFromSameClub) hráči z jednoho klubu.")
-                rule("Body", "Gól 3 · Asistence 2 · Účast / brankářské bonusy. Body se sčítají po kole.")
-                rule("Uložení", "Nezapomeň klepnout ULOŽIT SESTAVU před deadlinem.")
+                rule("Rating", "OVR z parametrů hráče (rychlost, síla, střela…). Když parametry chybí, spočítá se ze statistik.")
+                rule("Body", "Podle reálného výkonu za víkend: gól 3 · asistence 2 · brankářské bonusy. Sečtou se po uzávěrce kola.")
+                rule("Žebříček", "Body se sčítají za celou sezónu a porovnávají se všemi hráči.")
+                rule("Uložení", "Nezapomeň klepnout ULOŽIT SESTAVU před deadlinem — jinak se do žebříčku nezapočítá.")
             }
             .padding(HBTheme.screenPadding)
         }
@@ -1086,6 +1131,7 @@ struct FantasyPlayerPickerContent: View {
 struct FantasyPlayerScoutView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var catalog: CatalogStore
+    @EnvironmentObject private var attributes: FantasyAttributesStore
 
     let player: Player
     let team: Team?
@@ -1097,6 +1143,9 @@ struct FantasyPlayerScoutView: View {
     private var tier: FantasyCardTier { FantasyRules.tier(for: rating) }
     private var form: [TeamFormItem] { TeamFormCalculator.items(from: matches, teamId: player.teamId) }
     private var fixture: Match? { FantasyRules.nextFixture(for: player.teamId, in: matches) }
+    private var attributeRows: [(label: String, value: Int)] {
+        attributes.attributes(for: player.id)?.displayRows(position: player.position) ?? []
+    }
 
     var body: some View {
         NavigationStack {
@@ -1109,6 +1158,32 @@ struct FantasyPlayerScoutView: View {
                         scoutStat("Cena", "\(FantasyRules.priceCredits(for: player)) kr")
                         scoutStat("Tier", tier.label)
                         scoutStat("FPTS", "\(FantasyRules.fantasyPoints(for: player))")
+                    }
+
+                    if !attributeRows.isEmpty {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("PARAMETRY")
+                                .font(.hbMontserrat(size: 11, weight: .bold))
+                                .tracking(0.6)
+                                .foregroundStyle(HBTheme.textTertiary)
+                            ForEach(attributeRows, id: \.label) { row in
+                                HStack(spacing: 10) {
+                                    Text(row.label)
+                                        .font(.hbMontserrat(size: 12, weight: .semibold))
+                                        .foregroundStyle(HBTheme.textPrimary)
+                                        .frame(width: 82, alignment: .leading)
+                                    ProgressView(value: Double(row.value), total: 99)
+                                        .tint(HBTheme.brand)
+                                    Text("\(row.value)")
+                                        .font(.hbNumber(size: 13, weight: .bold))
+                                        .foregroundStyle(HBTheme.textSecondary)
+                                        .frame(width: 26, alignment: .trailing)
+                                }
+                            }
+                        }
+                        .padding(14)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .hbCard(cornerRadius: HBTheme.radiusMd)
                     }
 
                     VStack(alignment: .leading, spacing: 10) {
