@@ -1,28 +1,65 @@
 import Foundation
 
-/// FIFA-styl parametry hráče (1–99). Vyplňují je později trenéři/admin;
-/// když chybí, OVR se dopočítá ze sezónních statistik (viz `FantasyRules.rating`).
+/// FIFA-styl parametry jednoho hráče, ze kterých se počítá OVR na kartičce.
+///
+/// Hodnoty jsou v rozsahu **1–99** a vyplňují je trenéři klubů (zatím ručně
+/// v tabulce `player_attributes`). Všechny jsou volitelné: hráč, kterému
+/// parametry nikdo nevyplnil, dostane OVR dopočítané ze sezónních statistik
+/// — viz `FantasyRules.rating(for:)`. Díky tomu appka funguje i před tím,
+/// než kluby cokoli vyplní.
+///
+/// Sada parametrů se liší podle pozice: hráči do pole mají sedm herních
+/// vlastností, brankáři vlastních šest.
 struct PlayerAttributes: Codable, Hashable, Sendable {
+    /// ID hráče, ke kterému parametry patří (`Player.id`).
     let playerId: String
-    // hráči do pole
+
+    // MARK: Hráči do pole
+
+    /// Rychlost bruslení a akcelerace.
     var speed: Int?
+    /// Fyzická síla, souboje u mantinelu.
     var strength: Int?
+    /// Tvrdost a přesnost střely.
     var shooting: Int?
+    /// Přesnost a čtení přihrávek.
     var passing: Int?
+    /// Práce s míčkem, klička jeden na jednoho.
     var dribbling: Int?
+    /// Herní inteligence — čtení hry, postavení, rozhodování.
     var iq: Int?
+    /// Defenzivní práce, obranné souboje, blokování střel.
     var defense: Int?
-    // brankáři
+
+    // MARK: Brankáři
+
+    /// Reflexy na rychlé zákroky.
     var reflexes: Int?
+    /// Postavení v brankovišti.
     var positioning: Int?
+    /// Chytání lapačkou.
     var glove: Int?
+    /// Zákroky vyrážečkou.
     var blocker: Int?
+    /// Práce s dorážkami — kam pouští odražené míčky.
     var rebound: Int?
+    /// Klid a koncentrace v tlaku.
     var composure: Int?
-    /// Předpočítané OVR ze serveru (má přednost, pokud je vyplněné).
+
+    /// OVR předpočítané na serveru.
+    ///
+    /// Když je vyplněné, má přednost před váženým průměrem parametrů. Slouží
+    /// k ručnímu přepsání ratingu (např. hvězda, které chceme dát rovnou 99).
     var overall: Int?
 
-    /// Popisky parametrů pro danou pozici (jen ty vyplněné) — pro scout kartu.
+    /// Vyplněné parametry pro danou pozici i s českými popisky.
+    ///
+    /// Prázdné (nevyplněné) parametry vynechává, takže scout karta nikdy
+    /// nezobrazí řádek bez hodnoty.
+    ///
+    /// - Parameter position: Pozice hráče — rozhoduje, jestli se vrátí sada
+    ///   pro brankáře, nebo pro hráče do pole.
+    /// - Returns: Dvojice popisek + hodnota v pořadí, v jakém se mají vykreslit.
     func displayRows(position: PlayerPosition) -> [(label: String, value: Int)] {
         let pairs: [(String, Int?)]
         switch position {
@@ -51,7 +88,19 @@ struct PlayerAttributes: Codable, Hashable, Sendable {
         }
     }
 
-    /// OVR z parametrů (pozičně vážený průměr). Vrací nil, když nic není vyplněné.
+    /// Spočítá OVR (číslo na kartičce) z vyplněných parametrů.
+    ///
+    /// Váhy se liší podle pozice, aby rating odpovídal tomu, co je pro danou
+    /// roli důležité — útočníkovi se nejvíc počítá střela a rychlost,
+    /// obránci defenziva a síla. Brankáři mají všech šest parametrů stejně.
+    ///
+    /// Průměr je vážený jen přes **vyplněné** parametry (dělí se součtem
+    /// jejich vah), takže částečně vyplněný hráč nedostane uměle nízké číslo.
+    /// Když je vyplněné `overall`, vrátí se rovnou ono.
+    ///
+    /// - Parameter position: Pozice hráče — určuje sadu parametrů a jejich váhy.
+    /// - Returns: OVR v rozsahu 1–99, nebo `nil`, když není vyplněný ani jeden
+    ///   parametr pro danou pozici (volající pak sáhne po statistikách).
     func computedOverall(position: PlayerPosition) -> Int? {
         if let overall { return clampRating(overall) }
 
@@ -85,12 +134,17 @@ struct PlayerAttributes: Codable, Hashable, Sendable {
         return clampRating(Int((sum / totalWeight).rounded()))
     }
 
+    /// Ořízne hodnotu do povoleného rozsahu 1–99.
     private func clampRating(_ value: Int) -> Int {
         min(99, max(1, value))
     }
 }
 
-/// Řádek z tabulky `player_attributes` (snake_case → convertFromSnakeCase).
+/// Jeden řádek tabulky `player_attributes` tak, jak přijde ze Supabase.
+///
+/// Sloupce jsou v databázi `snake_case`, dekodér je převádí přes
+/// `convertFromSnakeCase` (viz `SupabaseAuthAPI`). Do zbytku appky se
+/// překlápí přes `asModel`, aby DTO nikde neprosakovalo.
 struct PlayerAttributesRow: Decodable {
     let playerId: String
     let speed: Int?
@@ -108,6 +162,7 @@ struct PlayerAttributesRow: Decodable {
     let composure: Int?
     let overall: Int?
 
+    /// Převede databázový řádek na doménový model.
     var asModel: PlayerAttributes {
         PlayerAttributes(
             playerId: playerId,

@@ -1,26 +1,63 @@
 import Foundation
 
-/// Globální přepínač: appka zatím jede na mock datech (bez Supabase migrace / loginu),
-/// aby šlo všechno proklikat. Až půjdeme naostro, přepni na `false`.
+/// Přepínač demo režimu Fantasy a Tipovačky.
+///
+/// Když je zapnutý, appka nepotřebuje ani spuštěnou databázovou migraci, ani
+/// přihlášení — parametry hráčů se generují lokálně a nic se neposílá na server.
+/// Slouží k proklikání a odladění funkcí, než se pustí ostrý provoz.
+///
+/// ## Co se zapnutým mockem mění
+///
+/// - Fantasy i tipování jsou přístupné bez přihlášení
+/// - Parametry hráčů se generují (`FantasyMockAttributes`)
+/// - Čtení ze serveru (sestavy, skóre, žebříčky) se přeskakuje
+/// - Žebříčky ukazují lokální demo s boty
+///
+/// - Important: Před ostrým provozem přepnout na `false` **a** spustit migraci
+///   `supabase/migrations/20260727000000_fantasy_tipping.sql`.
 enum FantasyMock {
+    /// Zapnutý demo režim.
     static let enabled = true
 }
 
-/// Deterministicky vygeneruje FIFA parametry hráče ze statistik + pár hvězd napevno.
-/// Slouží k proklikání appky, než parametry doplní trenéři do `player_attributes`.
+/// Generátor náhradních FIFA parametrů pro demo režim.
+///
+/// Než trenéři vyplní `player_attributes`, potřebujeme, aby kartičky vypadaly
+/// realisticky. Parametry se proto odvodí z ratingu ze sezónních statistik a
+/// rozhýbou deterministickým šumem, takže se hráči od sebe liší, ale výsledek
+/// je pro stejného hráče **vždy stejný** (jinak by se čísla měnila při každém
+/// otevření obrazovky).
+///
+/// - Note: Používá se jen když `FantasyMock.enabled == true`.
 enum FantasyMockAttributes {
-    /// Vybrané hvězdy — lowercased příjmení → cílové OVR (pro efekt „Čejka 99“).
+    /// Hráči, kterým se rating nastaví napevno, bez ohledu na statistiky.
+    ///
+    /// Klíč je příjmení malými písmeny (s diakritikou i bez, ať se trefíme
+    /// nezávisle na zápisu v datech), hodnota je cílové OVR — kvůli efektu
+    /// „Čejka má 99".
     static let starOverall: [String: Int] = [
         "čejka": 99, "cejka": 99,
         "mácha": 93, "macha": 93,
     ]
 
+    /// Vygeneruje parametry pro celou skupinu hráčů.
+    ///
+    /// - Parameter players: Hráči, kterým se mají parametry vytvořit.
+    /// - Returns: Parametry podle `Player.id`.
     static func map(for players: [Player]) -> [String: PlayerAttributes] {
         var result: [String: PlayerAttributes] = [:]
         for player in players { result[player.id] = attributes(for: player) }
         return result
     }
 
+    /// Vygeneruje parametry jednoho hráče.
+    ///
+    /// Kolem cílové úrovně (rating ze statistik, nebo pevné OVR u hvězdy) se
+    /// jednotlivé parametry rozloží podle pozice — útočník má lepší střelu a
+    /// rychlost, obránce defenzivu — a přidá se deterministický šum ±6.
+    ///
+    /// - Parameter player: Hráč, pro kterého se parametry generují.
+    /// - Returns: Kompletní sada parametrů pro jeho pozici.
     static func attributes(for player: Player) -> PlayerAttributes {
         let base = FantasyRules.statRating(for: player) // 55–94
         let star = starOverall[player.lastName.lowercased()]
@@ -75,9 +112,16 @@ enum FantasyMockAttributes {
         }
     }
 
+    /// Ořízne parametr na rozumné demo rozpětí 40–99.
     private static func clamp(_ value: Int) -> Int { min(99, max(40, value)) }
 
-    /// Deterministický „šum" −6…+6 z FNV-1a hashe (stabilní pro daného hráče).
+    /// Deterministický „šum" −6…+6 pro rozhýbání parametrů.
+    ///
+    /// Staví na FNV-1a hashi, ne na náhodě — pro stejný vstup vrátí vždy
+    /// stejné číslo, takže se hráči parametry nemění mezi spuštěními.
+    ///
+    /// - Parameter seed: Vstup hashe, typicky `player.id` + název parametru.
+    /// - Returns: Odchylka v rozsahu −6…+6.
     private static func jitter(seed: String) -> Int {
         var hash: UInt64 = 1_469_598_103_934_665_603
         for byte in seed.utf8 { hash = (hash ^ UInt64(byte)) &* 1_099_511_628_211 }
