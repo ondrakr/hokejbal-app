@@ -1,12 +1,12 @@
 import Foundation
 import SwiftUI
 
-/// Na koho hráč vsadil v tipu vítěze. Remíza se netipuje.
+/// Who the player backed in a winner tip. Draws are not predicted.
 enum MatchTipPick: String, Codable, Hashable, Sendable {
     case home
     case away
 
-    /// Popisek pro UI.
+    /// Display label for the UI.
     var label: String {
         switch self {
         case .home: return "Domácí"
@@ -15,128 +15,128 @@ enum MatchTipPick: String, Codable, Hashable, Sendable {
     }
 }
 
-/// Tip na vítěze zápasu — na rozdíl od tipu skóre **veřejný**.
+/// A winner prediction — **public**, unlike the exact-score tip.
 ///
-/// Z těchto tipů se počítají procenta favorita komunity, která vidí každý.
+/// These feed the community favourite percentages everyone can see.
 struct MatchTip: Codable, Hashable, Sendable {
-    /// Zápas, ke kterému tip patří.
+    /// The match this tip belongs to.
     var matchId: String
-    /// Na koho hráč vsadil.
+    /// Who the player backed.
     var pick: MatchTipPick
-    /// Kdy tip vznikl.
+    /// When the tip was placed.
     var createdAt: Date
-    /// Zápas už skončil a tip je vyhodnocený.
+    /// The match is over and the tip has been settled.
     var resolved: Bool
-    /// Trefil hráč vítěze? Platné až po vyhodnocení.
+    /// Did the player get the winner right? Only valid once settled.
     var isCorrect: Bool?
-    /// Získané body (3 za trefu, jinak 0).
+    /// Points earned (3 for a hit, otherwise 0).
     var pointsAwarded: Int
 }
 
-/// Tip na přesné skóre zápasu — na rozdíl od tipu vítěze **soukromý**.
+/// An exact-score prediction — **private**, unlike the winner tip.
 ///
-/// Cizí tipy nikdo nevidí (hlídá to i RLS na tabulce `match_score_tips`);
-/// ven jde jen součet bodů do žebříčku. Body počítá `FantasyScoring`.
+/// Nobody sees anyone else's (enforced by RLS on `match_score_tips`); only
+/// the points total reaches the leaderboard. Scored by `FantasyScoring`.
 struct MatchScoreTip: Codable, Hashable, Sendable {
-    /// Zápas, ke kterému tip patří.
+    /// The match this tip belongs to.
     var matchId: String
-    /// Tipnuté góly domácích.
+    /// Predicted home goals.
     var homeScore: Int
-    /// Tipnuté góly hostů.
+    /// Predicted away goals.
     var awayScore: Int
-    /// Hráč označil, že zápas skončí v prodloužení nebo na nájezdy.
+    /// The player called overtime or a shootout.
     var predictedOvertime: Bool
-    /// Zápas už skončil a body jsou spočítané.
+    /// The match is over and points have been computed.
     var resolved: Bool
-    /// Získané body (platné až když `resolved == true`).
+    /// Points earned (only valid once `resolved == true`).
     var pointsAwarded: Int
 }
 
-/// Rozložení tipů komunity na jeden zápas — podklad pro pruh „kdo je favorit".
+/// Community tip split for one match — powers the favourite bar.
 struct MatchTipVotes: Codable, Hashable, Sendable {
-    /// Zápas, kterého se hlasování týká.
+    /// The match being voted on.
     var matchId: String
-    /// Kolik lidí tipuje domácí.
+    /// How many people back the home team.
     var homeCount: Int
-    /// Kolik lidí tipuje hosty.
+    /// How many people back the away team.
     var awayCount: Int
 
-    /// Celkem hlasů; minimálně 1, aby se nedělilo nulou.
+    /// Total votes; at least 1 to avoid dividing by zero.
     var total: Int { max(1, homeCount + awayCount) }
-    /// Podíl tipů na domácí v procentech.
+    /// Share of home tips, in percent.
     var homePercent: Int { Int((Double(homeCount) / Double(total) * 100).rounded()) }
-    /// Zbytek do sta procent — ať se pruh vždy sečte přesně.
+    /// The remainder to 100 — keeps the bar adding up exactly.
     var awayPercent: Int { max(0, 100 - homePercent) }
 }
 
-/// Řádek žebříčku tipujících.
+/// A row of the tipping leaderboard.
 struct TipLeaderboardEntry: Identifiable, Hashable, Sendable {
-    /// ID uživatele (nebo bota v demo režimu).
+    /// User ID (or a bot in demo mode).
     let id: String
-    /// Jméno zobrazené v žebříčku.
+    /// Name shown on the leaderboard.
     let name: String
-    /// Celkem bodů — tipy vítěze i skóre dohromady.
+    /// Total points — winner and score tips combined.
     let points: Int
-    /// Kolik tipů vyšlo.
+    /// How many tips were correct.
     let correct: Int
-    /// Kolik tipů bylo celkem vyhodnoceno.
+    /// How many tips were settled in total.
     let total: Int
-    /// Jde o přihlášeného uživatele? (Řádek se pak v UI zvýrazní.)
+    /// Is this the signed-in user? (The row is then highlighted.)
     let isCurrentUser: Bool
 
-    /// Úspěšnost v procentech.
+    /// Accuracy in percent.
     var accuracy: Double {
         guard total > 0 else { return 0 }
         return Double(correct) / Double(total) * 100
     }
 }
 
+/// One user's tipping state.
+///
+/// Manages two kinds of prediction on Extraliga matches:
+/// - **winner tip** — public, feeds the community favourite percentages
+/// - **score tip** — private, invisible to others, only worth points
+///
+/// Tips are stored locally and, once signed in, on the server too. When a
+/// match ends they are settled (`resolve(matches:)`,
+/// `resolveScoreTips(matches:)`) and the points feed the leaderboard.
 @MainActor
-/// Stav tipovačky jednoho uživatele.
-///
-/// Spravuje dva druhy tipů na zápasy Extraligy:
-/// - **tip vítěze** — veřejný, sčítá se do procent favorita komunity
-/// - **tip skóre** — soukromý, nikdo cizí ho nevidí, jen přináší body
-///
-/// Tipy se ukládají lokálně a po přihlášení i na server. Po dohrání zápasu
-/// se vyhodnotí (`resolve(matches:)`, `resolveScoreTips(matches:)`) a body
-/// se sečtou do žebříčku.
 final class MatchTipStore: ObservableObject {
-    /// Body za správně tipnutého vítěze.
+    /// Points for correctly picking the winner.
     static let pointsPerCorrectTip = 3
-    /// Soutěž, na kterou se tipuje.
+    /// The competition predictions are open for.
     static let competitionSlug = "extraliga"
 
-    /// Přezdívka v žebříčku.
+    /// Nickname shown on the leaderboard.
     @Published var displayName: String {
         didSet { defaults.set(displayName, forKey: Keys.displayName) }
     }
 
-    /// Moje tipy vítěze podle ID zápasu.
+    /// My winner tips by match ID.
     @Published private(set) var tips: [String: MatchTip] = [:] {
         didSet { persistTips() }
     }
 
-    /// Rozložení tipů komunity podle ID zápasu.
+    /// Community tip splits by match ID.
     @Published private(set) var votes: [String: MatchTipVotes] = [:] {
         didSet { persistVotes() }
     }
 
-    /// Tipy přesného skóre (soukromé) — klíč = matchId.
+    /// Exact-score tips (private) — keyed by match ID.
     @Published private(set) var scoreTips: [String: MatchScoreTip] = [:] {
         didSet { persistScoreTips() }
     }
 
-    /// Vymyšlení soupeři pro demo žebříček, dokud nejsou data ze serveru.
+    /// Made-up rivals for the demo leaderboard until server data arrives.
     @Published private(set) var botEntries: [TipLeaderboardEntry] = []
 
-    /// Reálný žebříček ze serveru (tip_leaderboard). Prázdný = fallback na boty.
+    /// Real leaderboard from the server (`tip_leaderboard`). Empty = fall back to bots.
     @Published private(set) var remoteLeaderboard: [TipLeaderboardEntry] = []
 
     private let defaults = UserDefaults.standard
     private let userId = "local-user"
 
-    /// Klíče v `UserDefaults`.
+    /// `UserDefaults` keys.
     private enum Keys {
         static let displayName = "hb.tips.v1.name"
         static let tips = "hb.tips.v1.tips"
@@ -159,7 +159,7 @@ final class MatchTipStore: ObservableObject {
 
     // MARK: - Rules
 
-    /// Jde o zápas Extraligy? Na ostatní soutěže se netipuje.
+    /// Is this an Extraliga match? Other competitions are not open for tips.
     func isExtraliga(_ match: Match, competitions: [Competition]) -> Bool {
         if let comp = competitions.first(where: { $0.id == match.competitionId }) {
             return comp.slug == Self.competitionSlug
@@ -167,20 +167,20 @@ final class MatchTipStore: ObservableObject {
         return match.competitionId.contains("extraliga")
     }
 
-    /// Dá se na zápas ještě tipovat? (Jen naplánovaný a před výkopem.)
+    /// Can this match still be tipped? (Scheduled and before puck drop only.)
     func canTip(_ match: Match) -> Bool {
         match.status == .scheduled && Date() < match.scheduledAt
     }
 
-    /// Můj tip vítěze na daný zápas.
+    /// My winner tip on a given match.
     func tip(for matchId: String) -> MatchTip? { tips[matchId] }
 
-    /// Read-only — nikdy nemutuje při čtení z View body.
+    /// Read-only — never mutates when read from a view body.
     func votes(for matchId: String) -> MatchTipVotes {
         votes[matchId] ?? seedVotes(matchId: matchId)
     }
 
-    /// Seed komunitních hlasů — volat z onAppear / placeTip, ne z body.
+    /// Seeds community votes — call from onAppear / placeTip, not from a body.
     func ensureVotes(matchId: String) {
         if votes[matchId] == nil {
             votes[matchId] = seedVotes(matchId: matchId)
@@ -188,10 +188,10 @@ final class MatchTipStore: ObservableObject {
         Task { await refreshVotesFromRemote(matchId: matchId) }
     }
 
-    /// Dotáhne počty tipů komunity ze serveru.
+    /// Refreshes community tip counts from the server.
     ///
-    /// Bere maximum z lokálního odhadu a serveru, aby pruh neposkočil dolů,
-    /// než se nasbírají skutečné tipy.
+    /// Takes the max of the local seed and the server so the bar never jumps
+    /// down before real tips accumulate.
     func refreshVotesFromRemote(matchId: String) async {
         guard let auth = AuthAccess.store else { return }
         do {
@@ -205,7 +205,7 @@ final class MatchTipStore: ObservableObject {
         } catch { /* keep local */ }
     }
 
-    /// Stáhne moje tipy vítěze ze serveru; lokální nechává být.
+    /// Pulls my winner tips from the server; leaves local ones alone.
     func syncMyTipsFromRemote() async {
         guard let auth = AuthAccess.store, auth.isAuthenticated, let userId = auth.userId else { return }
         do {
@@ -230,16 +230,16 @@ final class MatchTipStore: ObservableObject {
         } catch { /* soft */ }
     }
 
-    /// Uloží nebo změní tip na vítěze zápasu.
+    /// Places or changes a winner tip.
     ///
-    /// Kromě uložení tipu přepočítá i hlasy komunity — při změně tipu se
-    /// starý hlas odečte a nový přičte, takže procenta sedí.
+    /// Also rebalances the community vote — on a change the old vote is removed
+    /// and the new one added, keeping the percentages honest.
     ///
     /// - Parameters:
-    ///   - match: Zápas, na který se tipuje.
-    ///   - pick: Domácí, nebo hosté.
-    ///   - competitions: Katalog soutěží (ověření Extraligy).
-    /// - Returns: `nil` při úspěchu, jinak hlášku pro uživatele.
+    ///   - match: The match being predicted.
+    ///   - pick: Home or away.
+    ///   - competitions: Competition catalogue (to verify Extraliga).
+    /// - Returns: `nil` on success, otherwise a message for the user.
     @discardableResult
     func placeTip(match: Match, pick: MatchTipPick, competitions: [Competition]) -> String? {
         guard FantasyMock.enabled || AuthAccess.store?.isAuthenticated == true else {
@@ -258,7 +258,7 @@ final class MatchTipStore: ObservableObject {
 
         if let existing = tips[match.id] {
             if existing.pick == pick { return nil }
-            // přesun hlasu
+            // move the vote across
             if existing.pick == .home { tally.homeCount = max(0, tally.homeCount - 1) }
             else { tally.awayCount = max(0, tally.awayCount - 1) }
         }
@@ -280,7 +280,7 @@ final class MatchTipStore: ObservableObject {
         return nil
     }
 
-    /// Odešle tip vítěze na server a osvěží počty hlasů.
+    /// Pushes a winner tip to the server and refreshes the vote counts.
     private func pushTipToRemote(matchId: String, pick: MatchTipPick) async {
         guard let auth = AuthAccess.store, let userId = auth.userId else { return }
         do {
@@ -295,28 +295,28 @@ final class MatchTipStore: ObservableObject {
         } catch { /* soft */ }
     }
 
-    // MARK: - Tip skóre (soukromý)
+    // MARK: - Exact-score tips (private)
 
-    /// Můj tip skóre na daný zápas.
+    /// My score tip on a given match.
     ///
-    /// - Parameter matchId: ID zápasu.
-    /// - Returns: Tip, nebo `nil`, když jsem na zápas skóre netipoval.
+    /// - Parameter matchId: The match ID.
+    /// - Returns: The tip, or `nil` when no score was predicted.
     func scoreTip(for matchId: String) -> MatchScoreTip? { scoreTips[matchId] }
 
-    /// Uloží nebo přepíše tip na přesné skóre.
+    /// Places or replaces an exact-score prediction.
     ///
-    /// Kontroluje, že jde o zápas Extraligy, že ještě nezačal a že je uživatel
-    /// přihlášený (v demo režimu se přihlášení nevyžaduje). Skóre ořízne na
-    /// 0–30 gólů a příznak prodloužení zahodí, pokud tip nemá jednogólový
-    /// rozdíl. Po uložení se tip odešle na server.
+    /// Verifies the match is Extraliga, has not started, and that the user is
+    /// signed in (not required in demo mode). Clamps the score to 0–30 goals and
+    /// drops the overtime flag unless the margin is exactly one goal. The tip is
+    /// pushed to the server afterwards.
     ///
     /// - Parameters:
-    ///   - match: Zápas, na který se tipuje.
-    ///   - home: Tipnuté góly domácích.
-    ///   - away: Tipnuté góly hostů.
-    ///   - overtime: Hráč označil prodloužení / nájezdy.
-    ///   - competitions: Katalog soutěží (kvůli ověření, že jde o Extraligu).
-    /// - Returns: `nil` při úspěchu, jinak hlášku pro uživatele, proč tip neprošel.
+    ///   - match: The match being predicted.
+    ///   - home: Predicted home goals.
+    ///   - away: Predicted away goals.
+    ///   - overtime: The player called overtime/shootout.
+    ///   - competitions: Competition catalogue (to verify Extraliga).
+    /// - Returns: `nil` on success, otherwise a message explaining the rejection.
     @discardableResult
     func placeScoreTip(match: Match, home: Int, away: Int, overtime: Bool, competitions: [Competition]) -> String? {
         guard FantasyMock.enabled || AuthAccess.store?.isAuthenticated == true else {
@@ -340,12 +340,12 @@ final class MatchTipStore: ObservableObject {
         return nil
     }
 
-    /// Spočítá body u tipů skóre na zápasy, které už skončily.
+    /// Scores exact-score tips on matches that have finished.
     ///
-    /// Každý tip vyhodnotí jen jednou (`resolved`), takže se body nesčítají
-    /// opakovaně. Výsledek se zapíše i na server.
+    /// Each tip is settled once (`resolved`), so points are never counted
+    /// repeatedly. The result is written to the server too.
     ///
-    /// - Parameter matches: Zápasy ke kontrole; nedohrané se ignorují.
+    /// - Parameter matches: Matches to check; unfinished ones are ignored.
     func resolveScoreTips(matches: [Match]) {
         var changed = false
         for match in matches where match.status == .finished {
@@ -364,9 +364,9 @@ final class MatchTipStore: ObservableObject {
         if changed { objectWillChange.send() }
     }
 
-    /// Odešle tip skóre na server (vytvoří, nebo přepíše ten stávající).
+    /// Pushes a score tip to the server (inserting or replacing it).
     ///
-    /// - Parameter matchId: Zápas, jehož tip se odesílá.
+    /// - Parameter matchId: The match whose tip is sent.
     private func pushScoreTip(matchId: String) async {
         guard let auth = AuthAccess.store, let userId = auth.userId, let tip = scoreTips[matchId] else { return }
         do {
@@ -381,10 +381,10 @@ final class MatchTipStore: ObservableObject {
         } catch { /* soft */ }
     }
 
-    /// Stáhne moje tipy skóre ze serveru (např. po přeinstalaci appky).
+    /// Pulls my score tips from the server (e.g. after reinstalling the app).
     ///
-    /// Lokální tipy nechává být — přebírá jen ty, které na zařízení chybí,
-    /// aby nepřepsal rozdělanou práci. V demo režimu nedělá nic.
+    /// Leaves local tips alone — only adopts the ones missing on this device, so
+    /// work in progress is never overwritten. Does nothing in demo mode.
     func syncScoreTipsFromRemote() async {
         guard !FantasyMock.enabled else { return }
         guard let auth = AuthAccess.store, auth.isAuthenticated, let userId = auth.userId else { return }
@@ -402,13 +402,13 @@ final class MatchTipStore: ObservableObject {
         } catch { /* soft */ }
     }
 
-    // MARK: - Reálný žebříček
+    // MARK: - Server leaderboard
 
-    /// Načte společný žebříček tipujících.
+    /// Loads the shared tipping leaderboard.
     ///
-    /// Pohled `tip_leaderboard` sčítá body z tipů vítěze i skóre dohromady,
-    /// ale nevydává jednotlivé tipy — soukromí zůstává zachované. Když se
-    /// načtení nepovede (nebo běží demo režim), UI ukáže lokální demo s boty.
+    /// The `tip_leaderboard` view sums winner and score tips together but never
+    /// exposes individual tips, so privacy holds. On failure (or in demo mode)
+    /// the UI falls back to the local demo with bots.
     func loadLeaderboard() async {
         guard !FantasyMock.enabled else { return }
         guard let api = AuthAccess.store?.authAPI else { return }
@@ -428,9 +428,9 @@ final class MatchTipStore: ObservableObject {
         } catch { /* soft */ }
     }
 
-    /// Zapíše body za tip vítěze na server (podklad pro žebříček).
+    /// Writes winner-tip points to the server (feeds the leaderboard).
     ///
-    /// - Parameter matchId: Zápas, jehož tip byl právě vyhodnocen.
+    /// - Parameter matchId: The match whose tip was just settled.
     private func pushWinnerPoints(matchId: String) async {
         guard let auth = AuthAccess.store, auth.isAuthenticated, let userId = auth.userId,
               let tip = tips[matchId], tip.resolved else { return }
@@ -442,12 +442,12 @@ final class MatchTipStore: ObservableObject {
         } catch { /* soft */ }
     }
 
-    /// Vyhodnotí tipy vítěze u zápasů, které skončily.
+    /// Settles winner tips on matches that have finished.
     ///
-    /// Remíza se počítá jako netrefený tip (vítěz se netipoval). Každý tip
-    /// se vyhodnotí jen jednou a výsledek se odešle na server.
+    /// A draw counts as a miss (no winner was predicted). Each tip is settled
+    /// once and the result is pushed to the server.
     ///
-    /// - Parameter matches: Zápasy ke kontrole; nedohrané se ignorují.
+    /// - Parameter matches: Matches to check; unfinished ones are ignored.
     func resolve(matches: [Match]) {
         var changed = false
         for match in matches where match.status == .finished {
@@ -475,36 +475,36 @@ final class MatchTipStore: ObservableObject {
 
     // MARK: - Stats / leaderboard
 
-    /// Všechny moje tipy vítěze.
+    /// All of my winner tips.
     var myTips: [MatchTip] { Array(tips.values) }
 
-    /// Počet zadaných tipů vítěze.
+    /// Number of winner tips placed.
     var totalTips: Int { tips.count }
-    /// Počet už vyhodnocených tipů.
+    /// Number of tips already settled.
     var resolvedTips: Int { tips.values.filter(\.resolved).count }
-    /// Počet trefených tipů.
+    /// Number of correct tips.
     var correctTips: Int { tips.values.filter { $0.isCorrect == true }.count }
-    /// Tipy čekající na dohrání zápasu.
+    /// Tips waiting for their match to finish.
     var openTips: Int { tips.values.filter { !$0.resolved }.count }
-    /// Body jen z tipů vítěze.
+    /// Points from winner tips only.
     var seasonPoints: Int { tips.values.reduce(0) { $0 + $1.pointsAwarded } }
 
-    /// Body nasbírané jen z tipů na přesné skóre.
+    /// Points from exact-score tips only.
     var scoreTipPoints: Int { scoreTips.values.reduce(0) { $0 + $1.pointsAwarded } }
 
-    /// Celkové body do žebříčku — tipy vítěze i skóre dohromady.
+    /// Total leaderboard points — winner and score tips combined.
     var combinedPoints: Int { seasonPoints + scoreTipPoints }
 
-    /// Počet tipů skóre, které čekají na dohrání zápasu.
+    /// Score tips waiting for their match to finish.
     var openScoreTips: Int { scoreTips.values.filter { !$0.resolved }.count }
 
-    /// Úspěšnost tipů vítěze v procentech.
+    /// Winner-tip accuracy in percent.
     var accuracy: Double {
         guard resolvedTips > 0 else { return 0 }
         return Double(correctTips) / Double(resolvedTips) * 100
     }
 
-    /// Můj řádek do žebříčku, složený z lokálních dat.
+    /// My leaderboard row, assembled from local data.
     var myLeaderboardEntry: TipLeaderboardEntry {
         TipLeaderboardEntry(
             id: AuthAccess.store?.userId ?? userId,
@@ -516,14 +516,14 @@ final class MatchTipStore: ObservableObject {
         )
     }
 
-    /// Žebříček k zobrazení — reálný ze serveru, jinak lokální demo s boty.
+    /// Leaderboard to display — real from the server, otherwise the local demo.
     var leaderboard: [TipLeaderboardEntry] {
         let sortRule: (TipLeaderboardEntry, TipLeaderboardEntry) -> Bool = {
             if $0.points != $1.points { return $0.points > $1.points }
             if $0.correct != $1.correct { return $0.correct > $1.correct }
             return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
         }
-        // Reálný žebříček ze serveru má přednost; jinak lokální demo s boty.
+        // Server leaderboard wins; otherwise fall back to the local demo with bots.
         if !remoteLeaderboard.isEmpty {
             var rows = remoteLeaderboard
             if AuthAccess.store?.isAuthenticated == true, !rows.contains(where: \.isCurrentUser) {
@@ -534,19 +534,19 @@ final class MatchTipStore: ObservableObject {
         return (botEntries + [myLeaderboardEntry]).sorted(by: sortRule)
     }
 
-    /// Moje pořadí v žebříčku (1 = první).
+    /// My leaderboard rank (1 = first).
     var myRank: Int {
         leaderboard.firstIndex(where: \.isCurrentUser).map { $0 + 1 } ?? leaderboard.count
     }
 
     // MARK: - Private
 
-    /// Vyrobí věrohodný základ hlasů komunity, než přijdou skutečné tipy.
+    /// Builds a believable baseline of community votes before real tips arrive.
     ///
-    /// Odvozuje se z ID zápasu, takže je pro daný zápas vždy stejný — jinak
-    /// by procenta poskakovala při každém otevření.
+    /// Derived from the match ID, so it stays identical for a match — otherwise
+    /// the percentages would jump on every open.
     private func seedVotes(matchId: String) -> MatchTipVotes {
-        // Stabilní „komunitní“ základ podle id zápasu
+        // Stable "community" baseline derived from the match id
         var hash: UInt64 = 5381
         for b in matchId.utf8 { hash = ((hash << 5) &+ hash) &+ UInt64(b) }
         let total = Int(80 + (hash % 220))
@@ -556,35 +556,35 @@ final class MatchTipStore: ObservableObject {
         return MatchTipVotes(matchId: matchId, homeCount: home, awayCount: away)
     }
 
-    /// Uloží tipy vítěze do `UserDefaults`.
+    /// Persists winner tips to `UserDefaults`.
     private func persistTips() {
         if let data = try? JSONEncoder().encode(tips) {
             defaults.set(data, forKey: Keys.tips)
         }
     }
 
-    /// Uloží počty hlasů komunity.
+    /// Persists community vote counts.
     private func persistVotes() {
         if let data = try? JSONEncoder().encode(votes) {
             defaults.set(data, forKey: Keys.votes)
         }
     }
 
-    /// Uloží tipy skóre do `UserDefaults`.
+    /// Persists score tips to `UserDefaults`.
     private func persistScoreTips() {
         if let data = try? JSONEncoder().encode(scoreTips) {
             defaults.set(data, forKey: Keys.scoreTips)
         }
     }
 
-    /// Načte tipy skóre; poškozená data ignoruje.
+    /// Reads score tips; ignores corrupted data.
     private static func loadScoreTips(from defaults: UserDefaults) -> [String: MatchScoreTip] {
         guard let data = defaults.data(forKey: Keys.scoreTips),
               let decoded = try? JSONDecoder().decode([String: MatchScoreTip].self, from: data) else { return [:] }
         return decoded
     }
 
-    /// Uloží demo soupeře.
+    /// Persists the demo rivals.
     private func persistBots() {
         let raw = botEntries.map {
             ["id": $0.id, "name": $0.name, "points": "\($0.points)", "correct": "\($0.correct)", "total": "\($0.total)"]
@@ -592,21 +592,21 @@ final class MatchTipStore: ObservableObject {
         defaults.set(raw, forKey: Keys.bots)
     }
 
-    /// Načte tipy vítěze.
+    /// Reads winner tips.
     private static func loadTips(from defaults: UserDefaults) -> [String: MatchTip] {
         guard let data = defaults.data(forKey: Keys.tips),
               let decoded = try? JSONDecoder().decode([String: MatchTip].self, from: data) else { return [:] }
         return decoded
     }
 
-    /// Načte počty hlasů komunity.
+    /// Reads community vote counts.
     private static func loadVotes(from defaults: UserDefaults) -> [String: MatchTipVotes] {
         guard let data = defaults.data(forKey: Keys.votes),
               let decoded = try? JSONDecoder().decode([String: MatchTipVotes].self, from: data) else { return [:] }
         return decoded
     }
 
-    /// Načte demo soupeře.
+    /// Reads the demo rivals.
     private static func loadBots(from defaults: UserDefaults) -> [TipLeaderboardEntry] {
         guard let raw = defaults.array(forKey: Keys.bots) as? [[String: String]] else { return [] }
         return raw.compactMap { row in
@@ -618,7 +618,7 @@ final class MatchTipStore: ObservableObject {
         }
     }
 
-    /// Vytvoří výchozí sadu demo soupeřů pro prázdný žebříček.
+    /// Creates the default set of demo rivals for an empty leaderboard.
     private static func makeBots() -> [TipLeaderboardEntry] {
         let names = [
             "Extraliga Fan", "Lední šíp", "Tipovač 88", "Hokejbal Pro",

@@ -172,6 +172,7 @@ struct FantasyView: View {
         .hbCard(cornerRadius: HBTheme.radiusMd)
     }
 
+    /// Navigation row in the hub menu.
     private func menuLink<Dest: View>(_ title: String, icon: String, destination: Dest) -> some View {
         NavigationLink {
             destination
@@ -211,6 +212,7 @@ struct FantasyView: View {
         }
     }
 
+    /// Toggle row for a card-display option.
     private func toggleRow(_ title: String, isOn: Binding<Bool>) -> some View {
         Button {
             isOn.wrappedValue.toggle()
@@ -238,6 +240,7 @@ struct FantasyView: View {
         .buttonStyle(.plain)
     }
 
+    /// Saves the lineup and reports the result via a toast.
     private func saveSquad() {
         if let error = fantasy.saveLineup() {
             showToast(error)
@@ -246,6 +249,7 @@ struct FantasyView: View {
         }
     }
 
+    /// Shows a short toast message.
     private func showToast(_ text: String) {
         withAnimation { toast = text }
         Task {
@@ -254,8 +258,9 @@ struct FantasyView: View {
         }
     }
 
+    /// Loads players and matches, syncs the gameweek and settles finished rounds.
     private func loadData() async {
-        // Parametry hráčů (OVR z nich). Na mock datech je vygenerujeme, jinak ze serveru.
+        // Player attributes drive the rating: generated in mock mode, fetched otherwise.
         if !FantasyMock.enabled {
             await attributes.loadIfNeeded()
         }
@@ -269,7 +274,7 @@ struct FantasyView: View {
         let teams = catalog.teamsById
         let comps = Dictionary(uniqueKeysWithValues: catalog.competitions.map { ($0.id, $0) })
         let filtered = all.filter { FantasyRules.isExtraligaPlayer($0, teamsById: teams, competitionsById: comps) }
-        // Mock parametry nasadit před řazením, aby OVR odpovídalo kartám.
+        // Seed mock attributes before sorting so the order matches the cards.
         if FantasyMock.enabled {
             attributes.seedMock(for: filtered)
         }
@@ -283,7 +288,7 @@ struct FantasyView: View {
                 .filter { $0.competitionId.contains("extraliga") }
         }
 
-        // Kalendář kol → server sestavy/skóre → vyhodnocení uzavřených kol → žebříček.
+        // Gameweek calendar → server squads/scores → settle closed weeks → leaderboard.
         fantasy.syncGameweekIfNeeded()
         await fantasy.loadRemote()
         let gained = fantasy.scorePendingGameweeks(playersById: playersById, matches: matches)
@@ -400,6 +405,7 @@ struct FantasyDeadlineBar: View {
             .foregroundStyle(.white.opacity(0.55))
     }
 
+    /// One digit group of the deadline countdown.
     private func unit(_ value: Int, _ label: String) -> some View {
         VStack(spacing: 1) {
             Text(String(format: "%02d", value))
@@ -658,6 +664,7 @@ struct FantasyHockeyRink: View {
             .padding(.horizontal, 20)
     }
 
+    /// Caption above a line of the lineup (goalie / defense / attack).
     private func lineLabel(_ text: String) -> some View {
         Text(text)
             .font(.hbMontserrat(size: 9, weight: .bold))
@@ -665,6 +672,7 @@ struct FantasyHockeyRink: View {
             .foregroundStyle(Color.white.opacity(0.55))
     }
 
+    /// One row of lineup slots.
     private func slotRow(_ slots: [FantasySlot]) -> some View {
         HStack(spacing: cardSize == .compact ? 8 : 12) {
             ForEach(slots) { slot in
@@ -718,6 +726,7 @@ struct FantasyHockeyRink: View {
         .frame(maxWidth: .infinity)
     }
 
+    /// Short next-opponent caption for a card.
     private func opponentCaption(for player: Player) -> String? {
         guard let match = FantasyRules.nextFixture(for: player.teamId, in: matches) else { return nil }
         let isHome = match.homeTeamId == player.teamId
@@ -791,7 +800,7 @@ struct FantasyLeaderboardView: View {
     }
 
     private var rows: [Row] {
-        // Reálný žebříček ze serveru; jinak lokální demo s boty.
+        // Server leaderboard when available; otherwise the local demo with bots.
         if !fantasy.remoteLeaderboard.isEmpty {
             let myId = AuthAccess.store?.userId
             return fantasy.remoteLeaderboard.enumerated().map { index, entry in
@@ -868,6 +877,7 @@ struct FantasyRulesScreen: View {
         .hbNavigationStyle()
     }
 
+    /// Card describing one rule.
     private func rule(_ title: String, _ text: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
@@ -1031,6 +1041,7 @@ struct FantasyPlayerPickerContent: View {
         .background(HBTheme.surface)
     }
 
+    /// Filter chip in the market.
     private func chip(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
@@ -1043,6 +1054,7 @@ struct FantasyPlayerPickerContent: View {
         .buttonStyle(.plain)
     }
 
+    /// One player row in the market list.
     private func playerRow(_ player: Player) -> some View {
         let taken = selectedIds.contains(player.id)
         let price = FantasyRules.priceCredits(for: player)
@@ -1107,6 +1119,7 @@ struct FantasyPlayerPickerContent: View {
         .opacity(affordable || taken || marketMode ? 1 : 0.45)
     }
 
+    /// Short fixture caption (opponent + date).
     private func fixtureLabel(_ match: Match, teamId: String) -> String {
         let isHome = match.homeTeamId == teamId
         let opp = catalog.team(isHome ? match.awayTeamId : match.homeTeamId)?.shortName ?? "?"
@@ -1116,6 +1129,7 @@ struct FantasyPlayerPickerContent: View {
         return "\(isHome ? "vs" : "@") \(opp) · \(df.string(from: match.scheduledAt))"
     }
 
+    /// Small pill with a metadata value.
     private func meta(_ text: String) -> some View {
         Text(text)
             .font(.hbMontserrat(size: 10, weight: .bold))
@@ -1143,6 +1157,7 @@ struct FantasyPlayerScoutView: View {
     private var tier: FantasyCardTier { FantasyRules.tier(for: rating) }
     private var form: [TeamFormItem] { TeamFormCalculator.items(from: matches, teamId: player.teamId) }
     private var fixture: Match? { FantasyRules.nextFixture(for: player.teamId, in: matches) }
+    /// Attribute rows to render, empty when the player has none.
     private var attributeRows: [(label: String, value: Int)] {
         attributes.attributes(for: player.id)?.displayRows(position: player.position) ?? []
     }
@@ -1256,6 +1271,7 @@ struct FantasyPlayerScoutView: View {
         }
     }
 
+    /// Stat tile in the scout sheet.
     private func scoutStat(_ title: String, _ value: String) -> some View {
         VStack(spacing: 3) {
             Text(title)
@@ -1271,6 +1287,7 @@ struct FantasyPlayerScoutView: View {
         .background(HBTheme.cardInset, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
+    /// Formats the fixture date for the scout sheet.
     private func fixtureDate(_ date: Date) -> String {
         let df = DateFormatter()
         df.locale = Locale(identifier: "cs_CZ")

@@ -28,6 +28,7 @@ actor SupabaseAuthAPI {
 
     // MARK: - Auth
 
+    /// Registers a new account and returns a session (signs in when confirmation is off).
     func signUp(_ payload: AuthSignUpPayload) async throws -> AuthSession {
         struct Body: Encodable {
             let email: String
@@ -59,6 +60,7 @@ actor SupabaseAuthAPI {
         }
     }
 
+    /// Signs in with email and password.
     func signIn(email: String, password: String) async throws -> AuthSession {
         struct Body: Encodable {
             let email: String
@@ -76,6 +78,7 @@ actor SupabaseAuthAPI {
         return try decodeSession(from: data)
     }
 
+    /// Exchanges a refresh token for a fresh session.
     func refresh(refreshToken: String) async throws -> AuthSession {
         struct Body: Encodable {
             let refreshToken: String
@@ -90,6 +93,7 @@ actor SupabaseAuthAPI {
         return try decodeSession(from: data)
     }
 
+    /// Sends a password-reset email.
     func requestPasswordReset(email: String) async throws {
         struct Body: Encodable {
             let email: String
@@ -101,6 +105,7 @@ actor SupabaseAuthAPI {
         )
     }
 
+    /// Invalidates the current session server-side.
     func signOut(accessToken: String) async throws {
         var request = URLRequest(url: SupabaseConfig.authURL.appendingPathComponent("logout"))
         request.httpMethod = "POST"
@@ -109,6 +114,7 @@ actor SupabaseAuthAPI {
         _ = try await session.data(for: request)
     }
 
+    /// Decodes a GoTrue token response, tolerating partial payloads.
     private func decodeSession(from data: Data) throws -> AuthSession {
         if let session = try? decoder.decode(TokenResponse.self, from: data).asSession() {
             return session
@@ -134,6 +140,7 @@ actor SupabaseAuthAPI {
 
     // MARK: - Profile / favorites / tips / amateur
 
+    /// Loads a user profile by ID.
     func fetchProfile(userId: String, accessToken: String) async throws -> UserProfile {
         let rows: [ProfileRow] = try await get(
             "profiles",
@@ -148,6 +155,7 @@ actor SupabaseAuthAPI {
         return row.asModel
     }
 
+    /// Updates the profile fields the user can edit.
     func updateProfile(
         userId: String,
         firstName: String,
@@ -235,6 +243,7 @@ actor SupabaseAuthAPI {
         return try await fetchProfile(userId: userId, accessToken: accessToken)
     }
 
+    /// Normalises a username to lowercase alphanumerics; falls back to a generated one.
     static func sanitizedUsername(_ raw: String) -> String {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyz0123456789._")
@@ -289,6 +298,7 @@ actor SupabaseAuthAPI {
         return row.asModel
     }
 
+    /// Removes the avatar from storage and clears it on the profile.
     func clearAvatar(userId: String, accessToken: String) async throws -> UserProfile {
         let objectPath = "\(userId)/avatar.jpg"
         if let deleteURL = URL(
@@ -322,6 +332,7 @@ actor SupabaseAuthAPI {
         return row.asModel
     }
 
+    /// Loads the user's favourite teams, players, matches and competitions.
     func fetchFavorites(accessToken: String) async throws -> [FavoriteRow] {
         try await get(
             "user_favorites",
@@ -333,6 +344,7 @@ actor SupabaseAuthAPI {
         )
     }
 
+    /// Adds a favourite (idempotent).
     func upsertFavorite(kind: String, targetId: String, userId: String, accessToken: String) async throws {
         struct Body: Encodable {
             let userId: String
@@ -352,6 +364,7 @@ actor SupabaseAuthAPI {
         )
     }
 
+    /// Removes a favourite.
     func deleteFavorite(kind: String, targetId: String, accessToken: String) async throws {
         try await delete(
             "user_favorites",
@@ -363,6 +376,7 @@ actor SupabaseAuthAPI {
         )
     }
 
+    /// Counts community winner tips for a match. Public — no token needed.
     func fetchTipVotes(matchId: String) async throws -> (home: Int, away: Int) {
         struct Row: Decodable { let pick: String }
         let rows: [Row] = try await get(
@@ -378,6 +392,7 @@ actor SupabaseAuthAPI {
         return (home, away)
     }
 
+    /// Loads the user's own winner tips.
     func fetchMyTips(userId: String, accessToken: String) async throws -> [TipRow] {
         try await get(
             "match_tips",
@@ -389,6 +404,7 @@ actor SupabaseAuthAPI {
         )
     }
 
+    /// Saves or overwrites a winner tip.
     func upsertTip(userId: String, matchId: String, pick: String, accessToken: String) async throws {
         struct Body: Encodable {
             let userId: String
@@ -415,6 +431,7 @@ actor SupabaseAuthAPI {
         )
     }
 
+    /// Loads amateur tournaments (payload is stored as JSON).
     func fetchAmateurTournaments(accessToken: String?) async throws -> [AmateurRemoteRow] {
         try await get(
             "amateur_tournaments",
@@ -426,6 +443,7 @@ actor SupabaseAuthAPI {
         )
     }
 
+    /// Saves or overwrites an amateur tournament.
     func upsertAmateurTournament(
         id: String,
         ownerId: String,
@@ -464,6 +482,7 @@ actor SupabaseAuthAPI {
         )
     }
 
+    /// Deletes an amateur tournament.
     func deleteAmateurTournament(id: String, accessToken: String) async throws {
         try await delete(
             "amateur_tournaments",
@@ -472,8 +491,9 @@ actor SupabaseAuthAPI {
         )
     }
 
-    // MARK: - Fantasy: atributy hráčů (public SELECT)
+    // MARK: - Fantasy: player attributes (public SELECT)
 
+    /// Fetches FIFA attributes for every rated player. Public, no token needed.
     func fetchPlayerAttributes() async throws -> [PlayerAttributesRow] {
         try await get(
             "player_attributes",
@@ -482,8 +502,9 @@ actor SupabaseAuthAPI {
         )
     }
 
-    // MARK: - Fantasy: sestavy (vlastník) + skóre (public)
+    // MARK: - Fantasy: squads (owner) + scores (public)
 
+    /// Loads the signed-in user's saved lineups for every gameweek.
     func fetchFantasySquads(userId: String, accessToken: String) async throws -> [FantasySquadRow] {
         try await get(
             "fantasy_squads",
@@ -495,6 +516,9 @@ actor SupabaseAuthAPI {
         )
     }
 
+    /// Saves (or overwrites) the lineup for one gameweek.
+    ///
+    /// - Parameter slots: Slot raw value → player ID.
     func upsertFantasySquad(
         userId: String,
         gameweek: Int,
@@ -523,6 +547,7 @@ actor SupabaseAuthAPI {
         )
     }
 
+    /// Loads the user's settled gameweeks with points and credits.
     func fetchFantasyScores(userId: String, accessToken: String) async throws -> [FantasyScoreRow] {
         try await get(
             "fantasy_scores",
@@ -534,6 +559,7 @@ actor SupabaseAuthAPI {
         )
     }
 
+    /// Records the result of a settled gameweek, feeding the leaderboard.
     func upsertFantasyScore(
         userId: String,
         gameweek: Int,
@@ -562,6 +588,7 @@ actor SupabaseAuthAPI {
         )
     }
 
+    /// Reads the public fantasy leaderboard, best first.
     func fetchFantasyLeaderboard(limit: Int = 100) async throws -> [FantasyLeaderRow] {
         try await get(
             "fantasy_leaderboard",
@@ -574,8 +601,9 @@ actor SupabaseAuthAPI {
         )
     }
 
-    // MARK: - Tipovačka: tip skóre (soukromý) + žebříček
+    // MARK: - Tipping: score tips (private) + leaderboard
 
+    /// Loads the user's own score tips. RLS keeps other people's rows out.
     func fetchMyScoreTips(userId: String, accessToken: String) async throws -> [ScoreTipRow] {
         try await get(
             "match_score_tips",
@@ -587,6 +615,9 @@ actor SupabaseAuthAPI {
         )
     }
 
+    /// Saves (or overwrites) a score tip.
+    ///
+    /// - Parameter pointsAwarded: `nil` while the match is still pending.
     func upsertScoreTip(
         userId: String,
         matchId: String,
@@ -621,7 +652,7 @@ actor SupabaseAuthAPI {
         )
     }
 
-    /// Zapíše body k tipu vítěze (match_tips) — jen update existujícího řádku.
+    /// Writes points onto an existing winner tip (`match_tips`); update only.
     func setWinnerTipPoints(userId: String, matchId: String, points: Int, accessToken: String) async throws {
         struct Body: Encodable {
             let pointsAwarded: Int
@@ -638,6 +669,7 @@ actor SupabaseAuthAPI {
         )
     }
 
+    /// Reads the public tipping leaderboard, best first.
     func fetchTipLeaderboard(limit: Int = 100) async throws -> [TipLeaderRow] {
         try await get(
             "tip_leaderboard",
@@ -652,6 +684,7 @@ actor SupabaseAuthAPI {
 
     // MARK: - HTTP
 
+    /// POSTs to a GoTrue auth endpoint.
     private func postAuth<Body: Encodable>(
         path: String,
         query: [URLQueryItem] = [],
@@ -676,6 +709,7 @@ actor SupabaseAuthAPI {
         return data
     }
 
+    /// GETs rows from a PostgREST table or view.
     private func get<T: Decodable>(
         _ table: String,
         query: [URLQueryItem],
@@ -691,6 +725,7 @@ actor SupabaseAuthAPI {
         return try decoder.decode(T.self, from: data)
     }
 
+    /// POSTs rows to PostgREST (used for upserts via the `Prefer` header).
     private func postREST<Body: Encodable>(
         _ table: String,
         body: Body,
@@ -709,6 +744,7 @@ actor SupabaseAuthAPI {
         return data
     }
 
+    /// PATCHes rows in PostgREST and returns the updated representation.
     private func patch<T: Decodable, Body: Encodable>(
         _ table: String,
         query: [URLQueryItem],
@@ -729,6 +765,7 @@ actor SupabaseAuthAPI {
         return try decoder.decode(T.self, from: data)
     }
 
+    /// DELETEs rows from PostgREST.
     private func delete(_ table: String, query: [URLQueryItem], accessToken: String) async throws {
         var components = URLComponents(url: SupabaseConfig.restURL.appendingPathComponent(table), resolvingAgainstBaseURL: false)!
         components.queryItems = query
@@ -740,6 +777,7 @@ actor SupabaseAuthAPI {
         try throwIfNeeded(data: data, response: response)
     }
 
+    /// Turns a non-2xx response into a readable `AuthError`.
     private func throwIfNeeded(data: Data, response: URLResponse) throws {
         guard let http = response as? HTTPURLResponse else { return }
         guard (200..<300).contains(http.statusCode) else {
@@ -761,6 +799,7 @@ actor SupabaseAuthAPI {
         }
     }
 
+    /// Maps known backend errors onto friendly Czech messages.
     private func friendlyAuthMessage(_ raw: String) -> String {
         let lower = raw.lowercased()
         if lower.contains("already registered") || lower.contains("user already") {
@@ -794,6 +833,7 @@ private struct TokenResponse: Decodable {
     let expiresAt: FlexibleNumber?
     let user: AuthUser?
 
+    /// Converts a token response into the app's session model.
     func asSession() throws -> AuthSession {
         guard let user else { throw AuthError.invalidResponse }
         let exp: Date
@@ -887,18 +927,21 @@ struct AmateurRemoteRow: Decodable {
 
 // MARK: - Fantasy / tip DTOs
 
+/// One saved lineup row from `fantasy_squads`.
 struct FantasySquadRow: Decodable {
     let gameweek: Int
     let teamName: String
     let slots: [String: String]
 }
 
+/// One settled gameweek from `fantasy_scores`.
 struct FantasyScoreRow: Decodable {
     let gameweek: Int
     let points: Int
     let credits: Int
 }
 
+/// One row of the `fantasy_leaderboard` view.
 struct FantasyLeaderRow: Decodable {
     let userId: String
     let displayName: String?
@@ -909,6 +952,7 @@ struct FantasyLeaderRow: Decodable {
     let scoredGameweeks: Int?
 }
 
+/// One score tip from `match_score_tips` (own rows only).
 struct ScoreTipRow: Decodable {
     let matchId: String
     let homeScore: Int
@@ -917,6 +961,7 @@ struct ScoreTipRow: Decodable {
     let pointsAwarded: Int?
 }
 
+/// One row of the `tip_leaderboard` view (aggregates only, never raw tips).
 struct TipLeaderRow: Decodable {
     let userId: String
     let displayName: String?
@@ -946,6 +991,7 @@ struct AnyJSON: Codable {
         throw DecodingError.dataCorruptedError(in: c, debugDescription: "Unsupported JSON")
     }
 
+    /// Encodes the wrapped JSON value back out.
     func encode(to encoder: Encoder) throws {
         var c = encoder.singleValueContainer()
         switch value {

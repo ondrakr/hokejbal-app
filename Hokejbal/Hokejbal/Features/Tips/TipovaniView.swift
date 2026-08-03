@@ -27,6 +27,7 @@ struct MatchTipCard: View {
         tips.tip(for: match.id)
     }
 
+    /// My score tip on this match, if any.
     private var myScoreTip: MatchScoreTip? {
         tips.scoreTip(for: match.id)
     }
@@ -103,8 +104,12 @@ struct MatchTipCard: View {
         }
     }
 
-    // MARK: - Tip skóre (soukromý)
+    // MARK: - Exact-score tip (private)
 
+    /// The score-prediction block: steppers, overtime toggle and save button.
+    ///
+    /// Shown while the match can still be tipped; afterwards it collapses into
+    /// `scoreResultBanner(_:)` with the settled result.
     @ViewBuilder
     private var scoreSection: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -161,6 +166,7 @@ struct MatchTipCard: View {
         }
     }
 
+    /// One team's goal stepper (− value +).
     private func scoreCounter(title: String, value: Binding<Int>) -> some View {
         VStack(spacing: 6) {
             Text(title)
@@ -184,6 +190,7 @@ struct MatchTipCard: View {
         .frame(maxWidth: .infinity)
     }
 
+    /// Round +/− button used by `scoreCounter(title:value:)`.
     private func scoreStep(_ system: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: system)
@@ -195,12 +202,14 @@ struct MatchTipCard: View {
         .buttonStyle(.plain)
     }
 
+    /// Drops the overtime flag when the margin is no longer a single goal.
     private func clampOvertime() {
         if !FantasyScoring.canPredictOvertime(predHome: scoreHome, predAway: scoreAway) {
             scoreOvertime = false
         }
     }
 
+    /// Read-only summary of a placed score tip, with points once settled.
     @ViewBuilder
     private func scoreResultBanner(_ tip: MatchScoreTip) -> some View {
         HStack(spacing: 10) {
@@ -252,6 +261,7 @@ struct MatchTipCard: View {
         }
     }
 
+    /// One side of the community percentage bar.
     private func teamPct(_ name: String, _ pct: Int, alignment: HorizontalAlignment) -> some View {
         VStack(alignment: alignment, spacing: 2) {
             Text("\(pct) %")
@@ -280,6 +290,7 @@ struct MatchTipCard: View {
         }
     }
 
+    /// Winner-tip button for one team; highlighted when it is the user's pick.
     private func tipButton(title: String, pick: MatchTipPick, selected: Bool) -> some View {
         Button {
             _ = tips.placeTip(match: match, pick: pick, competitions: catalog.competitions)
@@ -308,6 +319,7 @@ struct MatchTipCard: View {
         .buttonStyle(.plain)
     }
 
+    /// Summary of a placed winner tip, with the result once settled.
     @ViewBuilder
     private func resultBanner(_ tip: MatchTip) -> some View {
         HStack(spacing: 10) {
@@ -327,11 +339,13 @@ struct MatchTipCard: View {
         .background(HBTheme.cardInset, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
+    /// Label naming the tipped team.
     private func tipLabel(_ tip: MatchTip) -> String {
         let team = tip.pick == .home ? (home?.shortName ?? "Domácí") : (away?.shortName ?? "Hosté")
         return "Tip: \(team)"
     }
 
+    /// Subtitle describing the tip state (correct / wrong / pending).
     private func subtitle(_ tip: MatchTip) -> String {
         if tip.isCorrect == true { return "Správně · +\(tip.pointsAwarded) b" }
         if tip.resolved { return "Špatný tip · 0 b" }
@@ -415,6 +429,7 @@ struct TipovaniView: View {
         }
     }
 
+    /// Stat tile used in the tipping hub.
     private func tipStat(_ title: String, _ value: String, featured: Bool = false) -> some View {
         VStack(spacing: 6) {
             Text(title.uppercased())
@@ -446,6 +461,7 @@ struct TipovaniView: View {
         .hbCard(cornerRadius: HBTheme.radiusMd)
     }
 
+    /// Navigation row in the hub menu.
     private func menuLink<Dest: View>(_ title: String, icon: String, destination: Dest) -> some View {
         NavigationLink {
             destination
@@ -477,6 +493,7 @@ struct TipovaniView: View {
             .padding(.leading, 56)
     }
 
+    /// Loads Extraliga matches and settles any tips that are now decided.
     private func refreshResolutions() async {
         let comps = catalog.competitions.filter { $0.slug == MatchTipStore.competitionSlug }
         var all: [Match] = []
@@ -549,6 +566,7 @@ struct TipRulesScreen: View {
         .hbNavigationStyle()
     }
 
+    /// Card describing one rule.
     private func rule(_ title: String, _ text: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)

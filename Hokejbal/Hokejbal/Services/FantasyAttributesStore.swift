@@ -1,48 +1,49 @@
 import Foundation
 import SwiftUI
 
-/// Drží FIFA parametry všech hráčů, ze kterých se počítá OVR na kartičkách.
+/// Holds the FIFA-style attributes every player card rating is built from.
 ///
-/// Data se načtou jednou (tabulka `player_attributes` je veřejně čitelná,
-/// takže není potřeba přihlášení) a drží se v paměti — kartiček se vykresluje
-/// hodně a rating se počítá při každém řazení trhu.
+/// Loaded once (the `player_attributes` table is publicly readable, so no sign
+/// in is needed) and kept in memory — cards are rendered a lot and the rating
+/// is recomputed on every market sort.
 ///
-/// ## Dva režimy
+/// ## Two modes
 ///
-/// - **Ostrý provoz:** `loadIfNeeded()` stáhne parametry ze Supabase.
-/// - **Mock (`FantasyMock.enabled`):** `seedMock(for:)` je vygeneruje ze
-///   statistik, takže je Fantasy proklikatelná bez migrace i bez účtu.
+/// - **Live:** `loadIfNeeded()` fetches attributes from Supabase.
+/// - **Mock (`FantasyMock.enabled`):** `seedMock(for:)` derives them from season
+///   stats, so Fantasy is clickable without the migration or an account.
 ///
-/// V obou případech se výsledek propíše i do `FantasyRules.attributesByPlayerId`,
-/// odkud si ho bere výpočet ratingu.
+/// Either way the result is mirrored into `FantasyRules.attributesByPlayerId`,
+/// which is where the rating calculation reads from.
 ///
-/// Injektuje se jako `@EnvironmentObject` v `HokejbalApp`.
+/// Injected as an `@EnvironmentObject` in `HokejbalApp`.
 @MainActor
 final class FantasyAttributesStore: ObservableObject {
-    /// Parametry podle `Player.id`. Hráči, kteří tu nejsou, jedou na statistiky.
+    /// Attributes by `Player.id`. Players missing here fall back to season stats.
     @Published private(set) var byPlayerId: [String: PlayerAttributes] = [:]
 
-    /// `true`, jakmile jsou parametry k dispozici (ze serveru nebo z mocku).
+    /// `true` once attributes are available (from the server or the mock).
     @Published private(set) var isLoaded = false
 
-    /// Vlastní klient — čte jen veřejná data, nepotřebuje přihlášení.
+    /// Own client — reads public data only, no authentication required.
     private let api = SupabaseAuthAPI()
 
-    /// Brání dvěma souběžným stažením, když se view objeví dvakrát rychle po sobě.
+    /// Guards against two concurrent loads when a view appears twice in a row.
     private var isLoading = false
 
-    /// Stáhne parametry, pokud ještě nejsou načtené a zrovna se nenačítají.
+    /// Fetches attributes unless they are already loaded or in flight.
     ///
-    /// Bezpečné volat z každého `.task` — opakované volání nic nedělá.
+    /// Safe to call from any `.task` — repeated calls are no-ops.
     func loadIfNeeded() async {
         guard !isLoaded, !isLoading else { return }
         await load()
     }
 
-    /// Stáhne parametry ze Supabase a nasdílí je pravidlům.
+    /// Fetches attributes from Supabase and shares them with the rules.
     ///
-    /// Chybu záměrně polyká: když se stahování nepovede (offline, výpadek),
-    /// appka jede dál na ratingu ze statistik. Rozbitá síť tedy neshodí Fantasy.
+    /// Errors are swallowed on purpose: if the fetch fails (offline, outage),
+    /// the app keeps running on stats-based ratings, so a broken network never
+    /// takes Fantasy down.
     func load() async {
         isLoading = true
         defer { isLoading = false }
@@ -51,28 +52,28 @@ final class FantasyAttributesStore: ObservableObject {
             var map: [String: PlayerAttributes] = [:]
             for row in rows { map[row.playerId] = row.asModel }
             byPlayerId = map
-            // Zpřístupní parametry pravidlům (OVR z parametrů napříč appkou).
+            // Hand the attributes to the rules so ratings use them app-wide.
             FantasyRules.attributesByPlayerId = map
             isLoaded = true
         } catch {
-            // Soft-fail — appka jede na fallback OVR ze statistik.
+            // Soft-fail — the app falls back to stats-based ratings.
         }
     }
 
-    /// Parametry konkrétního hráče.
+    /// Attributes of a single player.
     ///
-    /// - Parameter playerId: `Player.id`.
-    /// - Returns: Parametry, nebo `nil`, když hráč žádné nemá.
+    /// - Parameter playerId: The `Player.id` to look up.
+    /// - Returns: The attributes, or `nil` when the player has none.
     func attributes(for playerId: String) -> PlayerAttributes? {
         byPlayerId[playerId]
     }
 
-    /// Doplní vygenerované parametry pro demo režim (`FantasyMock`).
+    /// Fills in generated attributes for demo mode (`FantasyMock`).
     ///
-    /// Reálná data ze serveru mají přednost — mock se použije jen tam, kde
-    /// hráč parametry zatím nemá, takže se ostrá data nikdy nepřepíšou.
+    /// Real server data wins — the mock only covers players that have no
+    /// attributes yet, so live values are never overwritten.
     ///
-    /// - Parameter players: Hráči, kterým se mají parametry dogenerovat.
+    /// - Parameter players: Players to generate attributes for.
     func seedMock(for players: [Player]) {
         guard !players.isEmpty else { return }
         var merged = FantasyMockAttributes.map(for: players)

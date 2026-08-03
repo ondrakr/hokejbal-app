@@ -1,94 +1,95 @@
 import Foundation
 
-/// Bodování tipu na přesné skóre zápasu.
+/// Scoring rules for exact-score match predictions.
 ///
-/// Pravidla jsou převzatá 1:1 z původní samostatné tipovačky
-/// (`hokejbal-fantasy/packages/shared/src/scoring.ts`), aby body znamenaly
-/// totéž co dřív a šlo je případně porovnávat napříč sezónami.
+/// Ported 1:1 from the standalone tipping app
+/// (`hokejbal-fantasy/packages/shared/src/scoring.ts`) so points keep the same
+/// meaning and stay comparable across seasons.
 ///
-/// ## Bodová tabulka
+/// ## Points table
 ///
-/// | Trefa | Body |
+/// | Hit | Points |
 /// |---|---|
-/// | Přesný výsledek | 5 |
-/// | Správný vítěz + gólový rozdíl | 3 |
-/// | Správný vítěz (nebo remíza) | 2 |
-/// | Špatný vítěz, ale sedí góly jednoho týmu | 1 |
-/// | Nic z toho | 0 |
+/// | Exact score | 5 |
+/// | Correct winner + goal difference | 3 |
+/// | Correct winner (or draw) | 2 |
+/// | Wrong winner, but one team's goals are right | 1 |
+/// | Nothing | 0 |
 ///
-/// K tomu **bonus +2** za správně tipnuté prodloužení / nájezdy.
+/// Plus a **+2 bonus** for correctly calling overtime or a shootout.
 ///
-/// ## Příklady
+/// ## Examples
 ///
-/// Skutečný výsledek 4:2:
-/// - tip `4:2` → 5 b (přesně)
-/// - tip `3:1` → 3 b (vyhráli domácí, rozdíl 2 sedí)
-/// - tip `5:1` → 2 b (vyhráli domácí, ale rozdíl nesedí)
-/// - tip `1:2` → 1 b (špatný vítěz, ale hosté dali opravdu 2)
-/// - tip `0:3` → 0 b
+/// Actual result 4:2:
+/// - `4:2` → 5 pts (exact)
+/// - `3:1` → 3 pts (home won, difference of 2 matches)
+/// - `5:1` → 2 pts (home won, but difference is off)
+/// - `1:2` → 1 pt (wrong winner, but away really scored 2)
+/// - `0:3` → 0 pts
 ///
-/// ## Kde se to používá
+/// ## Where it is used
 ///
-/// `MatchTipStore.resolveScoreTips(matches:)` po dohrání zápasu, výsledek se
-/// ukládá do `MatchScoreTip.pointsAwarded` a sčítá do žebříčku.
+/// `MatchTipStore.resolveScoreTips(matches:)` once a match is over; the result
+/// is stored in `MatchScoreTip.pointsAwarded` and counted into the leaderboard.
 ///
-/// - Note: Vyhodnocuje se proti **finálnímu** skóre zápasu. Původní tipovačka
-///   MS používala skóre po 60 minutách, ale to naše datová vrstva nemá —
-///   prodloužení proto řeší až bonus níž. Prakticky to znamená, že tip `4:3`
-///   na zápas rozhodnutý v prodloužení dá 5 b (+2 s bonusem), ne 3 b.
+/// - Note: Evaluated against the **final** score. The original tipping app used
+///   the score after regulation time, but our data layer has no such field —
+///   overtime is instead handled by the bonus below. In practice a `4:3` tip on
+///   a game decided in overtime scores 5 pts (+2 with the bonus), not 3.
 enum FantasyScoring {
-    /// Body za úplně přesný tip (obě čísla sedí).
+    /// Points for a fully exact prediction (both numbers match).
     static let exact = 5
-    /// Body za správného vítěze **a** správný gólový rozdíl.
+    /// Points for the correct winner **and** the correct goal difference.
     static let goalDiff = 3
-    /// Body za správného vítěze (rozdíl nesedí).
+    /// Points for the correct winner (difference is off).
     static let winner = 2
-    /// Útěcha za trefený počet gólů jednoho týmu, i když vítěz je špatně.
+    /// Consolation point for guessing one team's goals despite the wrong winner.
     static let partial = 1
-    /// Úplná mimo.
+    /// Complete miss.
     static let miss = 0
-    /// Bonus navrch, když hráč označil prodloužení/nájezdy a opravdu nastaly.
+    /// Extra points when the player called overtime/shootout and it happened.
     static let overtimeBonus = 2
 
-    /// Kolik minut před výkopem se tipy zamykají.
+    /// How many minutes before puck drop predictions lock.
     ///
-    /// - Warning: Nula = tipovat jde až do začátku zápasu. Držíme tím paritu
-    ///   s tipem vítěze (`MatchTipStore.canTip(_:)`); původní appka měla 30 minut.
+    /// - Warning: Zero means predictions are open right up to the start time,
+    ///   matching the winner tip (`MatchTipStore.canTip(_:)`). The original app
+    ///   used 30 minutes.
     static let lockMinutesBeforeStart = 0
 
-    /// Jak zápas (nebo tip) dopadl z pohledu domácích.
+    /// How a match (or a prediction) turned out, seen from the home side.
     enum Outcome {
-        /// Vyhráli domácí.
+        /// Home team won.
         case home
-        /// Vyhráli hosté.
+        /// Away team won.
         case away
-        /// Remíza.
+        /// Draw.
         case draw
     }
 
-    /// Určí vítěze ze skóre.
+    /// Determines the winner from a score.
     ///
     /// - Parameters:
-    ///   - home: Góly domácích.
-    ///   - away: Góly hostů.
-    /// - Returns: Kdo vyhrál, nebo `.draw` při shodě.
+    ///   - home: Home goals.
+    ///   - away: Away goals.
+    /// - Returns: The winning side, or `.draw` when the scores are level.
     static func outcome(home: Int, away: Int) -> Outcome {
         if home == away { return .draw }
         return home > away ? .home : .away
     }
 
-    /// Body za tip bez bonusu za prodloužení.
+    /// Points for a prediction, without the overtime bonus.
     ///
-    /// Postupuje odshora dolů podle bodové tabulky v popisu typu: nejdřív
-    /// přesná trefa, pak správný vítěz (s rozdílem / bez), a nakonec útěcha
-    /// za trefený počet gólů jednoho týmu.
+    /// Walks the points table top down: exact hit first, then the correct
+    /// winner (with or without the goal difference), and finally the
+    /// consolation point for getting one team's goals right.
     ///
     /// - Parameters:
-    ///   - predHome: Tipnuté góly domácích.
-    ///   - predAway: Tipnuté góly hostů.
-    ///   - resHome: Skutečné góly domácích.
-    ///   - resAway: Skutečné góly hostů.
-    /// - Returns: 0, 1, 2, 3 nebo 5 bodů.
+    ///   - predHome: Predicted home goals.
+    ///   - predAway: Predicted away goals.
+    ///   - resHome: Actual home goals.
+    ///   - resAway: Actual away goals.
+    /// - Returns: 0, 1, 2, 3 or 5 points.
     static func basePoints(predHome: Int, predAway: Int, resHome: Int, resAway: Int) -> Int {
         if predHome == resHome && predAway == resAway {
             return exact
@@ -96,7 +97,7 @@ enum FantasyScoring {
         let predOutcome = outcome(home: predHome, away: predAway)
         let resOutcome = outcome(home: resHome, away: resAway)
         if predOutcome != resOutcome {
-            // dílčí bod: aspoň jeden tým přesně
+            // partial credit: at least one team's goals are exact
             if predHome == resHome || predAway == resAway { return partial }
             return miss
         }
@@ -104,21 +105,22 @@ enum FantasyScoring {
         return sameDiff ? goalDiff : winner
     }
 
-    /// Konečné body za tip včetně bonusu za prodloužení/nájezdy.
+    /// Final points for a prediction, including the overtime bonus.
     ///
-    /// Bonus se přičte jen při splnění **všech tří** podmínek: hráč označil
-    /// prodloužení, zápas v něm opravdu skončil, a hráč zároveň trefil vítěze.
-    /// Bez poslední podmínky by se dal bonus vyfarmit tipem naslepo.
+    /// The bonus only applies when **all three** hold: the player called
+    /// overtime, the match really ended there, and the player also got the
+    /// winner right. Without the last condition the bonus could be farmed by
+    /// ticking the box blindly.
     ///
     /// - Parameters:
-    ///   - predHome: Tipnuté góly domácích.
-    ///   - predAway: Tipnuté góly hostů.
-    ///   - resHome: Skutečné góly domácích.
-    ///   - resAway: Skutečné góly hostů.
-    ///   - predictedOvertime: Hráč zaškrtl „po prodloužení / nájezdech".
-    ///   - decidedInOvertime: Zápas skutečně skončil v prodloužení nebo nájezdech
-    ///     (viz `Match.decidedInOvertime`).
-    /// - Returns: 0–7 bodů (max = přesný tip 5 + bonus 2).
+    ///   - predHome: Predicted home goals.
+    ///   - predAway: Predicted away goals.
+    ///   - resHome: Actual home goals.
+    ///   - resAway: Actual away goals.
+    ///   - predictedOvertime: Player ticked "decided in overtime/shootout".
+    ///   - decidedInOvertime: The match really was decided there
+    ///     (see `Match.decidedInOvertime`).
+    /// - Returns: 0–7 points (max = exact 5 + bonus 2).
     static func scorePoints(
         predHome: Int,
         predAway: Int,
@@ -135,26 +137,26 @@ enum FantasyScoring {
         return points
     }
 
-    /// Smí se u tohoto tipu nabídnout přepínač „po prodloužení / nájezdech"?
+    /// Should the "decided in overtime/shootout" toggle be offered?
     ///
-    /// Jen u jednogólového rozdílu — prodloužení i nájezdy vždycky končí
-    /// rozdílem jednoho gólu, takže u tipu `5:2` by přepínač neměl smysl.
-    /// UI podle toho přepínač skrývá (`MatchTipCard.scoreSection`).
+    /// Only at a one-goal margin — overtime and shootouts always end one goal
+    /// apart, so the toggle would make no sense on a `5:2` prediction. The UI
+    /// hides it accordingly (`MatchTipCard.scoreSection`).
     ///
     /// - Parameters:
-    ///   - predHome: Tipnuté góly domácích.
-    ///   - predAway: Tipnuté góly hostů.
-    /// - Returns: `true`, když je rozdíl přesně jeden gól.
+    ///   - predHome: Predicted home goals.
+    ///   - predAway: Predicted away goals.
+    /// - Returns: `true` when the margin is exactly one goal.
     static func canPredictOvertime(predHome: Int, predAway: Int) -> Bool {
         abs(predHome - predAway) == 1
     }
 
-    /// Je tipování na tento zápas už uzavřené?
+    /// Is predicting on this match already closed?
     ///
     /// - Parameters:
-    ///   - startsAt: Plánovaný začátek zápasu.
-    ///   - now: Čas, ke kterému se ptáme (kvůli testovatelnosti).
-    /// - Returns: `true`, když už tip nejde zadat ani změnit.
+    ///   - startsAt: Scheduled start of the match.
+    ///   - now: Point in time to check against (injectable for tests).
+    /// - Returns: `true` when the prediction can no longer be placed or changed.
     static func isLocked(startsAt: Date, now: Date = Date()) -> Bool {
         let lockAt = startsAt.addingTimeInterval(-Double(lockMinutesBeforeStart) * 60)
         return now >= lockAt
@@ -162,13 +164,14 @@ enum FantasyScoring {
 }
 
 extension Match {
-    /// Rozhodlo o zápasu prodloužení nebo nájezdy?
+    /// Was the match decided in overtime or a shootout?
     ///
-    /// Datová vrstva nemá explicitní příznak, odvozujeme ho tedy dvěma způsoby:
-    /// z právě běžící periody, a u dohraných zápasů z počtu zapsaných třetin
-    /// (základní hrací doba má tři — cokoli navíc je prodloužení či nájezdy).
+    /// There is no explicit flag in the data layer, so it is inferred two ways:
+    /// from the currently running period, and for finished matches from the
+    /// number of recorded periods (regulation has three — anything beyond that
+    /// is overtime or a shootout).
     ///
-    /// Používá se jako podklad pro bonus ve `FantasyScoring.scorePoints(…)`.
+    /// Feeds the bonus in `FantasyScoring.scorePoints(…)`.
     var decidedInOvertime: Bool {
         if period == .overtime || period == .shootout { return true }
         return homePeriodScores.count > 3 || awayPeriodScores.count > 3

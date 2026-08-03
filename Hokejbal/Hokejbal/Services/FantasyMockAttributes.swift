@@ -1,68 +1,70 @@
 import Foundation
 
-/// Přepínač demo režimu Fantasy a Tipovačky.
+/// Demo-mode switch for Fantasy and the tipping game.
 ///
-/// Když je zapnutý, appka nepotřebuje ani spuštěnou databázovou migraci, ani
-/// přihlášení — parametry hráčů se generují lokálně a nic se neposílá na server.
-/// Slouží k proklikání a odladění funkcí, než se pustí ostrý provoz.
+/// While on, the app needs neither the database migration nor an account —
+/// player attributes are generated locally and nothing is sent to the server.
+/// Meant for clicking through and polishing the features before going live.
 ///
-/// ## Co se zapnutým mockem mění
+/// ## What the mock changes
 ///
-/// - Fantasy i tipování jsou přístupné bez přihlášení
-/// - Parametry hráčů se generují (`FantasyMockAttributes`)
-/// - Čtení ze serveru (sestavy, skóre, žebříčky) se přeskakuje
-/// - Žebříčky ukazují lokální demo s boty
+/// - Fantasy and tipping are reachable without signing in
+/// - Player attributes are generated (`FantasyMockAttributes`)
+/// - Server reads (squads, scores, leaderboards) are skipped
+/// - Leaderboards show the local demo with bots
 ///
-/// - Important: Před ostrým provozem přepnout na `false` **a** spustit migraci
+/// - Important: Before going live switch this to `false` **and** run
 ///   `supabase/migrations/20260727000000_fantasy_tipping.sql`.
 enum FantasyMock {
-    /// Zapnutý demo režim.
+    /// Demo mode is on.
     static let enabled = true
 }
 
-/// Generátor náhradních FIFA parametrů pro demo režim.
+/// Generates stand-in FIFA attributes for demo mode.
 ///
-/// Než trenéři vyplní `player_attributes`, potřebujeme, aby kartičky vypadaly
-/// realisticky. Parametry se proto odvodí z ratingu ze sezónních statistik a
-/// rozhýbou deterministickým šumem, takže se hráči od sebe liší, ale výsledek
-/// je pro stejného hráče **vždy stejný** (jinak by se čísla měnila při každém
-/// otevření obrazovky).
+/// Until coaches fill in `player_attributes`, cards still need to look
+/// believable. Attributes are therefore derived from the stats-based rating and
+/// spread out with deterministic noise, so players differ from each other while
+/// the result stays **identical for the same player** (otherwise the numbers
+/// would change on every screen open).
 ///
-/// - Note: Používá se jen když `FantasyMock.enabled == true`.
+/// - Note: Only used while `FantasyMock.enabled == true`.
 enum FantasyMockAttributes {
-    /// Hráči, kterým se rating nastaví napevno, bez ohledu na statistiky.
+    /// Players whose rating is pinned regardless of their statistics.
     ///
-    /// Klíč je příjmení malými písmeny (s diakritikou i bez, ať se trefíme
-    /// nezávisle na zápisu v datech), hodnota je cílové OVR — kvůli efektu
-    /// „Čejka má 99".
+    /// Keyed by lowercased surname (with and without diacritics, to match
+    /// whichever spelling the data uses); the value is the target overall —
+    /// this is what makes "Čejka is a 99" work.
     static let starOverall: [String: Int] = [
         "čejka": 99, "cejka": 99,
         "mácha": 93, "macha": 93,
     ]
 
-    /// Vygeneruje parametry pro celou skupinu hráčů.
+    /// Generates attributes for a whole group of players.
     ///
-    /// - Parameter players: Hráči, kterým se mají parametry vytvořit.
-    /// - Returns: Parametry podle `Player.id`.
+    /// - Parameter players: Players to generate attributes for.
+    /// - Returns: Attributes keyed by `Player.id`.
     static func map(for players: [Player]) -> [String: PlayerAttributes] {
         var result: [String: PlayerAttributes] = [:]
         for player in players { result[player.id] = attributes(for: player) }
         return result
     }
 
-    /// Vygeneruje parametry jednoho hráče.
+    /// Generates attributes for a single player.
     ///
-    /// Kolem cílové úrovně (rating ze statistik, nebo pevné OVR u hvězdy) se
-    /// jednotlivé parametry rozloží podle pozice — útočník má lepší střelu a
-    /// rychlost, obránce defenzivu — a přidá se deterministický šum ±6.
+    /// Around a target level (the stats rating, or the pinned overall for a
+    /// star) the individual attributes are spread by position — a forward gets
+    /// a better shot and speed, a defenseman better defense — plus
+    /// deterministic noise of ±6.
     ///
-    /// - Parameter player: Hráč, pro kterého se parametry generují.
-    /// - Returns: Kompletní sada parametrů pro jeho pozici.
+    /// - Parameter player: The player to generate for.
+    /// - Returns: A full attribute set for their position.
     static func attributes(for player: Player) -> PlayerAttributes {
         let base = FantasyRules.statRating(for: player) // 55–94
         let star = starOverall[player.lastName.lowercased()]
         let center = star ?? base
 
+        /// One attribute: target level + positional bias + deterministic noise.
         func value(_ salt: String, bias: Int) -> Int {
             clamp(center + bias + jitter(seed: player.id + salt))
         }
@@ -112,16 +114,16 @@ enum FantasyMockAttributes {
         }
     }
 
-    /// Ořízne parametr na rozumné demo rozpětí 40–99.
+    /// Clamps an attribute into a sensible 40–99 demo range.
     private static func clamp(_ value: Int) -> Int { min(99, max(40, value)) }
 
-    /// Deterministický „šum" −6…+6 pro rozhýbání parametrů.
+    /// Deterministic noise of −6…+6 used to spread the attributes out.
     ///
-    /// Staví na FNV-1a hashi, ne na náhodě — pro stejný vstup vrátí vždy
-    /// stejné číslo, takže se hráči parametry nemění mezi spuštěními.
+    /// Built on an FNV-1a hash rather than randomness — the same input always
+    /// yields the same number, so a player's attributes stay put between runs.
     ///
-    /// - Parameter seed: Vstup hashe, typicky `player.id` + název parametru.
-    /// - Returns: Odchylka v rozsahu −6…+6.
+    /// - Parameter seed: Hash input, typically `player.id` + the attribute name.
+    /// - Returns: An offset between −6 and +6.
     private static func jitter(seed: String) -> Int {
         var hash: UInt64 = 1_469_598_103_934_665_603
         for byte in seed.utf8 { hash = (hash ^ UInt64(byte)) &* 1_099_511_628_211 }

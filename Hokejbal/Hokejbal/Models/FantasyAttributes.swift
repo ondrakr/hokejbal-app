@@ -1,65 +1,65 @@
 import Foundation
 
-/// FIFA-styl parametry jednoho hráče, ze kterých se počítá OVR na kartičce.
+/// FIFA-style attributes of a single player, the basis of the card rating.
 ///
-/// Hodnoty jsou v rozsahu **1–99** a vyplňují je trenéři klubů (zatím ručně
-/// v tabulce `player_attributes`). Všechny jsou volitelné: hráč, kterému
-/// parametry nikdo nevyplnil, dostane OVR dopočítané ze sezónních statistik
-/// — viz `FantasyRules.rating(for:)`. Díky tomu appka funguje i před tím,
-/// než kluby cokoli vyplní.
+/// Values range from **1 to 99** and are filled in by club coaches (for now by
+/// hand in the `player_attributes` table). All of them are optional: a player
+/// nobody has rated yet gets an overall derived from season statistics — see
+/// `FantasyRules.rating(for:)`. That keeps the app working before clubs fill
+/// anything in.
 ///
-/// Sada parametrů se liší podle pozice: hráči do pole mají sedm herních
-/// vlastností, brankáři vlastních šest.
+/// The set differs by position: skaters have seven attributes, goalies their
+/// own six.
 struct PlayerAttributes: Codable, Hashable, Sendable {
-    /// ID hráče, ke kterému parametry patří (`Player.id`).
+    /// The player these attributes belong to (`Player.id`).
     let playerId: String
 
-    // MARK: Hráči do pole
+    // MARK: Skaters
 
-    /// Rychlost bruslení a akcelerace.
+    /// Skating speed and acceleration.
     var speed: Int?
-    /// Fyzická síla, souboje u mantinelu.
+    /// Physical strength, battles along the boards.
     var strength: Int?
-    /// Tvrdost a přesnost střely.
+    /// Shot power and accuracy.
     var shooting: Int?
-    /// Přesnost a čtení přihrávek.
+    /// Passing accuracy and vision.
     var passing: Int?
-    /// Práce s míčkem, klička jeden na jednoho.
+    /// Puck handling, beating a defender one on one.
     var dribbling: Int?
-    /// Herní inteligence — čtení hry, postavení, rozhodování.
+    /// Hockey IQ — reading the play, positioning, decision making.
     var iq: Int?
-    /// Defenzivní práce, obranné souboje, blokování střel.
+    /// Defensive work, defensive battles, shot blocking.
     var defense: Int?
 
-    // MARK: Brankáři
+    // MARK: Goalies
 
-    /// Reflexy na rychlé zákroky.
+    /// Reflexes on quick saves.
     var reflexes: Int?
-    /// Postavení v brankovišti.
+    /// Positioning in the crease.
     var positioning: Int?
-    /// Chytání lapačkou.
+    /// Glove hand.
     var glove: Int?
-    /// Zákroky vyrážečkou.
+    /// Blocker saves.
     var blocker: Int?
-    /// Práce s dorážkami — kam pouští odražené míčky.
+    /// Rebound control — where loose pucks end up.
     var rebound: Int?
-    /// Klid a koncentrace v tlaku.
+    /// Composure under pressure.
     var composure: Int?
 
-    /// OVR předpočítané na serveru.
+    /// Overall precomputed on the server.
     ///
-    /// Když je vyplněné, má přednost před váženým průměrem parametrů. Slouží
-    /// k ručnímu přepsání ratingu (např. hvězda, které chceme dát rovnou 99).
+    /// When present it wins over the weighted average of the attributes. Used
+    /// to override a rating by hand (e.g. a star we want to sit at 99).
     var overall: Int?
 
-    /// Vyplněné parametry pro danou pozici i s českými popisky.
+    /// The filled-in attributes for a position, with display labels.
     ///
-    /// Prázdné (nevyplněné) parametry vynechává, takže scout karta nikdy
-    /// nezobrazí řádek bez hodnoty.
+    /// Skips empty attributes, so the scout sheet never renders a row without
+    /// a value.
     ///
-    /// - Parameter position: Pozice hráče — rozhoduje, jestli se vrátí sada
-    ///   pro brankáře, nebo pro hráče do pole.
-    /// - Returns: Dvojice popisek + hodnota v pořadí, v jakém se mají vykreslit.
+    /// - Parameter position: The player's position — decides whether the goalie
+    ///   or the skater set is returned.
+    /// - Returns: Label and value pairs in the order they should be rendered.
     func displayRows(position: PlayerPosition) -> [(label: String, value: Int)] {
         let pairs: [(String, Int?)]
         switch position {
@@ -88,19 +88,20 @@ struct PlayerAttributes: Codable, Hashable, Sendable {
         }
     }
 
-    /// Spočítá OVR (číslo na kartičce) z vyplněných parametrů.
+    /// Computes the overall (the number on the card) from the attributes.
     ///
-    /// Váhy se liší podle pozice, aby rating odpovídal tomu, co je pro danou
-    /// roli důležité — útočníkovi se nejvíc počítá střela a rychlost,
-    /// obránci defenziva a síla. Brankáři mají všech šest parametrů stejně.
+    /// Weights differ by position so the rating reflects what matters for the
+    /// role — shooting and speed carry a forward, defense and strength a
+    /// defenseman. Goalies weigh all six attributes equally.
     ///
-    /// Průměr je vážený jen přes **vyplněné** parametry (dělí se součtem
-    /// jejich vah), takže částečně vyplněný hráč nedostane uměle nízké číslo.
-    /// Když je vyplněné `overall`, vrátí se rovnou ono.
+    /// The average only covers **filled-in** attributes (dividing by the sum of
+    /// their weights), so a partially rated player is not dragged down. If
+    /// `overall` is set, it is returned as is.
     ///
-    /// - Parameter position: Pozice hráče — určuje sadu parametrů a jejich váhy.
-    /// - Returns: OVR v rozsahu 1–99, nebo `nil`, když není vyplněný ani jeden
-    ///   parametr pro danou pozici (volající pak sáhne po statistikách).
+    /// - Parameter position: The player's position — picks the attribute set and
+    ///   its weights.
+    /// - Returns: Overall between 1 and 99, or `nil` when not a single attribute
+    ///   for that position is set (the caller then falls back to statistics).
     func computedOverall(position: PlayerPosition) -> Int? {
         if let overall { return clampRating(overall) }
 
@@ -134,17 +135,17 @@ struct PlayerAttributes: Codable, Hashable, Sendable {
         return clampRating(Int((sum / totalWeight).rounded()))
     }
 
-    /// Ořízne hodnotu do povoleného rozsahu 1–99.
+    /// Clamps a value into the allowed 1–99 range.
     private func clampRating(_ value: Int) -> Int {
         min(99, max(1, value))
     }
 }
 
-/// Jeden řádek tabulky `player_attributes` tak, jak přijde ze Supabase.
+/// A single `player_attributes` row as it arrives from Supabase.
 ///
-/// Sloupce jsou v databázi `snake_case`, dekodér je převádí přes
-/// `convertFromSnakeCase` (viz `SupabaseAuthAPI`). Do zbytku appky se
-/// překlápí přes `asModel`, aby DTO nikde neprosakovalo.
+/// Columns are `snake_case` in the database and converted by the decoder via
+/// `convertFromSnakeCase` (see `SupabaseAuthAPI`). Mapped into the app through
+/// `asModel` so the DTO never leaks further.
 struct PlayerAttributesRow: Decodable {
     let playerId: String
     let speed: Int?
@@ -162,7 +163,7 @@ struct PlayerAttributesRow: Decodable {
     let composure: Int?
     let overall: Int?
 
-    /// Převede databázový řádek na doménový model.
+    /// Maps the database row onto the domain model.
     var asModel: PlayerAttributes {
         PlayerAttributes(
             playerId: playerId,

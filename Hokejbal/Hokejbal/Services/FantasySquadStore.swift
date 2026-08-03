@@ -1,12 +1,12 @@
 import Foundation
 import SwiftUI
 
-// MARK: - Slots (Extraliga: 1 B + 2 O + 3 Ú)
+// MARK: - Slots (Extraliga: 1 goalie + 2 defensemen + 3 forwards)
 
-/// Pozice v fantasy sestavě.
+/// A position in the fantasy lineup.
 ///
-/// Sestava má pevných šest míst — jeden brankář, dva obránci, tři útočníci —
-/// a hráč se dá zařadit jen na slot odpovídající jeho pozici.
+/// The lineup has six fixed spots — one goalie, two defensemen, three forwards —
+/// and a player only fits a slot matching their position.
 enum FantasySlot: String, CaseIterable, Identifiable, Hashable, Sendable {
     case goalie
     case defense1
@@ -17,7 +17,7 @@ enum FantasySlot: String, CaseIterable, Identifiable, Hashable, Sendable {
 
     var id: String { rawValue }
 
-    /// Pozice hráče, kterou tenhle slot vyžaduje.
+    /// The player position this slot requires.
     var position: PlayerPosition {
         switch self {
         case .goalie: return .goalie
@@ -26,7 +26,7 @@ enum FantasySlot: String, CaseIterable, Identifiable, Hashable, Sendable {
         }
     }
 
-    /// Název slotu pro UI („Obránce 1").
+    /// Slot name for the UI ("Obránce 1").
     var title: String {
         switch self {
         case .goalie: return "Brankář"
@@ -38,7 +38,7 @@ enum FantasySlot: String, CaseIterable, Identifiable, Hashable, Sendable {
         }
     }
 
-    /// Zkratka pozice na kartičce (B / O / Ú).
+    /// Short position code shown on the card (B / O / Ú).
     var shortTitle: String {
         switch self {
         case .goalie: return "B"
@@ -48,16 +48,16 @@ enum FantasySlot: String, CaseIterable, Identifiable, Hashable, Sendable {
     }
 }
 
-/// Vizuální úroveň kartičky podle ratingu — čím lepší hráč, tím vzácnější karta.
+/// Card tier by rating — the better the player, the rarer the card.
 ///
-/// Hranice určuje `FantasyRules.tier(for:)`.
+/// Thresholds live in `FantasyRules.tier(for:)`.
 enum FantasyCardTier: String, Sendable {
     case bronze
     case silver
     case gold
     case elite
 
-    /// Barvy pozadí kartičky.
+    /// Card background colours.
     var gradient: [Color] {
         switch self {
         case .bronze:
@@ -71,7 +71,7 @@ enum FantasyCardTier: String, Sendable {
         }
     }
 
-    /// Barva textu a orámování na kartičce.
+    /// Text and border colour on the card.
     var accent: Color {
         switch self {
         case .bronze: return Color(red: 0.90, green: 0.70, blue: 0.45)
@@ -81,7 +81,7 @@ enum FantasyCardTier: String, Sendable {
         }
     }
 
-    /// Název úrovně zobrazený ve scoutu.
+    /// Tier name shown in the scout sheet.
     var label: String {
         switch self {
         case .bronze: return "Bronze"
@@ -92,29 +92,29 @@ enum FantasyCardTier: String, Sendable {
     }
 }
 
-// MARK: - Deadline / kola (sobota 10:00 Praha)
+// MARK: - Deadlines / gameweeks (Saturday 10:00 Prague)
 
-/// Kalendář fantasy kol.
+/// The fantasy gameweek calendar.
 ///
-/// Sezóna je rozsekaná na týdenní kola, každé začíná uzávěrkou **v sobotu
-/// v 10:00 pražského času**. Do uzávěrky jde sestava měnit, po ní se zamkne
-/// a hraje se s tím, co je uložené.
+/// The season is split into weekly gameweeks, each opening with a deadline
+/// **on Saturday at 10:00 Prague time**. Until then the lineup can be changed;
+/// afterwards it locks and plays as saved.
 ///
-/// Kola se počítají od `seasonAnchor` — první soboty sezóny.
+/// Gameweeks are counted from `seasonAnchor` — the first Saturday of the season.
 enum FantasyDeadline {
-    /// Časová zóna, ve které uzávěrky platí (deadline je pro všechny stejný).
+    /// Time zone the deadlines are expressed in (the same for everyone).
     static let prague = TimeZone(identifier: "Europe/Prague") ?? .current
-    /// První sobota sezóny Fantasy (deadline GW1).
+    /// First Saturday of the fantasy season (the GW1 deadline).
     static let seasonAnchor = date(year: 2025, month: 9, day: 6, hour: 10, minute: 0)
 
-    /// Gregoriánský kalendář v pražském čase.
+    /// Gregorian calendar in Prague time.
     static var calendar: Calendar {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = prague
         return cal
     }
 
-    /// Sestaví datum v pražském čase ze složek.
+    /// Builds a date in Prague time from its components.
     static func date(year: Int, month: Int, day: Int, hour: Int, minute: Int) -> Date {
         var comps = DateComponents()
         comps.year = year
@@ -126,10 +126,10 @@ enum FantasyDeadline {
         return calendar.date(from: comps) ?? Date()
     }
 
-    /// Nejbližší sobota 10:00 (pokud je dnes sobota před 10:00 → dnes, jinak příští sobota).
+    /// Next Saturday 10:00 (today if it is Saturday before 10:00, otherwise next week).
     static func upcomingDeadline(from now: Date = Date()) -> Date {
         let cal = calendar
-        let weekday = cal.component(.weekday, from: now) // 1 = neděle … 7 = sobota
+        let weekday = cal.component(.weekday, from: now) // 1 = Sunday … 7 = Saturday
         let daysUntilSaturday = (7 - weekday + 7) % 7
         let startOfToday = cal.startOfDay(for: now)
         guard var saturday = cal.date(byAdding: .day, value: daysUntilSaturday, to: startOfDay(of: now) ?? startOfToday) else {
@@ -138,19 +138,19 @@ enum FantasyDeadline {
         saturday = cal.date(bySettingHour: 10, minute: 0, second: 0, of: saturday) ?? saturday
 
         if daysUntilSaturday == 0, now >= saturday {
-            // Sobota po 10:00 → další sobota
+            // Saturday past 10:00 → roll to next week
             saturday = cal.date(byAdding: .day, value: 7, to: saturday) ?? saturday
         }
         return saturday
     }
 
-    /// Deadline aktuálně hraného / právě uzamčeného kola (sobota 10:00 tohoto týdne, pokud už prošla).
+    /// Deadline of the gameweek being played (this Saturday 10:00 once it has passed).
     static func activeDeadline(from now: Date = Date()) -> Date {
         let next = upcomingDeadline(from: now)
         return calendar.date(byAdding: .day, value: -7, to: next) ?? next
     }
 
-    /// Číslo kola od anchor soboty (min. 1).
+    /// Gameweek number counted from the anchor Saturday (at least 1).
     static func gameweek(from now: Date = Date()) -> Int {
         let deadline = upcomingDeadline(from: now)
         let seconds = deadline.timeIntervalSince(seasonAnchor)
@@ -158,22 +158,22 @@ enum FantasyDeadline {
         return max(1, weeks + 1)
     }
 
-    /// Sestava pro `gameweek` se dá měnit, dokud `now < deadline` toho kola.
+    /// The lineup for `gameweek` stays editable while `now < deadline` of that week.
     static func deadline(forGameweek gw: Int) -> Date {
         calendar.date(byAdding: .day, value: (gw - 1) * 7, to: seasonAnchor) ?? seasonAnchor
     }
 
-    /// Jde sestava pro dané kolo ještě měnit?
+    /// Can the lineup for this gameweek still be changed?
     ///
     /// - Parameters:
-    ///   - gameweek: Číslo kola.
-    ///   - now: Čas, ke kterému se ptáme.
-    /// - Returns: `true`, dokud neprošla uzávěrka toho kola.
+    ///   - gameweek: Gameweek number.
+    ///   - now: Point in time to check against.
+    /// - Returns: `true` until that gameweek's deadline has passed.
     static func isEditable(gameweek: Int, at now: Date = Date()) -> Bool {
         now < deadline(forGameweek: gameweek)
     }
 
-    /// Zbývající čas do uzávěrky jako krátký text („2d 5h").
+    /// Time left until the deadline as short text ("2d 5h").
     static func countdown(to deadline: Date, from now: Date = Date()) -> String {
         let p = countdownParts(to: deadline, from: now)
         if p.days > 0 { return "\(p.days)d \(p.hours)h" }
@@ -181,7 +181,7 @@ enum FantasyDeadline {
         return "\(p.minutes)m \(p.seconds)s"
     }
 
-    /// Zbývající čas rozložený na dny/hodiny/minuty/sekundy — pro odpočet v UI.
+    /// Time left split into days/hours/minutes/seconds — for the countdown UI.
     static func countdownParts(to deadline: Date, from now: Date = Date()) -> (days: Int, hours: Int, minutes: Int, seconds: Int) {
         let interval = max(0, Int(deadline.timeIntervalSince(now)))
         let days = interval / 86_400
@@ -191,7 +191,7 @@ enum FantasyDeadline {
         return (days, hours, minutes, seconds)
     }
 
-    /// Půlnoc daného dne v pražském čase.
+    /// Midnight of the given day in Prague time.
     private static func startOfDay(of date: Date) -> Date? {
         calendar.startOfDay(for: date)
     }
@@ -199,31 +199,31 @@ enum FantasyDeadline {
 
 // MARK: - Rules
 
-/// Pravidla hry — rozpočet, ceny, rating hráčů a bodování.
+/// Game rules — budget, prices, player ratings and scoring.
 ///
-/// Všechno bez stavu, aby se dalo volat odkudkoli z UI.
+/// All stateless so it can be called from anywhere in the UI.
 enum FantasyRules {
-    /// Soutěž, ze které se dají vybírat hráči.
+    /// The competition players can be picked from.
     static let competitionSlug = "extraliga"
 
-    /// Rozpočet na celou sestavu v kreditech.
+    /// Budget for the whole lineup, in credits.
     ///
-    /// - Warning: Viz upozornění u `priceCredits(for:)` — při stropu ceny 15
-    ///   za hráče a šesti slotech je tenhle rozpočet zatím nedosažitelný.
+    /// - Warning: See the note on `priceCredits(for:)` — with a price cap of 15
+    ///   per player and six slots, this budget is currently unreachable.
     static let budgetCredits = 100
 
-    /// Kolik hráčů smí být v sestavě z jednoho klubu (proti „naskládám si celou Hostivař").
+    /// How many players one club may supply (stops stacking a single team).
     static let maxFromSameClub = 2
 
-    /// Počet míst v sestavě (1 brankář + 2 obránci + 3 útočníci).
+    /// Number of lineup spots (1 goalie + 2 defensemen + 3 forwards).
     static let squadSize = FantasySlot.allCases.count
 
-    /// Kredity, se kterými hráč startuje sezónu.
+    /// Credits a player starts the season with.
     static let startingWallet = 0
 
-    /// Patří hráč do Extraligy, a smí se tedy koupit?
+    /// Is the player in Extraliga, and therefore signable?
     ///
-    /// Primárně se řídí soutěží u hráče; když ta chybí, zkusí soutěž jeho týmu.
+    /// Goes by the player's competition first; falls back to their team's.
     static func isExtraligaPlayer(_ player: Player, teamsById: [String: Team], competitionsById: [String: Competition]) -> Bool {
         if let competitionId = player.competitionId,
            let competition = competitionsById[competitionId],
@@ -237,25 +237,25 @@ enum FantasyRules {
         return competition.slug == competitionSlug
     }
 
-    /// Sdílená tabulka parametrů hráčů, ze které počítá `rating(for:)`.
+    /// Shared attribute table that `rating(for:)` reads from.
     ///
-    /// Plní ji `FantasyAttributesStore` (ze serveru nebo z mocku). Je to
-    /// globální stav schválně: rating se počítá na desítkách míst v UI —
-    /// při řazení trhu, kreslení kartiček, výpočtu ceny — a protahovat store
-    /// do všech těch volání by je zbytečně zaneslo.
+    /// Filled by `FantasyAttributesStore` (from the server or the mock). Global
+    /// state on purpose: the rating is computed in dozens of UI spots — sorting
+    /// the market, drawing cards, pricing players — and threading the store
+    /// through all of those calls would only clutter them.
     ///
-    /// - Warning: Zapisuje se z `@MainActor` storu a čte z UI (taky main
-    ///   thread). Kdyby se rating začal počítat na pozadí, je potřeba to
-    ///   předělat na izolovaný stav.
+    /// - Warning: Written from a `@MainActor` store and read from the UI (also
+    ///   main thread). If ratings ever move off the main thread, this needs to
+    ///   become properly isolated state.
     static var attributesByPlayerId: [String: PlayerAttributes] = [:]
 
-    /// OVR hráče — číslo na kartičce.
+    /// The player's overall — the number on the card.
     ///
-    /// Přednost mají parametry od trenérů (`PlayerAttributes`, rozsah až 99).
-    /// Když hráč parametry nemá, spočítá se rating ze sezónních statistik
-    /// (`statRating(for:)`, rozsah 55–94), aby měl kartičku každý.
+    /// Coach-supplied attributes win (`PlayerAttributes`, up to 99). Without
+    /// them the rating is derived from season statistics
+    /// (`statRating(for:)`, 55–94), so every player still gets a card.
     ///
-    /// - Parameter player: Hráč.
+    /// - Parameter player: The player.
     /// - Returns: OVR 1–99.
     static func rating(for player: Player) -> Int {
         if let attrs = attributesByPlayerId[player.id],
@@ -265,16 +265,16 @@ enum FantasyRules {
         return statRating(for: player)
     }
 
-    /// OVR odhadnuté ze sezónních statistik — záloha, když chybí parametry.
+    /// Overall estimated from season statistics — the fallback without attributes.
     ///
-    /// Každá pozice se hodnotí jinak: brankář podle úspěšnosti zákroků a
-    /// průměru inkasovaných, hráči do pole podle bodů na zápas, gólů
-    /// a odehraných zápasů (odehranost odměňuje stálice v sestavě).
+    /// Each position is judged differently: goalies on save percentage and goals
+    /// against average, skaters on points per game, goals and games played
+    /// (which rewards regulars in the lineup).
     ///
-    /// Výsledek je schválně stlačený do **55–94**, aby statisticky odvozený
-    /// rating nikdy nepřebil hráče s ručně vyplněnými parametry.
+    /// The result is deliberately capped at **55–94** so a stats-derived rating
+    /// never outranks a player with hand-filled attributes.
     ///
-    /// - Parameter player: Hráč se sezónními statistikami.
+    /// - Parameter player: A player with season statistics.
     /// - Returns: OVR 55–94.
     static func statRating(for player: Player) -> Int {
         let value: Double
@@ -293,10 +293,10 @@ enum FantasyRules {
         return Int(min(94, max(55, value.rounded())))
     }
 
-    /// Barevná úroveň kartičky podle ratingu (bronz → stříbro → zlato → elite).
+    /// Card tier by rating (bronze → silver → gold → elite).
     ///
-    /// - Parameter rating: OVR hráče.
-    /// - Returns: Úroveň, která určuje gradient a orámování kartičky.
+    /// - Parameter rating: The player's overall.
+    /// - Returns: The tier driving the card's gradient and border.
     static func tier(for rating: Int) -> FantasyCardTier {
         switch rating {
         case ..<65: return .bronze
@@ -306,17 +306,17 @@ enum FantasyRules {
         }
     }
 
-    /// Cena hráče v kreditech, odvozená lineárně z jeho OVR.
+    /// Player price in credits, derived linearly from their overall.
     ///
-    /// Rating 55 stojí 4 kredity, rating 94 a výš patnáct — tedy strop.
+    /// A 55 costs 4 credits, a 94 and above costs fifteen — the cap.
     ///
-    /// - Parameter player: Hráč.
-    /// - Returns: Cena 4–15 kreditů.
+    /// - Parameter player: The player.
+    /// - Returns: A price between 4 and 15 credits.
     ///
-    /// - Warning: Strop 15 znamená, že celá sestava (6 hráčů) vyjde nejvýš na
-    ///   90 kreditů, zatímco rozpočet je `budgetCredits` = 100. Rozpočet tedy
-    ///   zatím nikoho neomezuje — než půjde Fantasy naostro, je potřeba buď
-    ///   snížit rozpočet, nebo roztáhnout cenové rozpětí.
+    /// - Warning: The cap of 15 means a full lineup (6 players) tops out at 90
+    ///   credits while the budget is `budgetCredits` = 100 — so the budget
+    ///   constrains nobody today. Before Fantasy goes live, either lower the
+    ///   budget or widen the price range.
     static func priceCredits(for player: Player) -> Int {
         let r = rating(for: player)
         // 55 → 4, 94 → 15
@@ -324,19 +324,19 @@ enum FantasyRules {
         return Int(min(15, max(4, raw.rounded())))
     }
 
-    /// Cena jako `Double` — jen kvůli staršímu UI, jinak použij `priceCredits(for:)`.
+    /// Price as a `Double` — legacy UI only, prefer `priceCredits(for:)`.
     static func price(for player: Player) -> Double {
         Double(priceCredits(for: player))
     }
 
-    /// Orientační bodový přínos hráče za **celou sezónu**.
+    /// Rough points a player contributes across the **whole season**.
     ///
-    /// Používá se jako vodítko při výběru v trhu a ve scoutu („kolik ten hráč
-    /// zhruba nasbírá"), **ne** k počítání skutečných bodů za kolo — od toho
+    /// Used as a hint in the market and the scout sheet ("roughly how much does
+    /// this player rack up"), **not** to award real gameweek points — that is
     /// je `weeklyFantasyPoints(for:in:)`.
     ///
-    /// - Parameter player: Hráč se sezónními statistikami.
-    /// - Returns: Body, nikdy záporné.
+    /// - Parameter player: A player with season statistics.
+    /// - Returns: Points, never negative.
     static func fantasyPoints(for player: Player) -> Int {
         switch player.position {
         case .goalie:
@@ -347,28 +347,28 @@ enum FantasyRules {
         }
     }
 
-    /// Kredity do peněženky za odehrané kolo.
+    /// Credits awarded for a completed gameweek.
     ///
-    /// Základ 10 kreditů dostane každý, kdo měl uloženou sestavu, k tomu
-    /// třetina nasbíraných bodů — nejvýš ale 40, aby jedno vydařené kolo
-    /// nerozhodlo celou sezónu.
+    /// Everyone with a saved lineup gets a base of 10, plus a third of the
+    /// points scored — capped at 40, so one great week cannot decide the
+    /// whole season.
     ///
-    /// - Parameter squadPoints: Body sestavy za dané kolo.
-    /// - Returns: 10–50 kreditů.
+    /// - Parameter squadPoints: Lineup points for that gameweek.
+    /// - Returns: Between 10 and 50 credits.
     static func roundRewardCredits(squadPoints: Int) -> Int {
         10 + min(40, squadPoints / 3)
     }
 
-    /// Nejbližší zápas týmu — pro štítek „vs Soupeř" na kartičce a ve scoutu.
+    /// A team's next match — powers the "vs Opponent" label on cards and scout.
     ///
-    /// Právě probíhající zápas se počítá taky, a tolerance tří hodin zpět
-    /// zajistí, že se štítek nepřepne hned po výkopu.
+    /// A live match counts too, and a three-hour grace period keeps the label
+    /// from flipping the moment the game starts.
     ///
     /// - Parameters:
-    ///   - teamId: Tým, jehož zápas hledáme.
-    ///   - matches: Zápasy, ve kterých se hledá.
-    ///   - date: Okamžik, od kterého se hledá (výchozí = teď).
-    /// - Returns: Nejbližší zápas, nebo `nil`, když už žádný nezbývá.
+    ///   - teamId: The team whose match we want.
+    ///   - matches: Matches to search through.
+    ///   - date: Point to search from (defaults to now).
+    /// - Returns: The next match, or `nil` when none are left.
     static func nextFixture(for teamId: String, in matches: [Match], after date: Date = Date()) -> Match? {
         matches
             .filter { $0.homeTeamId == teamId || $0.awayTeamId == teamId }
@@ -378,45 +378,45 @@ enum FantasyRules {
             .first
     }
 
-    /// Zápasy, které spadají do daného kola.
+    /// Matches belonging to a given gameweek.
     ///
-    /// Kolo je týdenní okno mezi dvěma deadliny (sobota 10:00 → další sobota
-    /// 10:00), takže zápas patří do toho kola, na jehož sestavu se hrál.
+    /// A gameweek is the window between two deadlines (Saturday 10:00 → the next
+    /// Saturday 10:00), so a match belongs to the lineup it was played under.
     ///
     /// - Parameters:
-    ///   - gameweek: Číslo kola.
-    ///   - matches: Zápasy, ze kterých se vybírá.
-    /// - Returns: Zápasy odehrané v okně daného kola.
+    ///   - gameweek: Gameweek number.
+    ///   - matches: Matches to pick from.
+    /// - Returns: Matches played within that gameweek's window.
     static func matches(inGameweek gameweek: Int, from matches: [Match]) -> [Match] {
         let start = FantasyDeadline.deadline(forGameweek: gameweek)
         let end = FantasyDeadline.deadline(forGameweek: gameweek + 1)
         return matches.filter { $0.scheduledAt >= start && $0.scheduledAt < end }
     }
 
-    /// Body hráče za jedno kolo podle toho, jak mu ten víkend šlo.
+    /// A player's points for one gameweek, based on how their weekend went.
     ///
-    /// Tohle je jádro Fantasy — právě podle těchhle bodů se posouvá žebříček.
-    /// Počítá se jen z **dohraných** zápasů daného kola; když hráčův tým ještě
-    /// nehrál, vrací nulu (kolo se pak vyhodnotí později).
+    /// This is the heart of Fantasy — these points drive the leaderboard.
+    /// Only **finished** matches of that gameweek count; if the player's team has
+    /// not played yet this returns zero (the week is scored later).
     ///
-    /// ## Bodování
+    /// ## Scoring
     ///
-    /// **Hráči do pole** — z gólových událostí zápasu:
-    /// - vstřelený gól: 3 body
+    /// **Skaters** — from the match's goal events:
+    /// - goal scored: 3 points
     /// - asistence: 2 body
     ///
-    /// **Brankáři** — z výsledku týmu, protože zápisy nemají, kdo chytal:
-    /// - výhra: 3 body
-    /// - čisté konto: 5 bodů
-    /// - jinak podle inkasovaných: `4 − obdržené góly` (nejméně 0)
+    /// **Goalies** — from the team result, since the data omits who played:
+    /// - win: 3 points
+    /// - clean sheet: 5 points
+    /// - otherwise by goals against: `4 − goals conceded` (never below 0)
     ///
     /// - Parameters:
-    ///   - player: Hráč ze sestavy.
-    ///   - gameweekMatches: Zápasy daného kola (viz `matches(inGameweek:from:)`).
-    /// - Returns: Body za kolo, nikdy záporné.
+    ///   - player: A player from the lineup.
+    ///   - gameweekMatches: That week's matches (see `matches(inGameweek:from:)`).
+    /// - Returns: Gameweek points, never negative.
     ///
-    /// - Note: U brankářů jde o odhad — dokud data neobsahují rozpis brankářů,
-    ///   dostane body brankář v sestavě bez ohledu na to, jestli opravdu chytal.
+    /// - Note: Goalie points are an estimate — until the data says who started,
+    ///   the rostered goalie scores whether or not they actually played.
     static func weeklyFantasyPoints(for player: Player, in gameweekMatches: [Match]) -> Int {
         let played = gameweekMatches.filter {
             $0.isFinished && ($0.homeTeamId == player.teamId || $0.awayTeamId == player.teamId)
@@ -434,7 +434,7 @@ enum FantasyRules {
             }
             return pts
         case .goalie:
-            // Bez rozpisu brankářů heuristika podle výsledku týmu (drž 1 brankáře v sestavě).
+            // Without goalie sheets, approximate from the team result.
             var pts = 0
             for match in played {
                 let isHome = match.homeTeamId == player.teamId
@@ -450,87 +450,87 @@ enum FantasyRules {
 
 // MARK: - Store
 
-/// Stav fantasy týmu jednoho uživatele.
+/// One user's fantasy team state.
 ///
-/// Drží sestavy po kolech, body, kredity a nastavení zobrazení. Data žijí
-/// lokálně v `UserDefaults` a po přihlášení se zrcadlí do Supabase, takže
-/// tým přežije přeinstalaci i přechod na jiné zařízení.
+/// Holds lineups per gameweek, points, credits and display settings. Data
+/// lives in `UserDefaults` and mirrors to Supabase once signed in, so a team
+/// survives a reinstall or a move to another device.
 ///
-/// ## Jak to spolu souvisí
+/// ## How the pieces fit
 ///
-/// 1. `syncGameweekIfNeeded(now:)` posune kolo, když prošla uzávěrka
-/// 2. uživatel skládá sestavu přes `assign(_:to:playersById:)`
-/// 3. `saveLineup()` ji potvrdí a odešle na server
-/// 4. `scorePendingGameweeks(playersById:matches:)` po odehrání kola přidělí body
+/// 1. `syncGameweekIfNeeded(now:)` advances the week once the deadline passes
+/// 2. the user builds a lineup via `assign(_:to:playersById:)`
+/// 3. `saveLineup()` confirms it and pushes it to the server
+/// 4. `scorePendingGameweeks(playersById:matches:)` awards points once played
 @MainActor
 final class FantasySquadStore: ObservableObject {
-    /// Název týmu zobrazený v žebříčku.
+    /// Team name shown on the leaderboard.
     @Published var teamName: String {
         didSet { defaults.set(teamName, forKey: Keys.teamName) }
     }
 
-    /// Sestavy po kolech: gameweek → slot → playerId
+    /// Working draft lineups per gameweek: gameweek → slot → player ID.
     @Published private(set) var lineupsByGameweek: [Int: [FantasySlot: String]] {
         didSet { persistLineups() }
     }
 
-    /// Kolo, které se právě hraje (a jehož sestava jde měnit do uzávěrky).
+    /// The gameweek being played (its lineup is editable until the deadline).
     @Published private(set) var activeGameweek: Int {
         didSet { defaults.set(activeGameweek, forKey: Keys.activeGW) }
     }
 
-    /// Nasbírané kredity za odehraná kola.
+    /// Credits collected from completed gameweeks.
     @Published private(set) var wallet: Int {
         didSet { defaults.set(wallet, forKey: Keys.wallet) }
     }
 
-    /// Součet bodů za celou sezónu — podle něj se řadí žebříček.
+    /// Season points total — what the leaderboard ranks by.
     @Published private(set) var seasonPoints: Int {
         didSet { defaults.set(seasonPoints, forKey: Keys.seasonPoints) }
     }
 
-    /// Kola, která už mají přidělené body (pojistka proti dvojímu započítání).
+    /// Gameweeks already scored (guards against double counting).
     @Published private(set) var scoredGameweeks: Set<Int> {
         didSet {
             defaults.set(Array(scoredGameweeks), forKey: Keys.scored)
         }
     }
 
-    /// Prohlížené kolo (šipky v hubu) — editace jen když == activeGameweek a není lock.
+    /// Gameweek being viewed (hub arrows) — editable only when it is the active one and unlocked.
     @Published var viewingGameweek: Int = 1
 
-    /// Zbývající volné přestupy (99 = neomezeně před prvním deadlinem).
+    /// Free transfers left (99 = unlimited before the first deadline).
     @Published private(set) var freeTransfers: Int {
         didSet { defaults.set(freeTransfers, forKey: Keys.freeTransfers) }
     }
 
-    /// Potvrzené sestavy po kolech — s těmihle se počítají body.
+    /// Confirmed lineups per gameweek — these are what scoring uses.
     ///
-    /// Liší se od `lineupsByGameweek`, což je rozpracovaný draft; do bodování
-    /// se dostane jen to, co uživatel potvrdil tlačítkem ULOŽIT SESTAVU.
+    /// Distinct from `lineupsByGameweek`, which is the working draft; only what
+    /// the user confirmed with the save button counts towards points.
     @Published private(set) var savedLineupsByGameweek: [Int: [FantasySlot: String]] {
         didSet { persistSaved() }
     }
 
-    /// Zobrazovat na kartičkách v sestavě cenu hráče.
+    /// Show the player price on lineup cards.
     @Published var showPriceOnPitch: Bool {
         didSet { defaults.set(showPriceOnPitch, forKey: Keys.showPrice) }
     }
-    /// Zobrazovat na kartičkách body za kolo.
+    /// Show gameweek points on lineup cards.
     @Published var showPointsOnPitch: Bool {
         didSet { defaults.set(showPointsOnPitch, forKey: Keys.showPoints) }
     }
-    /// Zobrazovat na kartičkách nejbližšího soupeře.
+    /// Show the next opponent on lineup cards.
     @Published var showOpponentOnPitch: Bool {
         didSet { defaults.set(showOpponentOnPitch, forKey: Keys.showOpponent) }
     }
 
-    /// Poslední hláška o uložení sestavy (pro potvrzení v UI).
+    /// Last lineup-save message (for the confirmation in the UI).
     @Published private(set) var lastSaveMessage: String?
 
     private let defaults = UserDefaults.standard
 
-    /// Klíče v `UserDefaults`. Verze `v3` kvůli migraci ze starších formátů.
+    /// `UserDefaults` keys. Version `v3` because of migrations from older formats.
     private enum Keys {
         static let teamName = "hb.fantasy.v3.teamName"
         static let lineups = "hb.fantasy.v3.lineups"
@@ -598,98 +598,98 @@ final class FantasySquadStore: ObservableObject {
         viewingGameweek = activeGameweek
     }
 
-    // MARK: Computed for active / viewing GW
+    // MARK: Computed for the active / viewed gameweek
 
-    /// Uzávěrka aktuálního kola.
+    /// Deadline of the active gameweek.
     var deadline: Date { FantasyDeadline.deadline(forGameweek: activeGameweek) }
-    /// Uzávěrka právě prohlíženého kola.
+    /// Deadline of the gameweek being viewed.
     var viewingDeadline: Date { FantasyDeadline.deadline(forGameweek: viewingGameweek) }
-    /// Prošla už uzávěrka aktuálního kola?
+    /// Has the active gameweek's deadline passed?
     var isLocked: Bool { !FantasyDeadline.isEditable(gameweek: activeGameweek) }
-    /// Jde prohlížená sestava měnit? (Jen aktuální kolo před uzávěrkou.)
+    /// Is the viewed lineup editable? (Only the active week before its deadline.)
     var isViewingEditable: Bool {
         viewingGameweek == activeGameweek && !isLocked
     }
-    /// Odpočet do uzávěrky jako text.
+    /// Countdown to the deadline as text.
     var countdownText: String { FantasyDeadline.countdown(to: deadline) }
 
-    /// Odpočet do uzávěrky po složkách — pro číselník v UI.
+    /// Countdown split into components — for the UI counter.
     var countdownParts: (days: Int, hours: Int, minutes: Int, seconds: Int) {
         FantasyDeadline.countdownParts(to: deadline)
     }
 
-    /// Obsazení slotů v prohlíženém kole (slot → ID hráče).
+    /// Slot assignments in the viewed gameweek (slot → player ID).
     var slotPlayerIds: [FantasySlot: String] {
         lineupsByGameweek[viewingGameweek] ?? lineupsByGameweek[activeGameweek] ?? [:]
     }
 
-    /// Kolik slotů je obsazených.
+    /// How many slots are filled.
     var filledCount: Int { slotPlayerIds.count }
-    /// Je sestava kompletní (všech šest slotů)?
+    /// Is the lineup complete (all six slots)?
     var isComplete: Bool { filledCount == FantasyRules.squadSize }
-    /// ID hráčů už zařazených v sestavě (aby nešel vybrat dvakrát).
+    /// IDs already in the lineup (so nobody can be picked twice).
     var selectedPlayerIds: Set<String> { Set(slotPlayerIds.values) }
 
-    /// Liší se rozpracovaná sestava od té potvrzené?
+    /// Does the working lineup differ from the confirmed one?
     var hasUnsavedChanges: Bool {
         let draft = lineupsByGameweek[activeGameweek] ?? [:]
         let saved = savedLineupsByGameweek[activeGameweek] ?? [:]
         return draft != saved
     }
 
-    /// Počet přestupů pro UI („∞" před prvním deadlinem).
+    /// Transfer count for the UI ("∞" before the first deadline).
     var transfersLabel: String {
         if freeTransfers >= 99 { return "∞" }
         return "\(freeTransfers)"
     }
 
-    /// Orientační pořadí z bodů (lokální demo).
+    /// Rough rank derived from points (local demo).
     var overallRank: Int {
         max(1, 12_000 - seasonPoints * 17)
     }
 
-    /// Orientační pořadí za kolo (lokální demo, než přijde reálný žebříček).
+    /// Rough gameweek rank (local demo until the real leaderboard arrives).
     var roundRank: Int {
         max(1, 8_500 - squadPoints(playersById: [:]) * 11)
     }
 
-    /// Hráč obsazující daný slot.
+    /// The player occupying a slot.
     func playerId(for slot: FantasySlot) -> String? { slotPlayerIds[slot] }
 
-    /// Na kterém slotu hráč je (pokud vůbec).
+    /// Which slot a player sits in, if any.
     func slotContaining(playerId: String) -> FantasySlot? {
         slotPlayerIds.first { $0.value == playerId }?.key
     }
 
-    /// Kolik kreditů stojí aktuální sestava.
+    /// What the current lineup costs in credits.
     func spentCredits(playersById: [String: Player]) -> Int {
         slotPlayerIds.values.compactMap { playersById[$0] }.reduce(0) { $0 + FantasyRules.priceCredits(for: $1) }
     }
 
-    /// Kolik kreditů z rozpočtu ještě zbývá.
+    /// How many budget credits are left.
     func remainingBudget(playersById: [String: Player]) -> Int {
         FantasyRules.budgetCredits - spentCredits(playersById: playersById)
     }
 
-    /// Kompatibilita
+    /// Legacy alias for `spentCredits(playersById:)`.
     func spent(playersById: [String: Player]) -> Double {
         Double(spentCredits(playersById: playersById))
     }
 
-    /// Orientační bodový součet sestavy ze sezónních statistik (náhled, ne skutečné body).
+    /// Rough lineup total from season stats (a preview, not real points).
     func squadPoints(playersById: [String: Player]) -> Int {
         slotPlayerIds.values.compactMap { playersById[$0] }.reduce(0) { $0 + FantasyRules.fantasyPoints(for: $1) }
     }
 
-    /// Přepne prohlížené kolo šipkami v hubu.
+    /// Moves the viewed gameweek via the hub arrows.
     func shiftViewingGameweek(by delta: Int) {
         viewingGameweek = max(1, viewingGameweek + delta)
     }
 
-    /// Reálný žebříček fantasy ze serveru (fallback: lokální demo v UI).
+    /// Real fantasy leaderboard from the server (falls back to the local demo).
     @Published private(set) var remoteLeaderboard: [FantasyLeaderRow] = []
 
-    /// Uloží draft aktivního kola (jako „ULOŽIT SESTAVU“). Po přihlášení pushne na server.
+    /// Confirms the active gameweek's draft. Pushes to the server once signed in.
     @discardableResult
     func saveLineup() -> String? {
         guard !isLocked else { return "Deadline prošlo — sestavu už nelze uložit." }
@@ -703,16 +703,16 @@ final class FantasySquadStore: ObservableObject {
         return nil
     }
 
-    /// Posune aktivní kolo podle kalendáře a připraví sestavu k editaci.
+    /// Advances the active gameweek and prepares its lineup for editing.
     ///
-    /// Volá se při startu a při otevření Fantasy. Když mezitím prošel deadline
-    /// (sobota 10:00), přepne se na nové kolo, převezme se do něj poslední
-    /// uložená sestava jako výchozí a přičte se volný přestup.
+    /// Called on launch and when Fantasy opens. If a deadline passed in the
+    /// meantime, it switches to the new week, carries the last saved lineup over
+    /// as a starting point and grants a free transfer.
     ///
-    /// Body **nepočítá** — na to je `scorePendingGameweeks(playersById:matches:)`,
-    /// které potřebuje odehrané zápasy.
+    /// Awards **no** points — that is `scorePendingGameweeks(playersById:matches:)`,
+    /// which needs finished matches.
     ///
-    /// - Parameter now: Čas, ke kterému se kolo určuje (kvůli testovatelnosti).
+    /// - Parameter now: Point in time the gameweek is derived from (injectable for tests).
     func syncGameweekIfNeeded(now: Date = Date()) {
         let gw = FantasyDeadline.gameweek(from: now)
 
@@ -740,20 +740,20 @@ final class FantasySquadStore: ObservableObject {
         if viewingGameweek < 1 { viewingGameweek = activeGameweek }
     }
 
-    /// Dopočítá body za všechna uzavřená kola, která ještě nebyla vyhodnocená.
+    /// Scores every closed gameweek that has not been settled yet.
     ///
-    /// Projde kola od začátku sezóny po to aktuální a u každého, které ještě
-    /// nemá spočítané body, sečte výkon uložené sestavy. Kolo přeskočí, když:
-    /// - sestava nebyla uložená celá (1 brankář, 2 obránci, 3 útočníci), nebo
-    /// - z kola ještě není dohraný ani jeden zápas (vyhodnotí se příště).
+    /// Walks the weeks from the start of the season to the current one and sums
+    /// the saved lineup's performance. A week is skipped when:
+    /// - the lineup was not saved in full (1 goalie, 2 defensemen, 3 forwards), or
+    /// - not a single match of that week has finished yet (settled next time).
     ///
-    /// Vyhodnocené kolo se zapíše do `scoredGameweeks`, takže se body nikdy
-    /// nepřičtou dvakrát, a odešle se na server.
+    /// A settled week is recorded in `scoredGameweeks`, so points can never be
+    /// awarded twice, and the result is sent to the server.
     ///
     /// - Parameters:
-    ///   - playersById: Hráči podle ID — musí obsahovat hráče ze sestav.
-    ///   - allMatches: Zápasy sezóny, ze kterých se výkon počítá.
-    /// - Returns: Kolik bodů se právě přičetlo (0 = nic nového k vyhodnocení).
+    ///   - playersById: Players by ID — must cover everyone in the lineups.
+    ///   - allMatches: Season matches the performance is computed from.
+    /// - Returns: Points just awarded (0 = nothing new to settle).
     @discardableResult
     func scorePendingGameweeks(playersById: [String: Player], matches allMatches: [Match]) -> Int {
         guard !allMatches.isEmpty, activeGameweek > 1 else { return 0 }
@@ -778,11 +778,11 @@ final class FantasySquadStore: ObservableObject {
 
     // MARK: - Server sync (Supabase)
 
-    /// Natáhne uložené sestavy a body ze serveru — server je zdroj pravdy.
+    /// Pulls saved lineups and points from the server — the server is the truth.
     ///
-    /// Přepíše lokální stav, aby uživatel viděl svůj tým i po přeinstalaci
-    /// nebo na jiném zařízení. Bez přihlášení a v demo režimu nedělá nic.
-    /// Chyby polyká — appka jede dál na lokálních datech.
+    /// Overwrites local state so the user sees their team after a reinstall or
+    /// on another device. Does nothing when signed out or in demo mode.
+    /// Errors are swallowed — the app carries on with local data.
     func loadRemote() async {
         guard !FantasyMock.enabled else { return }
         guard let auth = AuthAccess.store, auth.isAuthenticated, let userId = auth.userId else { return }
@@ -794,11 +794,11 @@ final class FantasySquadStore: ObservableObject {
         } catch { /* soft */ }
     }
 
-    /// Načte celkový žebříček Fantasy.
+    /// Loads the overall fantasy leaderboard.
     ///
-    /// Čte veřejný pohled `fantasy_leaderboard`, takže funguje i bez
-    /// přihlášení. Když se nepodaří (nebo v demo režimu), zůstane prázdný
-    /// a UI ukáže lokální demo s boty.
+    /// Reads the public `fantasy_leaderboard` view, so it works without signing
+    /// in. On failure (or in demo mode) it stays empty and the UI shows the
+    /// local demo with bots.
     func loadLeaderboard() async {
         guard !FantasyMock.enabled else { return }
         guard let api = AuthAccess.store?.authAPI else { return }
@@ -806,14 +806,14 @@ final class FantasySquadStore: ObservableObject {
         catch { /* soft */ }
     }
 
-    /// Přepíše lokální stav daty ze serveru.
+    /// Replaces local state with server data.
     ///
-    /// Sestavy se zapisují jako uložené i jako rozpracované (na serveru jsou
-    /// jen potvrzené sestavy), body a kredity se sečtou přes všechna kola.
+    /// Lineups land in both the draft and the confirmed map (the server only
+    /// stores confirmed ones); points and credits are summed across weeks.
     ///
     /// - Parameters:
-    ///   - squads: Uložené sestavy po kolech.
-    ///   - scores: Vyhodnocená kola s body a kredity.
+    ///   - squads: Saved lineups per gameweek.
+    ///   - scores: Settled gameweeks with points and credits.
     private func applyRemote(squads: [FantasySquadRow], scores: [FantasyScoreRow]) {
         if !squads.isEmpty {
             var lineups = lineupsByGameweek
@@ -839,9 +839,9 @@ final class FantasySquadStore: ObservableObject {
         }
     }
 
-    /// Odešle uloženou sestavu daného kola na server.
+    /// Pushes a gameweek's saved lineup to the server.
     ///
-    /// - Parameter gameweek: Kolo, jehož sestava se má uložit.
+    /// - Parameter gameweek: The gameweek whose lineup is saved.
     private func pushSquad(gameweek: Int) async {
         guard let auth = AuthAccess.store, auth.isAuthenticated, let userId = auth.userId else { return }
         let slots = (savedLineupsByGameweek[gameweek] ?? [:])
@@ -854,12 +854,12 @@ final class FantasySquadStore: ObservableObject {
         } catch { /* soft */ }
     }
 
-    /// Zapíše výsledek vyhodnoceného kola na server (podklad pro žebříček).
+    /// Writes a settled gameweek to the server (feeds the leaderboard).
     ///
     /// - Parameters:
-    ///   - gameweek: Vyhodnocené kolo.
+    ///   - gameweek: The settled gameweek.
     ///   - points: Body sestavy za kolo.
-    ///   - credits: Přidělené kredity.
+    ///   - credits: Credits awarded.
     private func pushScore(gameweek: Int, points: Int, credits: Int) async {
         guard let auth = AuthAccess.store, auth.isAuthenticated, let userId = auth.userId else { return }
         do {
@@ -870,17 +870,17 @@ final class FantasySquadStore: ObservableObject {
         } catch { /* soft */ }
     }
 
-    /// Zařadí hráče na slot v sestavě.
+    /// Places a player into a lineup slot.
     ///
-    /// Postupně ověří všechna pravidla: kolo jde měnit, hráč sedí na pozici,
-    /// vejde se do rozpočtu a nepřekročí limit hráčů z jednoho klubu. Když
-    /// hráč už v sestavě je na jiném slotu, přesune se (nezdvojí se).
+    /// Checks every rule in turn: the week is editable, the position matches, the
+    /// budget holds and the per-club limit is respected. A player already in the
+    /// lineup elsewhere is moved rather than duplicated.
     ///
     /// - Parameters:
-    ///   - player: Vybraný hráč.
-    ///   - targetSlot: Slot, kam ho zařadit.
-    ///   - playersById: Hráči podle ID (kvůli cenám a klubům už zařazených).
-    /// - Returns: `nil` při úspěchu, jinak hlášku, které pravidlo se porušilo.
+    ///   - player: The chosen player.
+    ///   - targetSlot: The slot to place them in.
+    ///   - playersById: Players by ID (for prices and clubs already rostered).
+    /// - Returns: `nil` on success, otherwise a message naming the broken rule.
     @discardableResult
     func assign(_ player: Player, to targetSlot: FantasySlot, playersById: [String: Player]) -> String? {
         guard isViewingEditable else {
@@ -917,7 +917,7 @@ final class FantasySquadStore: ObservableObject {
         return nil
     }
 
-    /// Uvolní jeden slot v sestavě.
+    /// Clears a single lineup slot.
     func clear(slot: FantasySlot) {
         guard isViewingEditable else { return }
         var next = slotPlayerIds
@@ -927,7 +927,7 @@ final class FantasySquadStore: ObservableObject {
         lineupsByGameweek = all
     }
 
-    /// Vyprázdní celou sestavu aktuálního kola.
+    /// Clears the whole lineup of the active gameweek.
     func clearAll() {
         guard isViewingEditable else { return }
         var all = lineupsByGameweek
@@ -935,7 +935,7 @@ final class FantasySquadStore: ObservableObject {
         lineupsByGameweek = all
     }
 
-    /// Manuální vyhodnocení uzavřených kol (např. po sobotě 10:00). Vrací přírůstek bodů.
+    /// Manually settles closed gameweeks (e.g. after Saturday 10:00). Returns points gained.
     @discardableResult
     func claimRoundReward(playersById: [String: Player], matches: [Match]) -> Int {
         scorePendingGameweeks(playersById: playersById, matches: matches)
@@ -943,17 +943,17 @@ final class FantasySquadStore: ObservableObject {
 
     // MARK: Persistence
 
-    /// Uloží rozpracované sestavy do `UserDefaults`.
+    /// Persists the draft lineups to `UserDefaults`.
     private func persistLineups() {
         persist(lineupsByGameweek, key: Keys.lineups)
     }
 
-    /// Uloží potvrzené sestavy do `UserDefaults`.
+    /// Persists the confirmed lineups to `UserDefaults`.
     private func persistSaved() {
         persist(savedLineupsByGameweek, key: Keys.saved)
     }
 
-    /// Zapíše sestavy po kolech pod daný klíč (slovníky se serializují na řetězce).
+    /// Writes lineups per gameweek under a key (dictionaries serialise to strings).
     private func persist(_ map: [Int: [FantasySlot: String]], key: String) {
         var encoded: [String: [String: String]] = [:]
         for (gw, slots) in map {
@@ -966,7 +966,7 @@ final class FantasySquadStore: ObservableObject {
         defaults.set(encoded, forKey: key)
     }
 
-    /// Načte sestavy po kolech z `UserDefaults`; poškozená data ignoruje.
+    /// Reads lineups per gameweek from `UserDefaults`; ignores corrupted data.
     private static func loadLineups(from defaults: UserDefaults, key: String = Keys.lineups) -> [Int: [FantasySlot: String]] {
         guard let raw = defaults.dictionary(forKey: key) as? [String: [String: String]] else {
             return [:]
@@ -985,7 +985,7 @@ final class FantasySquadStore: ObservableObject {
         return result
     }
 
-    /// Přenese sestavu ze starších verzí úložiště (v1/v2), pokud v3 ještě nic nemá.
+    /// Carries a lineup over from older storage (v1/v2) when v3 is still empty.
     private func migrateLegacyIfNeeded() {
         guard lineupsByGameweek.isEmpty else { return }
         let legacy = (defaults.dictionary(forKey: Keys.legacyV2Slots) as? [String: String])
