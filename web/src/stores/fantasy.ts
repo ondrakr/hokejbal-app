@@ -3,6 +3,14 @@
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 import type { Match, Player, PlayerPosition } from "@/lib/types";
 import { readJSON, readString, writeJSON, writeString } from "@/lib/storage";
+import { deadlineForGameweek, gameweek as gameweekFor, isEditable } from "@/lib/fantasyDeadline";
+import {
+  attributeRows,
+  computedOverall,
+  mockAttributes,
+  type AttributeRow,
+  type PlayerAttributes,
+} from "@/lib/fantasyAttributes";
 
 export type FantasySlot = "G" | "D1" | "D2" | "F1" | "F2" | "F3";
 
@@ -84,7 +92,9 @@ function hydrate() {
   const lineups = readJSON<LineupsByGW>(KEYS.lineups, {});
   const savedRaw = readJSON<LineupsByGW>(KEYS.saved, {});
   const saved = Object.keys(savedRaw).length ? savedRaw : { ...lineups };
-  const activeGW = Number(readString(KEYS.activeGW, "1")) || 1;
+  // Bez uloženého kola (nová instalace) startujeme rovnou na dopočítaném — viz iOS `init`.
+  const storedGW = Math.trunc(Number(readString(KEYS.activeGW, "")));
+  const activeGW = Number.isFinite(storedGW) && storedGW >= 1 ? storedGW : gameweekFor();
   state = {
     teamName: readString(KEYS.teamName, "Můj Fantasy tým"),
     activeGameweek: activeGW,
@@ -98,6 +108,48 @@ function hydrate() {
     lastSaveMessage: null,
   };
   hydrated = true;
+  syncGameweek();
+}
+
+/**
+ * Posune aktivní kolo podle kalendáře — obdoba `syncGameweekIfNeeded` na iOS.
+ *
+ * Migrace: sestava dosavadního kola se do nového **zkopíruje**, původní záznam
+ * zůstává pod svým klíčem jako archiv. Uživatel s uloženou sestavou pod GW 1 tak
+ * o ni nepřijde a zároveň ji rovnou vidí v dopočítaném aktivním kole.
+ *
+ * Body ani kredity se tu nepřidělují — web nemá při hydrataci k dispozici hráče,
+ * takže vyhodnocení uplynulých kol zůstává mimo tuto funkci.
+ */
+function syncGameweek(now: Date = new Date()) {
+  const gw = gameweekFor(now);
+  const key = String(gw);
+  const lineups = { ...state.lineups };
+
+  if (gw > state.activeGameweek) {
+    const old = String(state.activeGameweek);
+    let seeded = false;
+    if (!lineups[key]) {
+      lineups[key] = { ...(state.saved[old] ?? lineups[old] ?? {}) };
+      seeded = true;
+    }
+    state = { ...state, activeGameweek: gw, viewingGameweek: gw, lineups };
+    persistMeta();
+    if (seeded) persistDraft();
+    return;
+  }
+
+  // Kolo se nezměnilo (nebo je uložené napřed) — jen doplníme prázdný draft.
+  if (!lineups[key]) {
+    lineups[key] = { ...(lineups[String(gw - 1)] ?? {}) };
+    state = { ...state, lineups };
+    persistDraft();
+  }
+}
+
+/** iOS `isViewingEditable` — editovat lze jen aktivní kolo a jen před jeho deadlinem. */
+function canEditNow(now: Date = new Date()): boolean {
+  return state.viewingGameweek === state.activeGameweek && isEditable(state.activeGameweek, now);
 }
 
 function persistMeta() {
@@ -125,8 +177,8 @@ function lineupEqual(a: LineupMap, b: LineupMap) {
   return true;
 }
 
-/** FIFA-like rating 55…94 — viz FantasyRules.rating. */
-export function playerRating(player: Player): number {
+/** OVR odhadnuté ze sezónních statistik — fallback bez parametrů (55…94). */
+export function statRating(player: Player): number {
   let value: number;
   if (player.position === "goalie") {
     const save = player.savePercentage ?? 88;
@@ -140,6 +192,37 @@ export function playerRating(player: Player): number {
     value = 58 + ppg * 20 + player.goals * 1.1 + player.games * 0.2;
   }
   return Math.min(94, Math.max(55, Math.round(value)));
+}
+
+/**
+ * Parametry hráče — v demo režimu generované, jinak z `player_attributes`.
+ *
+ * Cache podle `player.id`: rating se počítá v desítkách míst UI (řazení trhu,
+ * kreslení karet, cena) a generování při každém volání by bylo zbytečné.
+ */
+const attributesCache = new Map<string, PlayerAttributes>();
+
+export function playerAttributes(player: Player): PlayerAttributes {
+  const cached = attributesCache.get(player.id);
+  if (cached) return cached;
+  const generated = mockAttributes(player, statRating(player));
+  attributesCache.set(player.id, generated);
+  return generated;
+}
+
+/** Parametry k vykreslení ve scoutu (label + hodnota). */
+export function playerAttributeRows(player: Player): AttributeRow[] {
+  return attributeRows(playerAttributes(player), player.position);
+}
+
+/**
+ * OVR hráče — číslo na kartě.
+ *
+ * Vyhrávají parametry od trenérů (až 99); bez nich se OVR spočítá ze
+ * statistik (`statRating`, 55–94), takže kartu má každý hráč.
+ */
+export function playerRating(player: Player): number {
+  return computedOverall(playerAttributes(player), player.position) ?? statRating(player);
 }
 
 export function tierForRating(rating: number): FantasyCardTier {
@@ -160,6 +243,45 @@ export function tierLabel(ratingOrTier: number | FantasyCardTier): string {
       return "Gold";
     case "elite":
       return "Elite";
+  }
+}
+
+/** Vzhled karty podle tieru — 1:1 s `FantasyCardTier` na iOS. */
+export const TIER_STYLE: Record<
+  FantasyCardTier,
+  { gradient: string; accent: string; glow: string }
+> = {
+  bronze: {
+    gradient: "linear-gradient(135deg,#8c5229,#592e14)",
+    accent: "#e6b373",
+    glow: "rgba(230,179,115,0.35)",
+  },
+  silver: {
+    gradient: "linear-gradient(135deg,#b8bdc7,#6b7380)",
+    accent: "#ffffff",
+    glow: "rgba(255,255,255,0.35)",
+  },
+  gold: {
+    gradient: "linear-gradient(135deg,#f2c747,#b87a14)",
+    accent: "#fff0a8",
+    glow: "rgba(242,199,71,0.45)",
+  },
+  elite: {
+    gradient: "linear-gradient(135deg,#2e2447,#8c5914)",
+    accent: "#ffd64d",
+    glow: "rgba(255,214,77,0.5)",
+  },
+};
+
+/** Zkratka pozice na kartě (B / O / Ú). */
+export function positionCardCode(position: PlayerPosition): string {
+  switch (position) {
+    case "goalie":
+      return "B";
+    case "defenseman":
+      return "O";
+    case "forward":
+      return "Ú";
   }
 }
 
@@ -196,6 +318,11 @@ export function slotPosition(slot: FantasySlot): PlayerPosition {
 
 export function slotTitle(slot: FantasySlot): string {
   return SLOT_TITLE[slot];
+}
+
+/** Zkratka slotu na kartě (B / O / Ú). */
+export function slotShortTitle(slot: FantasySlot): string {
+  return positionCardCode(SLOT_POSITION[slot]);
 }
 
 function spentCreditsFor(lineup: LineupMap, playersById: Map<string, Player> | Record<string, Player>) {
@@ -248,9 +375,16 @@ export function useFantasy() {
     [snap.lineups, snap.viewingGameweek, snap.activeGameweek]
   );
 
-  /** Minulé kolo je jen ke čtení; editace jen u aktivního GW. */
-  const isViewingEditable = snap.viewingGameweek === snap.activeGameweek;
-  const isLocked = !isViewingEditable;
+  /** Deadline aktivního / prohlíženého kola (sobota 10:00 Praha). */
+  const deadline = useMemo(() => deadlineForGameweek(snap.activeGameweek), [snap.activeGameweek]);
+  const viewingDeadline = useMemo(
+    () => deadlineForGameweek(snap.viewingGameweek),
+    [snap.viewingGameweek]
+  );
+  /** iOS: `isLocked` = deadline aktivního kola už prošel. */
+  const isLocked = !isEditable(snap.activeGameweek);
+  /** Minulé kolo je jen ke čtení; editace jen u aktivního GW před deadlinem. */
+  const isViewingEditable = snap.viewingGameweek === snap.activeGameweek && !isLocked;
 
   const draftLineup = lineupFor(snap.viewingGameweek);
   const filledCount = Object.values(draftLineup).filter(Boolean).length;
@@ -301,6 +435,9 @@ export function useFantasy() {
     if (state.viewingGameweek !== state.activeGameweek) {
       return "Toto kolo nejde upravovat (deadline sobota 10:00).";
     }
+    if (!isEditable(state.activeGameweek)) {
+      return "Deadline prošlo — sestavu už nelze uložit.";
+    }
     const gw = String(state.activeGameweek);
     const draft = state.lineups[gw] ?? {};
     const count = Object.values(draft).filter(Boolean).length;
@@ -323,7 +460,7 @@ export function useFantasy() {
    */
   const setSlot = useCallback(
     (slot: FantasySlot, player: Player, playersById: Map<string, Player> | Record<string, Player>): string | null => {
-      if (state.viewingGameweek !== state.activeGameweek) {
+      if (!canEditNow()) {
         return "Toto kolo nejde upravovat (deadline sobota 10:00).";
       }
       if (player.position !== SLOT_POSITION[slot]) {
@@ -375,7 +512,7 @@ export function useFantasy() {
   );
 
   const removeSlot = useCallback((slot: FantasySlot) => {
-    if (state.viewingGameweek !== state.activeGameweek) return;
+    if (!canEditNow()) return;
     const gw = String(state.activeGameweek);
     const current: LineupMap = { ...(state.lineups[gw] ?? {}) };
     delete current[slot];
@@ -389,7 +526,7 @@ export function useFantasy() {
   }, []);
 
   const clearLineup = useCallback(() => {
-    if (state.viewingGameweek !== state.activeGameweek) return;
+    if (!canEditNow()) return;
     const gw = String(state.activeGameweek);
     state = {
       ...state,
@@ -407,6 +544,8 @@ export function useFantasy() {
     isComplete,
     isViewingEditable,
     isLocked,
+    deadline,
+    viewingDeadline,
     hasUnsavedChanges,
     selectedPlayerIds,
     lineupFor,
