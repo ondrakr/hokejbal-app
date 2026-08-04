@@ -4,6 +4,13 @@ import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 import type { Match, Player, PlayerPosition } from "@/lib/types";
 import { readJSON, readString, writeJSON, writeString } from "@/lib/storage";
 import { deadlineForGameweek, gameweek as gameweekFor, isEditable } from "@/lib/fantasyDeadline";
+import {
+  attributeRows,
+  computedOverall,
+  mockAttributes,
+  type AttributeRow,
+  type PlayerAttributes,
+} from "@/lib/fantasyAttributes";
 
 export type FantasySlot = "G" | "D1" | "D2" | "F1" | "F2" | "F3";
 
@@ -170,8 +177,8 @@ function lineupEqual(a: LineupMap, b: LineupMap) {
   return true;
 }
 
-/** FIFA-like rating 55…94 — viz FantasyRules.rating. */
-export function playerRating(player: Player): number {
+/** OVR odhadnuté ze sezónních statistik — fallback bez parametrů (55…94). */
+export function statRating(player: Player): number {
   let value: number;
   if (player.position === "goalie") {
     const save = player.savePercentage ?? 88;
@@ -185,6 +192,37 @@ export function playerRating(player: Player): number {
     value = 58 + ppg * 20 + player.goals * 1.1 + player.games * 0.2;
   }
   return Math.min(94, Math.max(55, Math.round(value)));
+}
+
+/**
+ * Parametry hráče — v demo režimu generované, jinak z `player_attributes`.
+ *
+ * Cache podle `player.id`: rating se počítá v desítkách míst UI (řazení trhu,
+ * kreslení karet, cena) a generování při každém volání by bylo zbytečné.
+ */
+const attributesCache = new Map<string, PlayerAttributes>();
+
+export function playerAttributes(player: Player): PlayerAttributes {
+  const cached = attributesCache.get(player.id);
+  if (cached) return cached;
+  const generated = mockAttributes(player, statRating(player));
+  attributesCache.set(player.id, generated);
+  return generated;
+}
+
+/** Parametry k vykreslení ve scoutu (label + hodnota). */
+export function playerAttributeRows(player: Player): AttributeRow[] {
+  return attributeRows(playerAttributes(player), player.position);
+}
+
+/**
+ * OVR hráče — číslo na kartě.
+ *
+ * Vyhrávají parametry od trenérů (až 99); bez nich se OVR spočítá ze
+ * statistik (`statRating`, 55–94), takže kartu má každý hráč.
+ */
+export function playerRating(player: Player): number {
+  return computedOverall(playerAttributes(player), player.position) ?? statRating(player);
 }
 
 export function tierForRating(rating: number): FantasyCardTier {
@@ -205,6 +243,45 @@ export function tierLabel(ratingOrTier: number | FantasyCardTier): string {
       return "Gold";
     case "elite":
       return "Elite";
+  }
+}
+
+/** Vzhled karty podle tieru — 1:1 s `FantasyCardTier` na iOS. */
+export const TIER_STYLE: Record<
+  FantasyCardTier,
+  { gradient: string; accent: string; glow: string }
+> = {
+  bronze: {
+    gradient: "linear-gradient(135deg,#8c5229,#592e14)",
+    accent: "#e6b373",
+    glow: "rgba(230,179,115,0.35)",
+  },
+  silver: {
+    gradient: "linear-gradient(135deg,#b8bdc7,#6b7380)",
+    accent: "#ffffff",
+    glow: "rgba(255,255,255,0.35)",
+  },
+  gold: {
+    gradient: "linear-gradient(135deg,#f2c747,#b87a14)",
+    accent: "#fff0a8",
+    glow: "rgba(242,199,71,0.45)",
+  },
+  elite: {
+    gradient: "linear-gradient(135deg,#2e2447,#8c5914)",
+    accent: "#ffd64d",
+    glow: "rgba(255,214,77,0.5)",
+  },
+};
+
+/** Zkratka pozice na kartě (B / O / Ú). */
+export function positionCardCode(position: PlayerPosition): string {
+  switch (position) {
+    case "goalie":
+      return "B";
+    case "defenseman":
+      return "O";
+    case "forward":
+      return "Ú";
   }
 }
 
@@ -241,6 +318,11 @@ export function slotPosition(slot: FantasySlot): PlayerPosition {
 
 export function slotTitle(slot: FantasySlot): string {
   return SLOT_TITLE[slot];
+}
+
+/** Zkratka slotu na kartě (B / O / Ú). */
+export function slotShortTitle(slot: FantasySlot): string {
+  return positionCardCode(SLOT_POSITION[slot]);
 }
 
 function spentCreditsFor(lineup: LineupMap, playersById: Map<string, Player> | Record<string, Player>) {

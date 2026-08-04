@@ -580,6 +580,249 @@ a {
   line-height: 1;
 }
 
+/* ===== Fantasy ===== */
+
+/* Hřiště pod sestavou — led + čáry + kruhy */
+.hb-rink {
+  background: linear-gradient(180deg, #1d5c7f 0%, #143a52 55%, #0d2a3f 100%);
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, 0.16),
+    0 12px 28px rgba(0, 0, 0, 0.35);
+}
+
+/*
+  Kresba ledu — jen kruhy. Vodorovné čáry dělají řady sestavy (`.hb-rink-line`),
+  aby seděly na rozhraní formací a ne na náhodných procentech výšky.
+*/
+.hb-rink-lines {
+  background-image:
+    /* středový kruh */
+    radial-gradient(
+      circle at 50% 50%,
+      transparent 0 62px,
+      rgba(255, 255, 255, 0.14) 62px 63.5px,
+      transparent 63.5px
+    ),
+    /* vhazovací kruhy */
+      radial-gradient(
+        circle at 14% 16%,
+        transparent 0 26px,
+        rgba(255, 255, 255, 0.1) 26px 27.5px,
+        transparent 27.5px
+      ),
+    radial-gradient(
+      circle at 86% 16%,
+      transparent 0 26px,
+      rgba(255, 255, 255, 0.1) 26px 27.5px,
+      transparent 27.5px
+    ),
+    radial-gradient(
+      circle at 14% 86%,
+      transparent 0 26px,
+      rgba(255, 255, 255, 0.1) 26px 27.5px,
+      transparent 27.5px
+    ),
+    radial-gradient(
+      circle at 86% 86%,
+      transparent 0 26px,
+      rgba(255, 255, 255, 0.1) 26px 27.5px,
+      transparent 27.5px
+    );
+}
+
+/* Modrá čára mezi řadami sestavy */
+.hb-rink-line {
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(140, 200, 240, 0.45) 12%,
+    rgba(140, 200, 240, 0.45) 88%,
+    transparent
+  );
+}
+
+/* Hero pruh nad fantasy obsahem */
+.hb-fantasy-hero {
+  background: linear-gradient(135deg, #1d2430 0%, #131820 55%, #0d1017 100%);
+}
+
+/* Segmentovaný přepínač (řazení v trhu) */
+.hb-seg {
+  display: flex;
+  gap: 2px;
+  border-radius: 999px;
+  background: var(--card-inset);
+  padding: 3px;
+}
+
+.hb-seg-item {
+  flex: 1;
+  border-radius: 999px;
+  padding: 7px 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.hb-seg-item[data-active="true"] {
+  background: var(--card);
+  color: var(--brand);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+/*
+  Tlačítka ve Fantasy.
+
+  DŮLEŽITÉ: globální `button { background: none; color: inherit; font: inherit }`
+  výše je nelayerované CSS, takže přebíjí Tailwind utility z `@layer utilities`.
+  Barvy, pozadí a velikost písma na <button> proto musí jít přes vlastní třídy.
+*/
+
+/* Textový odkaz v hlavičce / řádku (Zavřít, Vymazat, Zrušit) */
+.hb-fs-link {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--brand);
+}
+
+.hb-fs-link--sm {
+  font-size: 13px;
+}
+
+/* Kulaté tlačítko na tmavém heru (šipky mezi koly) */
+.hb-fs-round {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.hb-fs-round:disabled {
+  opacity: 0.3;
+}
+
+/* Žluté potvrzení sestavy ve spodní liště */
+.hb-fs-save {
+  flex-shrink: 0;
+  width: 104px;
+  border-radius: 12px;
+  padding: 12px 6px;
+  background: #ffd647;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: center;
+  white-space: pre-line;
+  transition: transform 0.12s ease;
+}
+
+.hb-fs-save:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.hb-fs-save:disabled {
+  opacity: 0.45;
+}
+
+/* Řádek akčního sheetu nad hráčem */
+.hb-fs-action {
+  width: 100%;
+  padding: 14px 16px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.hb-fs-action--danger {
+  color: var(--loss);
+}
+
+.hb-fs-action--brand {
+  font-weight: 700;
+  color: var(--brand);
+}
+
+/* Ztmavení pod sheetem a jeho „Zrušit“ — obojí <button>, tedy vlastní pozadí */
+.hb-sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.hb-sheet-cancel {
+  border-radius: 14px;
+  background: var(--card);
+}
+
+/* Vstupy — `font: inherit` jim bere velikost písma */
+.hb-fs-input {
+  font-size: 14px;
+}
+
+.hb-fs-team-name {
+  font-size: 17px;
+  font-weight: 700;
+  color: #fff;
+}
+
+/*
+  Kulaté tlačítko „přidat hráče“ v trhu.
+*/
+.hb-fantasy-add {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: var(--brand);
+  color: #fff;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1;
+  transition: transform 0.12s ease;
+}
+
+.hb-fantasy-add[data-taken="true"] {
+  background: var(--win);
+}
+
+.hb-fantasy-add:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.hb-fantasy-add:disabled {
+  opacity: 0.3;
+}
+
+/* Spodní sheet (výběr klubu, akce s hráčem) */
+@keyframes hb-sheet-in {
+  from {
+    transform: translateY(14px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.hb-sheet {
+  animation: hb-sheet-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 .hb-tint-12-live {
   background: color-mix(in srgb, var(--live) 12%, transparent);
   color: var(--live);

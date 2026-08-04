@@ -8,9 +8,13 @@ struct FantasyPlayerCard: View {
     var showsPrice: Bool = true
     var showsPoints: Bool = false
     var opponentLabel: String? = nil
+    /// Zvýrazněná karta (vybraný hráč) — silnější obrys a záře.
+    var isSelected: Bool = false
     var isEmpty: Bool = false
     var emptyTitle: String = "Vybrat"
     var emptyPosition: String = "?"
+    /// Podklad, na kterém karta leží — mění vzhled prázdného slotu.
+    var emptyTone: FantasyEmptyTone = .dark
 
     private var rating: Int { FantasyRules.rating(for: player) }
     private var tier: FantasyCardTier { FantasyRules.tier(for: rating) }
@@ -33,17 +37,28 @@ struct FantasyPlayerCard: View {
             RoundedRectangle(cornerRadius: size.corner, style: .continuous)
                 .fill(LinearGradient(colors: tier.gradient, startPoint: .topLeading, endPoint: .bottomTrailing))
 
+            // Lesk: nahoře světlo, dole stín — dává kartě plasticitu.
             RoundedRectangle(cornerRadius: size.corner, style: .continuous)
                 .fill(
                     LinearGradient(
-                        colors: [Color.white.opacity(0.22), .clear, Color.black.opacity(0.25)],
+                        colors: [Color.white.opacity(0.24), .clear, Color.black.opacity(0.28)],
                         startPoint: .top,
                         endPoint: .bottom
                     )
                 )
 
+            // Šikmý odlesk přes kartu
             RoundedRectangle(cornerRadius: size.corner, style: .continuous)
-                .strokeBorder(tier.accent.opacity(0.55), lineWidth: 1.2)
+                .fill(
+                    LinearGradient(
+                        colors: [.clear, Color.white.opacity(0.16), .clear],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+
+            RoundedRectangle(cornerRadius: size.corner, style: .continuous)
+                .strokeBorder(tier.accent.opacity(isSelected ? 1 : 0.55), lineWidth: isSelected ? 2 : 1.2)
 
             VStack(spacing: 0) {
                 HStack(alignment: .top, spacing: 4) {
@@ -68,9 +83,12 @@ struct FantasyPlayerCard: View {
 
                 ZStack {
                     Circle()
-                        .fill(Color.black.opacity(0.22))
+                        .fill(Color.black.opacity(0.25))
                         .frame(width: size.avatar, height: size.avatar)
                     PlayerAvatar(player: player, size: size.avatar, cornerRadius: size.avatar / 2)
+                    Circle()
+                        .strokeBorder(Color.white.opacity(0.2), lineWidth: 1)
+                        .frame(width: size.avatar, height: size.avatar)
                 }
 
                 Spacer(minLength: 2)
@@ -87,7 +105,7 @@ struct FantasyPlayerCard: View {
                     .padding(.top, 2)
             }
         }
-        .shadow(color: .black.opacity(0.28), radius: 8, y: 4)
+        .shadow(color: .black.opacity(isSelected ? 0.4 : 0.28), radius: isSelected ? 12 : 8, y: 4)
     }
 
     @ViewBuilder
@@ -122,25 +140,84 @@ struct FantasyPlayerCard: View {
     private var emptyCard: some View {
         ZStack {
             RoundedRectangle(cornerRadius: size.corner, style: .continuous)
-                .fill(Color.white.opacity(0.12))
+                .fill(emptyTone.fill)
             RoundedRectangle(cornerRadius: size.corner, style: .continuous)
                 .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
-                .foregroundStyle(Color.white.opacity(0.35))
+                .foregroundStyle(emptyTone.stroke)
 
             VStack(spacing: 6) {
                 Text(emptyPosition)
                     .font(.system(size: 13, weight: .heavy))
-                    .foregroundStyle(Color(red: 1.0, green: 0.84, blue: 0.28))
-                    .frame(width: 28, height: 28)
-                    .background(Color(red: 1.0, green: 0.84, blue: 0.28).opacity(0.15), in: Circle())
+                    .foregroundStyle(emptyTone.badgeForeground)
+                    .frame(width: 26, height: 26)
+                    .background(emptyTone.badgeBackground, in: Circle())
                 Image(systemName: "plus")
                     .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(Color.white.opacity(0.7))
+                    .foregroundStyle(emptyTone.foreground)
                 Text(emptyTitle)
                     .font(.hbMontserrat(size: 10, weight: .bold))
-                    .foregroundStyle(Color.white.opacity(0.75))
+                    .foregroundStyle(emptyTone.foreground)
             }
         }
+    }
+}
+
+/// Podklad prázdného slotu — na hřišti světlý na tmavém, v přehledu naopak.
+enum FantasyEmptyTone {
+    case dark
+    case light
+
+    var fill: Color {
+        switch self {
+        case .dark: return Color.white.opacity(0.1)
+        case .light: return HBTheme.cardInset
+        }
+    }
+
+    var stroke: Color {
+        switch self {
+        case .dark: return Color.white.opacity(0.35)
+        case .light: return HBTheme.separator
+        }
+    }
+
+    var foreground: Color {
+        switch self {
+        case .dark: return Color.white.opacity(0.7)
+        case .light: return HBTheme.textSecondary
+        }
+    }
+
+    var badgeForeground: Color {
+        switch self {
+        case .dark: return Color(red: 1.0, green: 0.84, blue: 0.28)
+        case .light: return HBTheme.brand
+        }
+    }
+
+    var badgeBackground: Color {
+        switch self {
+        case .dark: return Color(red: 1.0, green: 0.84, blue: 0.28).opacity(0.15)
+        case .light: return HBTheme.brand.opacity(0.12)
+        }
+    }
+}
+
+/// Štítek tieru (Bronze / Silver / Gold / Elite) v barvách karty.
+struct FantasyTierChip: View {
+    let tier: FantasyCardTier
+
+    var body: some View {
+        Text(tier.label.uppercased())
+            .font(.hbMontserrat(size: 10, weight: .heavy))
+            .tracking(0.4)
+            .foregroundStyle(tier.accent)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(
+                LinearGradient(colors: tier.gradient, startPoint: .leading, endPoint: .trailing),
+                in: Capsule()
+            )
     }
 }
 
