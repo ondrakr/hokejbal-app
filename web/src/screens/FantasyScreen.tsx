@@ -23,6 +23,7 @@ import {
   useFantasy,
   type FantasySlot,
 } from "@/stores/fantasy";
+import { countdownParts } from "@/lib/fantasyDeadline";
 import { useCatalog } from "@/stores/catalog";
 import { useNav } from "@/stores/navigation";
 import { teamFormColor, teamFormItems, teamFormLetter } from "@/lib/teamForm";
@@ -175,43 +176,6 @@ const SLOT_LABEL: Record<FantasySlot, string> = {
   F3: "Útočník 3",
 };
 
-/** Sobota 10:00 — viz FantasyDeadline.upcomingDeadline (UI countdown). */
-function nextSaturdayDeadline(from = new Date()): Date {
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/Prague",
-    weekday: "short",
-    hour: "2-digit",
-    hour12: false,
-  }).formatToParts(from);
-  const weekday = parts.find((p) => p.type === "weekday")?.value ?? "Mon";
-  const hour = Number(parts.find((p) => p.type === "hour")?.value ?? "0");
-  const weekdayIndex: Record<string, number> = {
-    Sun: 0,
-    Mon: 1,
-    Tue: 2,
-    Wed: 3,
-    Thu: 4,
-    Fri: 5,
-    Sat: 6,
-  };
-  const wd = weekdayIndex[weekday] ?? 0;
-  let daysUntil = (6 - wd + 7) % 7;
-  if (daysUntil === 0 && hour >= 10) daysUntil = 7;
-  const approx = new Date(from.getTime() + daysUntil * 86_400_000);
-  approx.setHours(10, 0, 0, 0);
-  return approx;
-}
-
-function countdownParts(to: Date, from = new Date()) {
-  const interval = Math.max(0, Math.floor((to.getTime() - from.getTime()) / 1000));
-  return {
-    days: Math.floor(interval / 86_400),
-    hours: Math.floor((interval % 86_400) / 3600),
-    minutes: Math.floor((interval % 3600) / 60),
-    seconds: interval % 60,
-  };
-}
-
 function pad2(n: number) {
   return String(n).padStart(2, "0");
 }
@@ -282,9 +246,11 @@ function RuleCard({ title, text }: { title: string; text: string }) {
 }
 
 function DeadlineBar({
+  deadline,
   locked,
   onSave,
 }: {
+  deadline: Date;
   locked: boolean;
   onSave: () => void;
 }) {
@@ -293,7 +259,10 @@ function DeadlineBar({
     const id = window.setInterval(() => setNow(new Date()), 1000);
     return () => window.clearInterval(id);
   }, []);
-  const parts = countdownParts(nextSaturdayDeadline(now), now);
+  const parts = countdownParts(deadline, now);
+  // Zámek musí naskočit i bez re-renderu storu, jakmile odpočet doběhne na nulu.
+  const expired = now.getTime() >= deadline.getTime();
+  const disabled = locked || expired;
 
   return (
     <div className="shrink-0 bg-[linear-gradient(135deg,var(--brand),var(--brand-dark))] px-4 py-3.5 shadow-[0_-4px_16px_color-mix(in_srgb,var(--brand)_35%,transparent)]">
@@ -323,11 +292,11 @@ function DeadlineBar({
         </div>
         <button
           type="button"
-          disabled={locked}
+          disabled={disabled}
           onClick={onSave}
           className="w-[108px] rounded-[12px] bg-[#ffd647] py-3.5 text-center text-[12px] font-extrabold text-ink disabled:opacity-45"
         >
-          {locked ? "UZAMČENO" : "ULOŽIT SESTAVU"}
+          {disabled ? "UZAMČENO" : "ULOŽIT SESTAVU"}
         </button>
       </div>
     </div>
@@ -872,6 +841,7 @@ export function FantasyScreen({
           )}
         </div>
         <DeadlineBar
+          deadline={fantasy.deadline}
           locked={!editable}
           onSave={handleSaveWithMessage}
         />
@@ -976,6 +946,7 @@ export function FantasyScreen({
         )}
       </div>
       <DeadlineBar
+        deadline={fantasy.deadline}
         locked={!fantasy.isViewingEditable}
         onSave={handleSaveWithMessage}
       />

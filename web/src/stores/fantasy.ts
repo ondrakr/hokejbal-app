@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 import type { Match, Player, PlayerPosition } from "@/lib/types";
 import { readJSON, readString, writeJSON, writeString } from "@/lib/storage";
+import { deadlineForGameweek, gameweek as gameweekFor, isEditable } from "@/lib/fantasyDeadline";
 
 export type FantasySlot = "G" | "D1" | "D2" | "F1" | "F2" | "F3";
 
@@ -84,7 +85,9 @@ function hydrate() {
   const lineups = readJSON<LineupsByGW>(KEYS.lineups, {});
   const savedRaw = readJSON<LineupsByGW>(KEYS.saved, {});
   const saved = Object.keys(savedRaw).length ? savedRaw : { ...lineups };
-  const activeGW = Number(readString(KEYS.activeGW, "1")) || 1;
+  // Bez uloženého kola (nová instalace) startujeme rovnou na dopočítaném — viz iOS `init`.
+  const storedGW = Math.trunc(Number(readString(KEYS.activeGW, "")));
+  const activeGW = Number.isFinite(storedGW) && storedGW >= 1 ? storedGW : gameweekFor();
   state = {
     teamName: readString(KEYS.teamName, "Můj Fantasy tým"),
     activeGameweek: activeGW,
@@ -98,6 +101,48 @@ function hydrate() {
     lastSaveMessage: null,
   };
   hydrated = true;
+  syncGameweek();
+}
+
+/**
+ * Posune aktivní kolo podle kalendáře — obdoba `syncGameweekIfNeeded` na iOS.
+ *
+ * Migrace: sestava dosavadního kola se do nového **zkopíruje**, původní záznam
+ * zůstává pod svým klíčem jako archiv. Uživatel s uloženou sestavou pod GW 1 tak
+ * o ni nepřijde a zároveň ji rovnou vidí v dopočítaném aktivním kole.
+ *
+ * Body ani kredity se tu nepřidělují — web nemá při hydrataci k dispozici hráče,
+ * takže vyhodnocení uplynulých kol zůstává mimo tuto funkci.
+ */
+function syncGameweek(now: Date = new Date()) {
+  const gw = gameweekFor(now);
+  const key = String(gw);
+  const lineups = { ...state.lineups };
+
+  if (gw > state.activeGameweek) {
+    const old = String(state.activeGameweek);
+    let seeded = false;
+    if (!lineups[key]) {
+      lineups[key] = { ...(state.saved[old] ?? lineups[old] ?? {}) };
+      seeded = true;
+    }
+    state = { ...state, activeGameweek: gw, viewingGameweek: gw, lineups };
+    persistMeta();
+    if (seeded) persistDraft();
+    return;
+  }
+
+  // Kolo se nezměnilo (nebo je uložené napřed) — jen doplníme prázdný draft.
+  if (!lineups[key]) {
+    lineups[key] = { ...(lineups[String(gw - 1)] ?? {}) };
+    state = { ...state, lineups };
+    persistDraft();
+  }
+}
+
+/** iOS `isViewingEditable` — editovat lze jen aktivní kolo a jen před jeho deadlinem. */
+function canEditNow(now: Date = new Date()): boolean {
+  return state.viewingGameweek === state.activeGameweek && isEditable(state.activeGameweek, now);
 }
 
 function persistMeta() {
@@ -248,9 +293,16 @@ export function useFantasy() {
     [snap.lineups, snap.viewingGameweek, snap.activeGameweek]
   );
 
-  /** Minulé kolo je jen ke čtení; editace jen u aktivního GW. */
-  const isViewingEditable = snap.viewingGameweek === snap.activeGameweek;
-  const isLocked = !isViewingEditable;
+  /** Deadline aktivního / prohlíženého kola (sobota 10:00 Praha). */
+  const deadline = useMemo(() => deadlineForGameweek(snap.activeGameweek), [snap.activeGameweek]);
+  const viewingDeadline = useMemo(
+    () => deadlineForGameweek(snap.viewingGameweek),
+    [snap.viewingGameweek]
+  );
+  /** iOS: `isLocked` = deadline aktivního kola už prošel. */
+  const isLocked = !isEditable(snap.activeGameweek);
+  /** Minulé kolo je jen ke čtení; editace jen u aktivního GW před deadlinem. */
+  const isViewingEditable = snap.viewingGameweek === snap.activeGameweek && !isLocked;
 
   const draftLineup = lineupFor(snap.viewingGameweek);
   const filledCount = Object.values(draftLineup).filter(Boolean).length;
@@ -301,6 +353,9 @@ export function useFantasy() {
     if (state.viewingGameweek !== state.activeGameweek) {
       return "Toto kolo nejde upravovat (deadline sobota 10:00).";
     }
+    if (!isEditable(state.activeGameweek)) {
+      return "Deadline prošlo — sestavu už nelze uložit.";
+    }
     const gw = String(state.activeGameweek);
     const draft = state.lineups[gw] ?? {};
     const count = Object.values(draft).filter(Boolean).length;
@@ -323,7 +378,7 @@ export function useFantasy() {
    */
   const setSlot = useCallback(
     (slot: FantasySlot, player: Player, playersById: Map<string, Player> | Record<string, Player>): string | null => {
-      if (state.viewingGameweek !== state.activeGameweek) {
+      if (!canEditNow()) {
         return "Toto kolo nejde upravovat (deadline sobota 10:00).";
       }
       if (player.position !== SLOT_POSITION[slot]) {
@@ -375,7 +430,7 @@ export function useFantasy() {
   );
 
   const removeSlot = useCallback((slot: FantasySlot) => {
-    if (state.viewingGameweek !== state.activeGameweek) return;
+    if (!canEditNow()) return;
     const gw = String(state.activeGameweek);
     const current: LineupMap = { ...(state.lineups[gw] ?? {}) };
     delete current[slot];
@@ -389,7 +444,7 @@ export function useFantasy() {
   }, []);
 
   const clearLineup = useCallback(() => {
-    if (state.viewingGameweek !== state.activeGameweek) return;
+    if (!canEditNow()) return;
     const gw = String(state.activeGameweek);
     state = {
       ...state,
@@ -407,6 +462,8 @@ export function useFantasy() {
     isComplete,
     isViewingEditable,
     isLocked,
+    deadline,
+    viewingDeadline,
     hasUnsavedChanges,
     selectedPlayerIds,
     lineupFor,
